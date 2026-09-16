@@ -1,23 +1,67 @@
+// A deterministic fault simulator for the core protocol.
+//
+// One seed fixes every choice: which envelope is delivered, which is dropped or
+// duplicated, which link is cut, which node crashes and where inside its host commit
+// sequence. Oracles run after every transition. A failure prints the seed so the run
+// can be replayed step for step.
 package paxos_sim
 
+import "base:intrinsics"
+import "core:container/small_array"
 import "core:fmt"
 import "core:math"
 import "core:os"
-import "core:container/small_array"
 import paxos "../src"
 
-MAX_SIM_NODES     :: 5
-MAX_SIM_SLOTS     :: 4096
-MAX_SIM_JOURNAL   :: 8192
-MAX_SIM_MESSAGES  :: 4096
+MAX_SIM_NODES    :: 5
+SIM_WINDOW       :: 256
+SIM_CHUNK        :: 64
+MAX_SIM_SLOTS    :: 4096
+MAX_SIM_JOURNAL  :: 32768
+MAX_SIM_MESSAGES :: 32768
+SIM_BATCH        :: 2
+// The first proposed value; the no-op is zero and every proposal is larger.
+FIRST_PROPOSAL   :: 100
 
-// Deterministic 64-bit SplitMix PRNG
+Sim_Node    :: paxos.Node(u64, MAX_SIM_NODES, SIM_WINDOW, SIM_CHUNK)
+Sim_Effects :: paxos.Effects(u64, MAX_SIM_NODES, SIM_WINDOW, SIM_CHUNK)
+
+// A journaled record with its value copied out of the ledger, and an envelope in flight
+// with its value copied out, exactly as a codec would do on a real host.
+Sim_Record :: struct {
+	write: paxos.Write(u64),
+	value: u64,
+}
+
+Sim_Packet :: struct {
+	envelope: paxos.Envelope(u64),
+	value:    u64,
+}
+
+packet_of :: proc(envelope: paxos.Envelope(u64)) -> (packet: Sim_Packet) {
+	packet.envelope = envelope
+	if value, carries := paxos.message_value(envelope.message); carries do packet.value = value^
+	return
+}
+
+// The envelope of a packet, pointing at the packet's own copy of the value.
+packet_envelope :: proc(packet: ^Sim_Packet) -> paxos.Envelope(u64) {
+	envelope := packet.envelope
+	#partial switch &m in envelope.message {
+	case paxos.Promise_Message(u64): m.value = &packet.value
+	case paxos.Accept_Message(u64):  m.value = &packet.value
+	case paxos.Commit_Message(u64):  m.value = &packet.value
+	}
+	return envelope
+}
+
+// Deterministic 64-bit SplitMix PRNG.
 Prng :: struct {
 	state: u64,
 }
 
 prng_init :: proc(p: ^Prng, seed: u64) {
-	p.state = seed != 0 ? seed : 0x853c49e6748fea9b
+	p.state = seed if seed != 0 else 0x853c49e6748fea9b
 }
 
 prng_next_u64 :: proc(p: ^Prng) -> u64 {
@@ -33,7 +77,11 @@ prng_int_max :: proc(p: ^Prng, max_val: int) -> int {
 	return int(prng_next_u64(p) % u64(max_val))
 }
 
-// Fault probabilities expressed in permille (0..1000).
+prng_chance :: proc(p: ^Prng, permille: int) -> bool {
+	return prng_int_max(p, 1000) < permille
+}
+
+// Fault probabilities in permille (0..1000).
 Faults :: struct {
 	drop_permille:      int,
 	duplicate_permille: int,
@@ -56,101 +104,225 @@ Config :: struct {
 	node_count: int,
 	faults:     Faults,
 	verbose:    bool,
+	// Rotating slot ownership instead of a single stable leader.
+	ownership:  bool,
+}
+
+// Where a simulated crash interrupts the host commit sequence.
+Crash_Point :: enum {
+	Before_Writes,   // nothing of this transition survives
+	Partial_Writes,  // a durable prefix of the writes, no message sent
+	Partial_Messages, // every write durable, a prefix of the messages sent
+}
+
+Sim_Vote :: struct {
+	ballot: paxos.Ballot,
+	value:  u64,
 }
 
 Simulator :: struct {
-	config:       Config,
-	prng:         Prng,
-	membership:   paxos.Membership(MAX_SIM_NODES),
-	nodes:        [MAX_SIM_NODES]paxos.Node(u64, MAX_SIM_NODES, 256, 64),
-	alive:        bit_set[0..<MAX_SIM_NODES],
-	journals:     [MAX_SIM_NODES]small_array.Small_Array(MAX_SIM_JOURNAL, paxos.Write(u64)),
-	queue:        small_array.Small_Array(MAX_SIM_MESSAGES, paxos.Envelope(u64)),
-	partitions:   [MAX_SIM_NODES]bit_set[0..<MAX_SIM_NODES],
-	golden:       [MAX_SIM_SLOTS]Maybe(u64),
-	golden_max:   paxos.Slot,
-	proposal_seq: u64,
+	config:          Config,
+	prng:            Prng,
+	membership:      paxos.Membership(MAX_SIM_NODES),
+	nodes:           [MAX_SIM_NODES]Sim_Node,
+	alive:           bit_set[0..<MAX_SIM_NODES],
+	journals:        [MAX_SIM_NODES]small_array.Small_Array(MAX_SIM_JOURNAL, Sim_Record),
+	queue:           small_array.Small_Array(MAX_SIM_MESSAGES, Sim_Packet),
+	partitions:      [MAX_SIM_NODES]bit_set[0..<MAX_SIM_NODES],
+	// The golden log: the first durable decision per slot fixes it forever.
+	golden:          [MAX_SIM_SLOTS]Maybe(u64),
+	golden_max:      paxos.Slot,
+	applied:         [MAX_SIM_NODES][MAX_SIM_SLOTS]Maybe(u64),
+	consumed:        [MAX_SIM_NODES]paxos.Slot,
+	promised:        [MAX_SIM_NODES]paxos.Ballot,
+	votes:           [MAX_SIM_NODES][MAX_SIM_SLOTS]Maybe(Sim_Vote),
+	faults_enabled:  bool,
+	crashes:         [Crash_Point]int,
+	proposal_seq:    u64,
 }
 
 sim_init :: proc(sim: ^Simulator, cfg: Config) {
+	// Zero in place: a compound literal would build a whole Simulator on the stack.
+	intrinsics.mem_zero(sim, size_of(Simulator))
 	sim.config = cfg
+	sim.faults_enabled = true
+	sim.proposal_seq = FIRST_PROPOSAL
 	prng_init(&sim.prng, cfg.seed)
 
-	node_ids: [MAX_SIM_NODES]paxos.NodeId
-	for i in 0..<cfg.node_count {
-		node_ids[i] = paxos.NodeId(i + 1)
-	}
-	_ = paxos.membership_init(&sim.membership, node_ids[:cfg.node_count])
+	node_ids: [MAX_SIM_NODES]paxos.Node_Id
+	for i in 0..<cfg.node_count do node_ids[i] = paxos.Node_Id(i + 1)
+	sim_check(paxos.init(&sim.membership, node_ids[:cfg.node_count]))
 
-	sim.alive = {}
 	for i in 0..<cfg.node_count {
-		_ = paxos.node_init_with_priority(&sim.nodes[i], node_ids[i], sim.membership, u32(i))
+		options := paxos.Node_Options{priority = u8(i), rotating_ownership = cfg.ownership}
+		sim_check(paxos.init(&sim.nodes[i], node_ids[i], sim.membership, options))
 		sim.alive += {i}
-		small_array.clear(&sim.journals[i])
-	}
-	for i in 0..<MAX_SIM_NODES {
-		sim.partitions[i] = {}
-	}
-	for i in 0..<MAX_SIM_SLOTS {
-		sim.golden[i] = nil
-	}
-	sim.golden_max = 0
-	sim.proposal_seq = 100
-	small_array.clear(&sim.queue)
-}
-
-@(private="file")
-check_and_record_commits :: proc(sim: ^Simulator, node_id: paxos.NodeId, committed: []paxos.Committed(u64)) {
-	for c in committed {
-		if c.slot >= MAX_SIM_SLOTS {
-			fmt.eprintf("Simulator: slot %d exceeds max capacity %d\n", c.slot, MAX_SIM_SLOTS)
-			os.exit(1)
-		}
-		if sim.golden[c.slot] != nil {
-			expected := sim.golden[c.slot].?
-			if expected != c.value {
-				fmt.eprintf(
-					"FATAL AGREEMENT VIOLATION: Slot %d committed value %d by Node %d, but golden oracle has %d!\n",
-					c.slot, c.value, node_id, expected,
-				)
-				os.exit(1)
-			}
-		} else {
-			sim.golden[c.slot] = c.value
-			sim.golden_max = math.max(sim.golden_max, c.slot)
-			if sim.config.verbose {
-				fmt.printf("  [Slot %d Decided] = %d (by Node %d)\n", c.slot, c.value, node_id)
-			}
-		}
 	}
 }
 
 @(private="file")
-process_effects :: proc(
-	sim: ^Simulator,
-	node_idx: int,
-	effects: ^paxos.Effects(u64, MAX_SIM_NODES, 256),
-) {
-	node_id := paxos.membership_get(sim.membership, node_idx)
+sim_fail :: proc(sim: ^Simulator, format: string, args: ..any) -> ! {
+	fmt.eprintf("FATAL: ")
+	fmt.eprintf(format, ..args)
+	fmt.eprintf("\nqueued messages: %d\n", small_array.len(sim.queue))
+	for i in 0..<sim.config.node_count {
+		n := &sim.nodes[i]
+		fmt.eprintf(
+			"node %d: alive=%v role=%v ballot=%v promised=%v next=%d base=%d delivered=%d floor=%d " +
+			"leader=%v ticks=%d observed_round=%d consumed=%d\n",
+			n.id, i in sim.alive, n.role, n.ballot, n.ledger.promised, n.next_slot, n.leader_base,
+			n.delivered_through, n.memory_floor, n.leader_hint, n.election_ticks, n.highest_observed_round,
+			sim.consumed[i],
+		)
+	}
+	fmt.eprintf("\nReplay with: paxos-sim --seed=%d --steps=%d --nodes=%d --verbose\n",
+		sim.config.seed, sim.config.steps, sim.config.node_count)
+	os.exit(1)
+}
 
-	// 1. Host Write-Ahead Log: Persist writes
-	writes := paxos.effects_writes_slice(effects)
-	for w in writes {
-		ok := small_array.push_back(&sim.journals[node_idx], w)
-		assert(ok, "Journal full")
+// Agreement and validity: one value per slot, forever, and only proposed values or the no-op.
+@(private="file")
+record_decision :: proc(sim: ^Simulator, node_id: paxos.Node_Id, slot: paxos.Slot, value: u64) {
+	if slot >= MAX_SIM_SLOTS do sim_fail(sim, "slot %d exceeds the capacity %d", slot, MAX_SIM_SLOTS)
+	if value != 0 && (value <= FIRST_PROPOSAL || value > sim.proposal_seq) {
+		sim_fail(sim, "VALIDITY: node %d decided %d in slot %d; nobody proposed it", node_id, value, slot)
+	}
+	if expected, decided := sim.golden[slot].?; decided {
+		if expected != value {
+			sim_fail(sim, "AGREEMENT: slot %d decided %d by node %d, but the golden log holds %d",
+				slot, value, node_id, expected)
+		}
+		return
+	}
+	sim.golden[slot] = value
+	sim.golden_max = math.max(sim.golden_max, slot)
+	if sim.config.verbose do fmt.printf("  [slot %d decided] = %d (by node %d)\n", slot, value, node_id)
+}
+
+// The oracle watches durable votes directly: a quorum chooses a value even if the
+// leader crashes before announcing it, and a promise may never move backwards.
+@(private="file")
+persist_sim_write :: proc(sim: ^Simulator, node_idx: int, write: paxos.Write(u64)) {
+	record := Sim_Record{write = write}
+	node_id := paxos.Node_Id(node_idx + 1)
+	switch w in write {
+	case paxos.Write_Promise:
+		if w.ballot < sim.promised[node_idx] {
+			sim_fail(sim, "PROMISE REGRESSION: node %d promised %v after %v",
+				node_id, w.ballot, sim.promised[node_idx])
+		}
+		sim.promised[node_idx] = w.ballot
+	case paxos.Write_Promise_At:
+	case paxos.Write_Vote(u64):
+		record.value = w.value^
+		if w.ballot < sim.promised[node_idx] {
+			sim_fail(sim, "VOTE BELOW PROMISE: node %d voted %v after promising %v",
+				node_id, w.ballot, sim.promised[node_idx])
+		}
+		if w.slot >= MAX_SIM_SLOTS do sim_fail(sim, "slot %d exceeds the simulator capacity", w.slot)
+		sim.votes[node_idx][w.slot] = Sim_Vote{ballot = w.ballot, value = record.value}
+		count := 0
+		for i in 0..<sim.config.node_count {
+			if vote, ok := sim.votes[i][w.slot].?; ok && vote.ballot == w.ballot {
+				if vote.value != record.value {
+					sim_fail(sim, "ballot %v accepted two values in slot %d", w.ballot, w.slot)
+				}
+				count += 1
+			}
+		}
+		if count >= paxos.membership_write_quorum(&sim.membership) {
+			record_decision(sim, node_id, w.slot, record.value)
+		}
+	case paxos.Write_Chosen(u64):
+		record.value = w.value^
+		record_decision(sim, node_id, w.slot, record.value)
+	case paxos.Write_Trim:
+	}
+	if !small_array.push_back(&sim.journals[node_idx], record) {
+		sim_fail(sim, "journal of node %d is full", node_idx + 1)
+	}
+}
+
+@(private="file")
+enqueue :: proc(sim: ^Simulator, envelope: paxos.Envelope(u64)) {
+	if !small_array.push_back(&sim.queue, packet_of(envelope)) do sim_fail(sim, "network queue is full")
+}
+
+// The host commit sequence with a crash possible at each of its points.
+@(private="file")
+process_effects :: proc(sim: ^Simulator, node_idx: int, effects: ^Sim_Effects) {
+	node_id := paxos.membership_get(&sim.membership, node_idx)
+
+	// Accept requests alone may leave before the local durability barrier.
+	if sim.faults_enabled {
+		iterator := paxos.pre_durable_messages(effects)
+		for message in paxos.pre_durable_next(&iterator) do enqueue(sim, message)
 	}
 
-	// 2. Check and record committed entries into golden oracle
-	committed := paxos.effects_committed_slice(effects)
-	check_and_record_commits(sim, node_id, committed)
+	crash := sim.faults_enabled && prng_chance(&sim.prng, sim.config.faults.crash_permille)
+	point := Crash_Point.Partial_Messages
+	if crash do point = Crash_Point(prng_int_max(&sim.prng, len(Crash_Point)))
+	writes := paxos.writes_slice(effects)
+	kept := len(writes)
+	if crash {
+		switch point {
+		case .Before_Writes:    kept = 0
+		case .Partial_Writes:   kept = prng_int_max(&sim.prng, len(writes) + 1)
+		case .Partial_Messages: kept = len(writes)
+		}
+	}
+	for w in writes[:kept] do persist_sim_write(sim, node_idx, w)
 
-	// 3. Confirm durability before transmitting outbound messages
-	paxos.effects_confirm_writes_durable(effects)
+	if crash && point != .Partial_Messages {
+		sim.crashes[point] += 1
+		sim_crash_node(sim, node_idx)
+		// The crashed process loses this volatile batch. Reuse the harness buffer only
+		// after discarding it, never by falsely confirming writes.
+		paxos.init(effects)
+		return
+	}
 
-	// 4. Queue outbound messages
-	msgs := paxos.effects_messages_slice(effects)
-	for env in msgs {
-		_ = small_array.push_back(&sim.queue, env)
+	// Decided entries reach the application only after their commit record is durable.
+	for c in paxos.committed_slice(effects) {
+		record_decision(sim, node_id, c.slot, c.value^)
+		if c.slot != sim.consumed[node_idx] + 1 {
+			sim_fail(sim, "CONTIGUITY: node %d released slot %d after %d",
+				node_id, c.slot, sim.consumed[node_idx])
+		}
+		sim.applied[node_idx][c.slot] = c.value^
+		sim.consumed[node_idx] = c.slot
+	}
+	// Licence window reuse only half of the time so full-window paths are exercised.
+	if !sim.faults_enabled || prng_chance(&sim.prng, 500) {
+		sim_check(paxos.advance_memory_floor(&sim.nodes[node_idx], sim.consumed[node_idx]))
+	}
+
+	paxos.confirm_writes_durable(effects)
+
+	// Serve evicted history from the host's durable application image.
+	for request in paxos.requests_slice(effects) {
+		switch r in request {
+		case paxos.Serve_Range_Request:
+			for offset in 0..<r.count {
+				slot := r.first + paxos.Slot(offset)
+				if slot >= MAX_SIM_SLOTS do continue
+				if value, ok := &sim.applied[node_idx][slot].?; ok {
+					commit := paxos.Commit_Message(u64){slot = slot, value = value}
+					enqueue(sim, paxos.Envelope(u64){from = node_id, to = r.peer, message = commit})
+				}
+			}
+		}
+	}
+
+	messages := paxos.messages_slice(effects)
+	sent := len(messages)
+	if crash {
+		sent = prng_int_max(&sim.prng, len(messages) + 1)
+	}
+	for envelope in messages[:sent] do enqueue(sim, envelope)
+	if crash {
+		sim.crashes[point] += 1
+		sim_crash_node(sim, node_idx)
 	}
 }
 
@@ -159,207 +331,241 @@ sim_crash_node :: proc(sim: ^Simulator, node_idx: int) {
 	if !(node_idx in sim.alive) do return
 	sim.alive -= {node_idx}
 	if sim.config.verbose {
-		fmt.printf("  [Fault: Crash] Node %d crashed\n", paxos.membership_get(sim.membership, node_idx))
+		fmt.printf("  [fault: crash] node %d\n", paxos.membership_get(&sim.membership, node_idx))
 	}
 }
 
 @(private="file")
 sim_restart_node :: proc(sim: ^Simulator, node_idx: int) {
 	if node_idx in sim.alive do return
-	id := paxos.membership_get(sim.membership, node_idx)
+	id := paxos.membership_get(&sim.membership, node_idx)
 
-	// Reset node state and replay journal
-	_ = paxos.node_init_with_priority(&sim.nodes[node_idx], id, sim.membership, u32(node_idx))
-	for w in small_array.slice(&sim.journals[node_idx]) {
-		_ = paxos.durable_replay_fold(&sim.nodes[node_idx].durable, w)
+	// Replay the lifetime journal into fresh durable state, then restore every derived frontier.
+	ledger: paxos.Ledger(u64, SIM_WINDOW)
+	for &record in small_array.slice(&sim.journals[node_idx]) {
+		write := record.write
+		#partial switch &w in write {
+		case paxos.Write_Vote(u64):   w.value = &record.value
+		case paxos.Write_Chosen(u64): w.value = &record.value
+		}
+		sim_check(paxos.ledger_replay_fold(&ledger, write))
 	}
+	options := paxos.Node_Options{priority = u8(node_idx), rotating_ownership = sim.config.ownership}
+	floor := sim.consumed[node_idx]
+	sim_check(paxos.restore(&sim.nodes[node_idx], id, sim.membership, ledger, floor, options))
+
 	sim.alive += {node_idx}
 	if sim.config.verbose {
-		fmt.printf(
-			"  [Recovery: Restart] Node %d restarted and replayed %d journal writes\n",
-			id,
-			small_array.len(sim.journals[node_idx]),
-		)
+		fmt.printf("  [recovery] node %d restarted from %d journal records\n",
+			id, small_array.len(sim.journals[node_idx]))
+	}
+}
+
+@(private="file")
+random_alive :: proc(sim: ^Simulator) -> (int, bool) {
+	index := prng_int_max(&sim.prng, sim.config.node_count)
+	return index, index in sim.alive
+}
+
+@(private="file")
+deliver_one :: proc(sim: ^Simulator, effects: ^Sim_Effects) {
+	queued := small_array.len(sim.queue)
+	if queued == 0 do return
+	index := prng_int_max(&sim.prng, queued)
+	packet := small_array.get(sim.queue, index)
+	small_array.unordered_remove(&sim.queue, index)
+	envelope := packet_envelope(&packet)
+
+	from_idx, from_ok := paxos.membership_index_of(&sim.membership, envelope.from)
+	to_idx, to_ok := paxos.membership_index_of(&sim.membership, envelope.to)
+	if !from_ok || !to_ok do return
+	if to_idx in sim.partitions[from_idx] || !(to_idx in sim.alive) do return
+
+	if !prng_chance(&sim.prng, sim.config.faults.drop_permille) {
+		sim_check(paxos.step(&sim.nodes[to_idx], envelope, effects))
+		process_effects(sim, to_idx, effects)
+	}
+	if prng_chance(&sim.prng, sim.config.faults.duplicate_permille) do enqueue(sim, packet.envelope)
+}
+
+@(private="file")
+propose_random :: proc(sim: ^Simulator, effects: ^Sim_Effects) {
+	node_idx, alive := random_alive(sim)
+	if !alive do return
+	node := &sim.nodes[node_idx]
+	err: paxos.Error
+	if prng_chance(&sim.prng, 250) {
+		values: [SIM_BATCH]u64
+		slots: [SIM_BATCH]paxos.Slot
+		for &value in values {
+			sim.proposal_seq += 1
+			value = sim.proposal_seq
+		}
+		_, err = paxos.propose_batch(node, values[:], slots[:], effects)
+	} else {
+		sim.proposal_seq += 1
+		_, err = paxos.propose(node, sim.proposal_seq, effects)
+	}
+	// Backpressure is expected; the burnt sequence number still counts as proposed for validity.
+	if err == .Not_Leader || err == .Window_Full || err == .Leader_Catching_Up do return
+	sim_check(err)
+	process_effects(sim, node_idx, effects)
+}
+
+@(private="file")
+toggle_link :: proc(sim: ^Simulator) {
+	if !prng_chance(&sim.prng, sim.config.faults.link_permille) do return
+	a := prng_int_max(&sim.prng, sim.config.node_count)
+	b := prng_int_max(&sim.prng, sim.config.node_count)
+	if a == b do return
+	cut := b in sim.partitions[a]
+	if cut {
+		sim.partitions[a] -= {b}
+		sim.partitions[b] -= {a}
+	} else {
+		sim.partitions[a] += {b}
+		sim.partitions[b] += {a}
+	}
+	if sim.config.verbose {
+		fmt.printf("  [fault: link] %d <-> %d %s\n", paxos.membership_get(&sim.membership, a),
+			paxos.membership_get(&sim.membership, b), "healed" if cut else "cut")
 	}
 }
 
 sim_run :: proc(sim: ^Simulator) {
 	if sim.config.verbose {
-		fmt.printf(
-			"Starting Paxos simulation with seed %d, %d steps, %d nodes\n",
-			sim.config.seed,
-			sim.config.steps,
-			sim.config.node_count,
-		)
+		fmt.printf("simulation: seed %d, %d steps, %d nodes\n",
+			sim.config.seed, sim.config.steps, sim.config.node_count)
+	}
+	effects: Sim_Effects
+	// Bootstrap: node 1 campaigns (owners need no campaign).
+	if !sim.config.ownership {
+		sim_check(paxos.campaign(&sim.nodes[0], 0, &effects))
+		process_effects(sim, 0, &effects)
 	}
 
-	eff: paxos.Effects(u64, MAX_SIM_NODES, 256)
+	for _ in 1..=sim.config.steps do run_fault_step(sim, &effects)
 
-	// Bootstrap: start campaign from node 0
-	paxos.effects_init(&eff)
-	_ = paxos.node_campaign(&sim.nodes[0], 0, &eff)
-	process_effects(sim, 0, &eff)
+	probe_slot := run_quiescence(sim, &effects)
+	if probe_slot == 0 || sim.golden[probe_slot] == nil {
+		sim_fail(sim, "LIVENESS: the healed cluster did not decide a fresh proposal")
+	}
+	verify_convergence(sim)
 
-	for _ in 1..=sim.config.steps {
-		action := prng_int_max(&sim.prng, 6)
+	total_crashes := 0
+	for count in sim.crashes do total_crashes += count
+	fmt.printf(
+		"Simulation passed. Seed=%d Steps=%d Nodes=%d DecidedSlots=%d Crashes=%d PartialCrashes=%d. " +
+		"Invariants preserved.\n",
+		sim.config.seed, sim.config.steps, sim.config.node_count, sim.golden_max, total_crashes,
+		sim.crashes[.Partial_Writes],
+	)
+}
 
-		switch action {
-		case 0: // Propose value on random alive node
-			node_idx := prng_int_max(&sim.prng, sim.config.node_count)
-			if node_idx in sim.alive {
-				paxos.effects_init(&eff)
-				sim.proposal_seq += 1
-				val := sim.proposal_seq
-				_, err := paxos.node_propose(&sim.nodes[node_idx], val, &eff)
-				if err == .None {
-					process_effects(sim, node_idx, &eff)
-				}
-			}
-
-		case 1: // Tick random alive node
-			node_idx := prng_int_max(&sim.prng, sim.config.node_count)
-			if node_idx in sim.alive {
-				paxos.effects_init(&eff)
-				_ = paxos.node_tick(&sim.nodes[node_idx], 0, &eff)
-				process_effects(sim, node_idx, &eff)
-			}
-
-		case 2: // Deliver random in-flight message
-			q_len := small_array.len(sim.queue)
-			if q_len > 0 {
-				idx := prng_int_max(&sim.prng, q_len)
-				env := small_array.get(sim.queue, idx)
-				small_array.unordered_remove(&sim.queue, idx)
-
-				from_idx, f_ok := paxos.membership_index_of(sim.membership, env.from)
-				to_idx, t_ok := paxos.membership_index_of(sim.membership, env.to)
-
-				if f_ok && t_ok {
-					// Check partition
-					if !(to_idx in sim.partitions[from_idx]) && (to_idx in sim.alive) {
-						// Drop check
-						if prng_int_max(&sim.prng, 1000) >= sim.config.faults.drop_permille {
-							paxos.effects_init(&eff)
-							err := paxos.node_step(&sim.nodes[to_idx], env, &eff)
-							if err == .None {
-								process_effects(sim, to_idx, &eff)
-							}
-						}
-						// Duplicate check
-						if prng_int_max(&sim.prng, 1000) < sim.config.faults.duplicate_permille {
-							_ = small_array.push_back(&sim.queue, env)
-						}
-					}
-				}
-			}
-
-		case 3: // Partition cut / heal toggle
-			a := prng_int_max(&sim.prng, sim.config.node_count)
-			b := prng_int_max(&sim.prng, sim.config.node_count)
-			if a != b {
-				is_cut := b in sim.partitions[a]
-				if is_cut {
-					sim.partitions[a] -= {b}
-					sim.partitions[b] -= {a}
-				} else {
-					sim.partitions[a] += {b}
-					sim.partitions[b] += {a}
-				}
-				if sim.config.verbose {
-					state_str := "healed" if is_cut else "cut"
-					fmt.printf(
-						"  [Fault: Link] Link (%d <-> %d) %s\n",
-						paxos.membership_get(sim.membership, a),
-						paxos.membership_get(sim.membership, b),
-						state_str,
-					)
-				}
-			}
-
-		case 4: // Crash node
-			if prng_int_max(&sim.prng, 1000) < sim.config.faults.crash_permille {
-				alive_count := card(sim.alive)
-				// Keep at least a majority alive to allow progress
-				if alive_count > paxos.membership_read_quorum(sim.membership) {
-					target := prng_int_max(&sim.prng, sim.config.node_count)
-					sim_crash_node(sim, target)
-				}
-			}
-
-		case 5: // Restart crashed node
-			target := prng_int_max(&sim.prng, sim.config.node_count)
-			if !(target in sim.alive) {
-				sim_restart_node(sim, target)
+// One seeded step: deliver, tick, propose, cut or heal a link, crash, restart, or reconnect.
+@(private="file")
+run_fault_step :: proc(sim: ^Simulator, effects: ^Sim_Effects) {
+	roll := prng_int_max(&sim.prng, 1000)
+	switch {
+	case roll < 450:
+		deliver_one(sim, effects)
+	case roll < 650:
+		if node_idx, alive := random_alive(sim); alive {
+			sim_check(paxos.tick(&sim.nodes[node_idx], 0, effects))
+			process_effects(sim, node_idx, effects)
+		}
+	case roll < 800:
+		propose_random(sim, effects)
+	case roll < 860:
+		toggle_link(sim)
+	case roll < 900:
+		// Keep a read quorum alive so the run can make progress.
+		if prng_chance(&sim.prng, sim.config.faults.crash_permille) &&
+		   card(sim.alive) > paxos.membership_read_quorum(&sim.membership) {
+			sim_crash_node(sim, prng_int_max(&sim.prng, sim.config.node_count))
+		}
+	case roll < 960:
+		if target := prng_int_max(&sim.prng, sim.config.node_count); !(target in sim.alive) {
+			sim_restart_node(sim, target)
+		}
+	case:
+		// A transport reports a peer link came back; the node repairs it proactively.
+		if node_idx, alive := random_alive(sim); alive {
+			peer := paxos.membership_get(&sim.membership, prng_int_max(&sim.prng, sim.config.node_count))
+			if peer != sim.nodes[node_idx].id {
+				sim_check(paxos.reconnected(&sim.nodes[node_idx], peer, effects))
+				process_effects(sim, node_idx, effects)
 			}
 		}
 	}
+}
 
-	// -------------------------------------------------------------
-	// Quiescence Phase: heal partitions, restart nodes, drain queue
-	// -------------------------------------------------------------
-	if sim.config.verbose {
-		fmt.println("\nBeginning Quiescence Phase (healing all partitions, restarting all nodes)...")
-	}
-
+// Heals every link, restarts every node, drains the network, and requires one fresh
+// decision so a run without progress cannot pass vacuously. Returns the probe's slot.
+@(private="file")
+run_quiescence :: proc(sim: ^Simulator, effects: ^Sim_Effects) -> (probe_slot: paxos.Slot) {
+	if sim.config.verbose do fmt.println("quiescence: healing links, restarting nodes, draining")
+	sim.faults_enabled = false
 	for i in 0..<sim.config.node_count {
 		sim_restart_node(sim, i)
 		sim.partitions[i] = {}
+		paxos.set_campaign_enabled(&sim.nodes[i], i == 0)
+	}
+	if !sim.config.ownership {
+		sim_check(paxos.campaign(&sim.nodes[0], 0, effects))
+		process_effects(sim, 0, effects)
 	}
 
-	// Drain network and run ticks until network is quiescent
 	for round in 1..=400 {
-		// Deliver all queued messages
 		for small_array.len(sim.queue) > 0 {
-			env := small_array.pop_front(&sim.queue)
-
-			to_idx, ok := paxos.membership_index_of(sim.membership, env.to)
-			if ok && (to_idx in sim.alive) {
-				paxos.effects_init(&eff)
-				err := paxos.node_step(&sim.nodes[to_idx], env, &eff)
-				if err == .None {
-					process_effects(sim, to_idx, &eff)
-				}
-			}
+			packet := small_array.pop_front(&sim.queue)
+			envelope := packet_envelope(&packet)
+			to_idx, ok := paxos.membership_index_of(&sim.membership, envelope.to)
+			if !ok || !(to_idx in sim.alive) do continue
+			sim_check(paxos.step(&sim.nodes[to_idx], envelope, effects))
+			process_effects(sim, to_idx, effects)
 		}
-
-		// Tick all nodes
 		for i in 0..<sim.config.node_count {
-			if i in sim.alive {
-				paxos.effects_init(&eff)
-				_ = paxos.node_tick(&sim.nodes[i], 0, &eff)
-				process_effects(sim, i, &eff)
-			}
+			sim_check(paxos.tick(&sim.nodes[i], 0, effects))
+			process_effects(sim, i, effects)
 		}
+		// Whoever leads the healed cluster (a surviving leader, or node 1 after its
+		// campaign) must decide one fresh value.
+		for i in 0..<sim.config.node_count {
+			if probe_slot != 0 do continue
+			if !sim.config.ownership && paxos.role(&sim.nodes[i]) != .Leader do continue
+			sim.proposal_seq += 1
+			err: paxos.Error
+			probe_slot, err = paxos.propose(&sim.nodes[i], sim.proposal_seq, effects)
+			// Backpressure is not failure: the window drains as the loop delivers.
+			if err == .Window_Full || err == .Not_Leader || err == .Leader_Catching_Up do continue
+			sim_check(err)
+			process_effects(sim, i, effects)
+		}
+		if small_array.len(sim.queue) == 0 && round > 50 do break
+	}
+	return
+}
 
-		if small_array.len(sim.queue) == 0 && round > 50 {
-			break
+// Convergence: every node applied the whole golden log.
+@(private="file")
+verify_convergence :: proc(sim: ^Simulator) {
+	for slot in 1..=sim.golden_max {
+		expected, decided := sim.golden[slot].?
+		if !decided do continue
+		for i in 0..<sim.config.node_count {
+			value, applied := sim.applied[i][slot].?
+			if applied && value == expected do continue
+			sim_fail(sim, "CONVERGENCE: node %d slot %d has %v, expected %d",
+				paxos.membership_get(&sim.membership, i), slot, sim.applied[i][slot], expected)
 		}
 	}
+}
 
-	// Verify that all alive nodes have agreed on the golden prefix
-	if sim.golden_max > 0 {
-		for slot in 1..=sim.golden_max {
-			expected := sim.golden[slot]
-			if expected != nil {
-				for i in 0..<sim.config.node_count {
-					val, committed := paxos.node_committed_at(&sim.nodes[i], slot)
-					if committed && val != expected.? {
-						fmt.eprintf(
-							"Quiescence check failed: Node %d slot %d has %d, expected %d\n",
-							paxos.membership_get(sim.membership, i),
-							slot,
-							val,
-							expected.?,
-						)
-						os.exit(1)
-					}
-				}
-			}
-		}
+@(private="file")
+sim_check :: proc(err: paxos.Error, loc := #caller_location) {
+	if err != .None {
+		fmt.eprintln("Simulation protocol failure at", loc, paxos.explain_error(err))
+		os.exit(1)
 	}
-
-	fmt.printf(
-		"Simulation passed successfully! Seed=%d, Steps=%d, DecidedSlots=%d. Invariants preserved.\n",
-		sim.config.seed, sim.config.steps, sim.golden_max,
-	)
 }

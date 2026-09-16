@@ -32,10 +32,12 @@ main :: proc() {
 					cfg.node_count = val
 				}
 			}
+		} else if arg == "--ownership" {
+			cfg.ownership = true
 		} else if arg == "--verbose" || arg == "-v" {
 			cfg.verbose = true
 		} else if arg == "--help" || arg == "-h" {
-			fmt.println("Usage: paxos-sim [--seed=N] [--steps=N] [--nodes=N] [--verbose]")
+			fmt.println("Usage: paxos-sim [--seed=N] [--steps=N] [--nodes=N] [--ownership] [--verbose]")
 			return
 		}
 	}
