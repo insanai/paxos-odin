@@ -14,11 +14,21 @@ TEMPLATE_PATH :: "docs/pod/template/rfc-template.typ"
 BUILD_DIR     :: "docs/build"
 BOOK_PATH     :: "docs/book.typ"
 INDEX_PATH    :: "docs/pod/index.typ"
+BENCH_BUILD   :: "odin build bench -out:bin/paxos-bench -o:speed -no-bounds-check -microarch:native"
 
 run_system_cmd :: proc(cmd: string) -> int {
 	c_cmd := strings.clone_to_cstring(cmd)
 	defer delete(c_cmd)
-	return int(libc.system(c_cmd))
+	status := int(libc.system(c_cmd))
+	if status != 0 {
+		fmt.eprintln(
+			"-- COMMAND FAILED --\n\nThe requested tool did not complete successfully.\n" +
+			"Hint: Fix the diagnostic printed above, then rerun the command:",
+			cmd,
+		)
+		os.exit(1)
+	}
+	return 0
 }
 
 print_usage :: proc() {
@@ -29,11 +39,13 @@ print_usage :: proc() {
 	fmt.println("  build [all|lib|test|sim|bench|cli]  Build library, binaries, or test runner")
 	fmt.println("  test                                Run full test suite with odin test")
 	fmt.println("  sim [--seed=N] [--steps=N] ...      Run deterministic Paxos chaos simulator")
-	fmt.println("  bench [--iterations=N] [--json]     Run in-memory Paxos performance benchmark")
-	fmt.println("  docs [all|book|index|pod|<target>]  Compile Typst specifications to PDF")
+	fmt.println("  bench [--iterations=N] [--durable]  Run the benchmark (--json for machine output)")
+	fmt.println("  check [--seeds=N] [--steps=N]       Run the verification suite (tools/check.py)")
+	fmt.println("  example                             Run the three-node replicated counter example")
+	fmt.println("  docs [all|book|index|pod|releases|html]  Compile Typst documents (html: export)")
 	fmt.println("  pod list                            List registered POD records and active drafts")
-	fmt.println("  pod new <slug>                      Create a new draft docs/pod/records/XXXXX-<slug>.typ")
-	fmt.println("  pod promote <slug>                  Assign next permanent 4-digit number and register POD")
+	fmt.println("  pod new <slug>                      Create docs/pod/records/XXXXX-<slug>.typ")
+	fmt.println("  pod promote <slug>                  Assign the next number and register the POD")
 	fmt.println("  help                                Display this help text")
 }
 
@@ -67,7 +79,7 @@ cmd_build :: proc(args: []string) {
 
 	case "bench":
 		fmt.println("Building benchmark (bin/paxos-bench)...")
-		res := run_system_cmd("odin build bench -out:bin/paxos-bench -o:speed -no-bounds-check -microarch:native")
+		res := run_system_cmd(BENCH_BUILD)
 		if res == 0 do fmt.println("Built bin/paxos-bench successfully.")
 
 	case "cli":
@@ -79,7 +91,7 @@ cmd_build :: proc(args: []string) {
 		fmt.println("Building all targets into bin/...")
 		_ = run_system_cmd("odin build src -build-mode:obj -out:bin/paxos.o")
 		_ = run_system_cmd("odin build sim -out:bin/paxos-sim")
-		_ = run_system_cmd("odin build bench -out:bin/paxos-bench -o:speed -no-bounds-check -microarch:native")
+		_ = run_system_cmd(BENCH_BUILD)
 		_ = run_system_cmd("odin build cli -out:bin/paxos-cli")
 		fmt.println("All targets built in bin/")
 
@@ -122,6 +134,18 @@ cmd_bench :: proc(args: []string) {
 	_ = run_system_cmd(strings.to_string(cmd_buf))
 }
 
+cmd_check :: proc(args: []string) {
+	cmd_buf := strings.builder_make()
+	defer strings.builder_destroy(&cmd_buf)
+
+	strings.write_string(&cmd_buf, "python3 tools/check.py")
+	for arg in args {
+		strings.write_string(&cmd_buf, " ")
+		strings.write_string(&cmd_buf, arg)
+	}
+	_ = run_system_cmd(strings.to_string(cmd_buf))
+}
+
 // -------------------------------------------------------------
 // Docs Generation Command (Typst Pipeline)
 // -------------------------------------------------------------
@@ -157,6 +181,59 @@ cmd_docs :: proc(args: []string) {
 		compile_all_pod_records(root_dir)
 	} else if strings.has_prefix(target, "pod-") || strings.has_prefix(target, "0") {
 		compile_matching_pod(root_dir, target)
+	}
+
+	if target == "releases" || target == "all" {
+		compile_release_notes(root_dir)
+	}
+
+	if target == "html" || target == "all" {
+		compile_html(root_dir)
+	}
+}
+
+RELEASES_DIR :: "docs/releases"
+
+compile_release_notes :: proc(root_dir: string) {
+	fd, err := os.open(RELEASES_DIR)
+	if err != nil do return
+	defer os.close(fd)
+	entries, read_err := os.read_dir(fd, -1, context.allocator)
+	if read_err != nil do return
+	defer os.file_info_slice_delete(entries, context.allocator)
+	for entry in entries {
+		if !strings.has_suffix(entry.name, ".typ") do continue
+		stem := strings.trim_suffix(entry.name, ".typ")
+		cmd := fmt.tprintf("typst compile --root %s %s/%s %s/release-%s.pdf",
+			root_dir, RELEASES_DIR, entry.name, BUILD_DIR, stem)
+		if run_system_cmd(cmd) == 0 do fmt.printf("  Generated docs/build/release-%s.pdf\n", stem)
+	}
+}
+
+// Typst's HTML export is experimental (no page layout, no CeTZ figures); it is offered
+// for web publishing next to the authoritative PDFs.
+compile_html :: proc(root_dir: string) {
+	html_dir := fmt.tprintf("%s/html", BUILD_DIR)
+	_ = os.make_directory(html_dir)
+	fmt.println("Exporting HTML (experimental Typst feature) into docs/build/html/...")
+	targets := [?][2]string{{BOOK_PATH, "paxos-spec.html"}, {INDEX_PATH, "pod-index.html"}}
+	for target in targets {
+		cmd := fmt.tprintf("typst compile --root %s --features html --format html %s %s/%s",
+			root_dir, target[0], html_dir, target[1])
+		if run_system_cmd(cmd) == 0 do fmt.printf("  Generated docs/build/html/%s\n", target[1])
+	}
+	fd, err := os.open(RECORDS_DIR)
+	if err != nil do return
+	defer os.close(fd)
+	entries, read_err := os.read_dir(fd, -1, context.allocator)
+	if read_err != nil do return
+	defer os.file_info_slice_delete(entries, context.allocator)
+	for entry in entries {
+		if !strings.has_suffix(entry.name, ".typ") || strings.has_prefix(entry.name, "XXXXX-") do continue
+		stem := strings.trim_suffix(entry.name, ".typ")
+		cmd := fmt.tprintf("typst compile --root %s --features html --format html %s/%s %s/pod-%s.html",
+			root_dir, RECORDS_DIR, entry.name, html_dir, stem)
+		if run_system_cmd(cmd) == 0 do fmt.printf("  Generated docs/build/html/pod-%s.html\n", stem)
 	}
 }
 
@@ -284,7 +361,7 @@ pod_list :: proc() {
 
 pod_new :: proc(slug: string) {
 	if !validate_slug(slug) {
-		fmt.println("Error: Invalid slug. Use lowercase letters, digits, and hyphens (e.g. fast-path-commit).")
+		fmt.println("Error: Invalid slug. Use lowercase letters, digits, and hyphens (fast-path-commit).")
 		return
 	}
 
@@ -514,6 +591,10 @@ main :: proc() {
 		cmd_sim(args)
 	case "bench":
 		cmd_bench(args)
+	case "check":
+		cmd_check(args)
+	case "example":
+		_ = run_system_cmd("odin run examples/counter.odin -file")
 	case "docs":
 		cmd_docs(args)
 	case "pod":
