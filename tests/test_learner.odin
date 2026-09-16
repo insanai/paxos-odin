@@ -28,7 +28,7 @@ test_learner_contiguous_release :: proc(t: ^testing.T) {
 
 	// Conflicting value for slot 2
 	_, conf_err := paxos.learner_learn_chosen(&learner, 7, 2, 999)
-	testing.expect(t, conf_err == .ConflictingChosenValue, "Conflicting value should be detected")
+	testing.expect(t, conf_err == .Conflicting_Chosen_Value, "Conflicting value should be detected")
 }
 
 @(test)
@@ -56,9 +56,9 @@ test_learner_window_wrap_and_backpressure :: proc(t: ^testing.T) {
 	_, read_err := paxos.learner_read_chosen(&learner, 5, output_buf[:])
 	testing.expect(t, read_err == .Trimmed, "Reading slot 5 should return Trimmed")
 
-	// Gap beyond window capacity should fail with WindowFull
+	// Gap beyond window capacity should fail with Window_Full
 	_, full_err := paxos.learner_learn_chosen(&learner, 100, 16, 160)
-	testing.expect(t, full_err == .WindowFull, "Out of window gap should trigger WindowFull")
+	testing.expect(t, full_err == .Window_Full, "Out of window gap should trigger Window_Full")
 }
 
 @(test)
@@ -67,5 +67,5 @@ test_learner_rejects_wrong_configuration :: proc(t: ^testing.T) {
 	_ = paxos.learner_init(&learner, 42)
 
 	_, err := paxos.learner_learn_chosen(&learner, 99, 1, 10)
-	testing.expect(t, err == .ConfigurationMismatch, "Wrong configuration must be rejected")
+	testing.expect(t, err == .Configuration_Mismatch, "Wrong configuration must be rejected")
 }

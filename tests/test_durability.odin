@@ -5,78 +5,57 @@ import paxos "../src"
 
 @(test)
 test_effects_power_loss_barrier_flag :: proc(t: ^testing.T) {
-	eff: paxos.Effects(u64, 3, 64)
-	paxos.effects_init(&eff)
-	testing.expect(t, !paxos.effects_requires_power_loss_barrier(&eff), "Empty effects requires no barrier")
-
-	// Commit-only batch
-	paxos.effects_add_write(&eff, paxos.Write_Commit(u64){slot = 1, value = 100})
-	testing.expect(t, !paxos.effects_requires_power_loss_barrier(&eff), "Commit-only requires no power loss barrier")
-
-	// Add promise -> now requires barrier
-	paxos.effects_add_write(&eff, paxos.Write_Promise(paxos.Ballot{round = 1, node = 1}))
-	testing.expect(t, paxos.effects_requires_power_loss_barrier(&eff), "Promise requires power loss barrier")
+	e: paxos.Effects(u64, 3, 64, 16)
+	value: u64 = 100
+	testing.expect(t, !paxos.requires_power_loss_barrier(&e), "empty batch needs no barrier")
+	paxos.effects_add_write(&e, chosen_record(1, &value))
+	testing.expect(t, !paxos.requires_power_loss_barrier(&e), "decisions need no barrier")
+	paxos.effects_add_write(&e, paxos.Write_Promise{paxos.ballot_make(1, 0, 1)})
+	testing.expect(t, paxos.requires_power_loss_barrier(&e), "a promise needs a barrier")
+	paxos.confirm_writes_durable(&e)
 }
 
 @(test)
 test_pre_durable_messages_iterator :: proc(t: ^testing.T) {
-	eff: paxos.Effects(u64, 3, 64)
-	paxos.effects_init(&eff)
+	e: paxos.Effects(u64, 3, 64, 16)
+	value: u64 = 42
+	b := paxos.ballot_make(1, 0, 1)
+	heartbeat := paxos.Message(u64)(paxos.Heartbeat_Message{ballot = b})
+	accept_msg := paxos.Message(u64)(paxos.Accept_Message(u64){ballot = b, slot = 1, value = &value})
+	commit := paxos.Message(u64)(paxos.Commit_Message(u64){slot = 1, value = &value})
+	paxos.effects_add_message(&e, envelope(1, 2, heartbeat))
+	paxos.effects_add_message(&e, envelope(1, 2, accept_msg))
+	paxos.effects_add_message(&e, envelope(1, 2, commit))
 
-	// Add a Heartbeat message
-	paxos.effects_add_message(&eff, paxos.Envelope(u64){
-		from = 1,
-		to = 2,
-		message = paxos.Heartbeat_Message{ballot = {round = 1, node = 1}, decided_through = 0},
-	})
-	// Add an Accept message (safe to pipeline)
-	paxos.effects_add_message(&eff, paxos.Envelope(u64){
-		from = 1,
-		to = 2,
-		message = paxos.Accept_Message(u64){ballot = {round = 1, node = 1}, slot = 1, value = 42},
-	})
-	// Add a Commit message
-	paxos.effects_add_message(&eff, paxos.Envelope(u64){
-		from = 1,
-		to = 2,
-		message = paxos.Commit_Message(u64){slot = 1, value = 42},
-	})
-
-	it := paxos.effects_pre_durable_messages(&eff)
-	msg, ok := paxos.pre_durable_next(&it)
-	testing.expect(t, ok, "Iterator should return an accept message")
-	#partial switch val in msg.message {
-	case paxos.Accept_Message(u64):
-		testing.expect(t, val.slot == 1 && val.value == 42, "Accept slot 1 value 42")
-	case:
-		testing.expect(t, false, "Expected Accept message")
-	}
-
-	_, ok2 := paxos.pre_durable_next(&it)
-	testing.expect(t, !ok2, "No more pre-durable messages should exist")
+	it := paxos.pre_durable_messages(&e)
+	envelope, ok := paxos.pre_durable_next(&it)
+	testing.expect(t, ok, "the accept is available before the barrier")
+	accept, is_accept := envelope.message.(paxos.Accept_Message(u64))
+	testing.expect(t, is_accept && accept.slot == 1 && accept.value^ == 42)
+	_, more := paxos.pre_durable_next(&it)
+	testing.expect(t, !more, "nothing else may leave before the barrier")
 }
 
 @(test)
-test_host_managed_durability_bypass :: proc(t: ^testing.T) {
+test_host_managed_gate :: proc(t: ^testing.T) {
 	m: paxos.Membership(1)
-	nodes := [1]paxos.NodeId{1}
-	_ = paxos.membership_init(&m, nodes[:])
+	ids := [1]paxos.Node_Id{1}
+	expect_ok(t, paxos.init(&m, ids[:]))
+	node: paxos.Node(u64, 1, 64, 16, .Host_Managed)
+	expect_ok(t, paxos.init(&node, 1, m))
 
-	hnode: paxos.Host_Managed_Node(u64, 1, 64, 16)
-	err := paxos.host_managed_node_init(&hnode, 1, m)
-	testing.expect(t, err == .None, "Host managed node init")
+	e: paxos.Effects(u64, 1, 64, 16, .Host_Managed)
+	paxos.effects_add_write(&e, paxos.Write_Promise{paxos.ballot_make(1, 0, 1)})
+	paxos.effects_add_message(&e, envelope(1, 1, paxos.Message(u64)(paxos.Heartbeat_Message{})))
+	// Under the host-managed gate the messages are readable before confirmation.
+	testing.expect_value(t, len(paxos.messages_slice(&e)), 1)
+	paxos.reset(&e)
+}
 
-	eff: paxos.Effects(u64, 1, 64, .Host_Managed)
-	paxos.effects_init(&eff)
-
-	// In host_managed mode, calling messages_slice without confirm_writes_durable does not panic
-	paxos.effects_add_write(&eff, paxos.Write_Promise(paxos.Ballot{round = 1, node = 1}))
-	paxos.effects_add_message(&eff, paxos.Envelope(u64){
-		from = 1,
-		to = 1,
-		message = paxos.Heartbeat_Message{ballot = {round = 1, node = 1}, decided_through = 0},
-	})
-
-	msgs := paxos.effects_messages_slice(&eff)
-	testing.expect(t, len(msgs) == 1, "Messages can be retrieved when host manages durability")
+@(test)
+test_zero_value_effects_are_ready :: proc(t: ^testing.T) {
+	e: paxos.Effects(u64, 3, 64, 16)
+	testing.expect(t, paxos.is_empty(&e))
+	paxos.reset(&e)
+	testing.expect_value(t, len(paxos.messages_slice(&e)), 0)
 }
