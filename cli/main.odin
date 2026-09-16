@@ -67,7 +67,7 @@ cmd_build :: proc(args: []string) {
 
 	case "bench":
 		fmt.println("Building benchmark (bin/paxos-bench)...")
-		res := run_system_cmd("odin build bench -out:bin/paxos-bench")
+		res := run_system_cmd("odin build bench -out:bin/paxos-bench -o:speed")
 		if res == 0 do fmt.println("Built bin/paxos-bench successfully.")
 
 	case "cli":
@@ -79,7 +79,7 @@ cmd_build :: proc(args: []string) {
 		fmt.println("Building all targets into bin/...")
 		_ = run_system_cmd("odin build src -build-mode:obj -out:bin/paxos.o")
 		_ = run_system_cmd("odin build sim -out:bin/paxos-sim")
-		_ = run_system_cmd("odin build bench -out:bin/paxos-bench")
+		_ = run_system_cmd("odin build bench -out:bin/paxos-bench -o:speed")
 		_ = run_system_cmd("odin build cli -out:bin/paxos-cli")
 		fmt.println("All targets built in bin/")
 
@@ -114,7 +114,7 @@ cmd_bench :: proc(args: []string) {
 	cmd_buf := strings.builder_make()
 	defer strings.builder_destroy(&cmd_buf)
 
-	strings.write_string(&cmd_buf, "odin run bench --")
+	strings.write_string(&cmd_buf, "odin run bench -o:speed --")
 	for arg in args {
 		strings.write_string(&cmd_buf, " ")
 		strings.write_string(&cmd_buf, arg)
