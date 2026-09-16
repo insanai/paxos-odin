@@ -39,7 +39,7 @@ construction described in Lamport, Malkhi, and Zhou's "Reconfiguring a State Mac
 
 #v(1fr)
 #align(center, text(size: 8.5pt, fill: gray)[
-  Paxos-Odin Edition 0.1.0 · Written for Odin Nightly (dev-2026-09) · Typst 0.15+
+  paxos-odin 0.2.0 · Odin dev-2026-09 · Typst 0.15
 ])
 
 #pagebreak()
@@ -69,22 +69,76 @@ scenarios. We keep an unrelenting ledger of the facts that survive every machine
 crash and message loss.
 
 The implementation follows the exact same pedagogical order:
-1. First come values, node identities, and ballot tuples.
+1. First come values, node identities, and ballots.
 2. Next come promises, durable ballots, and votes.
-3. Then come multi-slot logs, leader elections, log hole filling, and stable storage.
-4. Finally come bounded memory windows, stop signs, and state machine replication.
+3. Then come multi-slot logs, leader elections, log hole filling, and stable storage,
+   and the chapter that proves the whole construction safe.
+4. Finally come bounded memory windows, rotating slot ownership, stop signs, and
+   state machine replication.
 
 At each step, we ask two fundamental questions:
 - *What can go wrong?*
 - *Which invariant prevents it?*
 
-== Accompanying Artifacts
+== How to read the book
 
-The repository provides concrete, executable code alongside this text:
-- The core protocol engine in `src/protocol.odin`, `src/replicated_log.odin`, and `src/learner.odin`.
-- A runnable three-node counter in `bench/main.odin` and `tests/`.
-- A seed-driven chaos simulator in `sim/` with network partitions, node reboots, and a golden linearizability oracle.
-- A five-mode benchmark matrix measuring pure in-memory state machine throughput on your host.
+Parts I through III derive the protocol from one safety question, end with a
+sequence of decisions, and close with the safety argument: axioms, lemmas, and the
+proof that each departure from the textbook preserves agreement. Part IV is the
+library: the bounded state machine, the host contract, the advanced features,
+rotating slot ownership, and the coding rules that keep the code reviewable.
+Part V builds three systems on it. Part VI is the evidence and its limits. Part VII is
+the desk reference, with the answers to selected exercises, and Part VIII maps
+Lamport's paper to the procedures that implement it.
+
+== Audience and prerequisites
+
+You need sets, integer arithmetic, and the willingness to accept that a process can
+stop between any two instructions. Odin is read, not required: every excerpt is short
+and explained. If you already know Paxos, start with the checkpoint at the top of
+Part I and skip forward when it passes.
+
+== Notation
+
+- $N$ voters; a quorum $Q$; $Q_1$ the phase-one (read) quorum and $Q_2$ the phase-two
+  (write) quorum. Intersection is written $Q_1 inter Q_2 != emptyset$.
+- A ballot is the triple $(r, p, n)$: round, priority, node, ordered
+  lexicographically. The library packs the triple into one 64-bit integer so that
+  the lexicographic order is integer comparison.
+- The owner of slot $s$ under rotating ownership is member $(s - 1) mod N$ in
+  membership order; its ballot in that slot has round $0$.
+- Slots are one-based; $s = 0$ means "no slot".
+- Code identifiers appear in `monospace`; Odin types are `Ada_Case`, procedures are
+  `snake_case`, error values are written with a leading dot, as in `.Not_Leader`.
+
+== Commands used in the book
+
+#code_file("shell", [
+```sh
+make build                       # library object, simulator, benchmark, CLI into bin/
+make test                        # odin test tests
+make check                       # style, tests in two builds, contracts, 120 seeded simulations, smoke runs
+make example                     # the three-node counter
+./bin/paxos-sim --seed=7 --steps=10000 --nodes=5 --verbose
+./bin/paxos-sim --seed=7 --steps=10000 --nodes=5 --ownership   # every node proposes
+./bin/paxos-bench --durable      # in-memory modes plus journal-and-fsync modes
+make bench-compare               # this library, paxos-zig, OmniPaxos, LibPaxos3; records bench/results/
+make docs                        # this book and the POD records as PDF
+```
+])
+
+== Accompanying artefacts
+
+- The library in `src/`: the core in ten files (`ballot.odin`, `bit_set.odin`,
+  `membership.odin`, `ledger.odin`, `messages.odin`, `effects.odin`, `node.odin`,
+  `election.odin`, `consensus.odin`, `ownership.odin`), then `replicated_log.odin`
+  (stop signs and configuration-checked envelopes), `learner.odin`, `errors.odin`,
+  and `paxos.odin` (the unified surface).
+- `examples/counter.odin`: the three-node replicated counter walked through in Part V.
+- `sim/`: the seeded fault simulator with its oracles, in single-leader and
+  rotating-ownership modes.
+- `bench/`: the in-memory and durable benchmarks.
+- `tools/check.py`: the complete verification run.
 
 #callout([A principle of verification], [
   Testing can reveal a broken invariant. It cannot create an invariant. We

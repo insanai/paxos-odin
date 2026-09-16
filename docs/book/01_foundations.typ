@@ -2,164 +2,424 @@
 #import "figures.typ": *
 
 #part_page("I", [One decision], [
-  We begin with one empty line in a ledger. We end with the fundamental safety rule
-  that governs every legal Paxos message.
+  We begin with one blank line in a ledger and three librarians who cannot meet.
+  We end with three rules that decide whether any Paxos message is legal.
 ])
 
 = Foundations of Consensus
 
 #objectives([
-  By the end of this chapter you should be able to distinguish safety from liveness,
-  calculate quorum intersection constraints, order Odin's two-component `Ballot`
-  tuples lexicographically, and explain why quorum overlap without indelible stable
-  storage is insufficient to preserve agreement.
+  By the end of this chapter you should be able to separate safety from liveness,
+  compute the quorum sizes `membership_init` accepts and say why it rejects the
+  others, order `(round, priority, node)` ballots by hand, state invariants B1, B2
+  and B3 and point to the Odin that keeps each one, and explain why quorum
+  intersection is worthless unless acceptors remember in indelible ink.
 ])
 
-#checkpoint([Prior Knowledge], [
-  You need only sets, integer arithmetic, and the realization that a computer process
-  can stop between any two CPU instructions. If you already know Paxos, skip to the
-  teach-back at the end: can you explain why a new leader must adopt the value with
-  the *highest accepted ballot* rather than the value with the most votes?
+#checkpoint([What you need], [
+  Sets, integer division, and one physical fact: a process can stop between any two
+  instructions, and a message can spend an unbounded time in flight. If you already
+  know Paxos, try the teach-back at the end first, and come back here if your
+  explanation contained the phrase "the most common value".
 ])
 
-== The Empty Ledger
+== The empty ledger
 
-Imagine three librarians sitting in separate rooms on the island of Paxos, each
-holding a physical ledger. The first line of this ledger is currently blank.
+Three librarians sit in three separate rooms. Each keeps a copy of the same ledger,
+and the next line of every copy is blank. Two merchants arrive at the front desk at
+the same moment. One wants the line to read `olive_oil = 50`; the other wants
+`olive_oil = 80`. Each merchant hires runners to carry slips to the librarians.
 
-Two merchants arrive simultaneously at the library's reception desk:
-- Merchant 1 sends a runner asking the librarians to write `"olive_oil = 50"`.
-- Merchant 2 sends another runner asking the librarians to write `"olive_oil = 80"`.
+The librarians cannot leave their rooms; they talk only through runners, and the
+runners are unreliable. A runner may take an hour or a week, deliver slips out of the
+order they were written, deliver the same slip twice, or never arrive. The one thing
+a runner never does is change the words on a slip.
 
-The librarians cannot communicate directly; they can only send written slips
-through runners across the courtyard. These runners can be delayed indefinitely,
-fall asleep, deliver notes out of order, or disappear entirely. However, the runners
-never forge or alter the words on a delivered slip.
-
-Our goal is deceptively simple:
-1. *Agreement*: The librarians must never decide two conflicting values for that blank line.
-2. *Validity*: Any value declared final must have been proposed by a merchant.
-3. *Eventual Choice*: If runners can deliver notes and the librarians remain awake,
-   a decision should eventually be reached.
+What we want is easy to state. At most one of the two values may ever be written on
+that line, in any copy. A merchant may be told a value only after it is settled. And
+if runners deliver and a majority of librarians stay at their desks, the line should
+eventually be filled. The first two wishes say what must never happen; the third says
+what should eventually happen. They are different kinds of promise.
 
 #definition([Safety], [
-  Nothing bad happens. For Paxos, two different values are never chosen for the
-  same slot. Once a value is chosen, it remains chosen forever across all space and time.
+  Nothing bad ever happens. For one ledger line, two different values are never
+  chosen, and a chosen value stays chosen. A safety property can be violated only by
+  something that has already happened, so it never depends on how fast a runner is.
 ])
 
 #definition([Liveness], [
-  Something good eventually happens. For Paxos, a proposed value is eventually
-  chosen when a quorum of nodes can communicate and one coordinator remains active
-  long enough to complete a round of messages.
+  Something good eventually happens. For one ledger line, some proposed value is
+  eventually chosen, provided enough librarians are awake, enough runners deliver,
+  and one merchant is left alone long enough to finish.
 ])
 
-A stopped system is 100% safe. It performs no work, but it never contradicts itself.
-This insight allows us to separate our design: we enforce ironclad safety rules
-first, without relying on network timing or message delivery speed.
+A library where nobody writes anything is perfectly safe. That sounds like a joke,
+but it lets us design the rules that keep us safe first, with no assumption about
+time, and add the rules that make progress afterwards. Every rule in this chapter is
+a safety rule.
 
 #predict([
-  Nodes 1 and 2 have durably accepted `"olive_oil = 50"`, but the coordinator
-  crashes before sending confirmation to learners. Is `"olive_oil = 50"` chosen?
-  Write one sentence before reading on.
+  Librarians 1 and 2 have each written `olive_oil = 50` in ink and told nobody.
+  Librarian 3 has an empty line. Is the value chosen? Write one sentence before you
+  read on, and do not use the phrase "the merchant knows" in it.
 ])
 
-== Three Tempting but Broken Solutions
+== Three tempting answers
 
-When engineers first encounter distributed consensus, three intuitive designs
-almost always arise:
+Each of these designs is the first thing a careful engineer proposes. Each fails, and
+each contributes a piece that survives into the final protocol.
 
-1. *First to Arrive Wins*: Each librarian adopts whichever runner arrives first.
-   *Flaw*: If runner 1 reaches Node 1 first, while runner 2 reaches Node 2 first,
-   a permanent split brain occurs. Neither value has majority support, yet both
-   nodes have committed.
-2. *Unanimous Agreement ($N$ out of $N$)*: Require all three librarians to agree.
-   *Flaw*: If a single librarian takes a nap or one runner gets lost, the entire
-   system halts forever. Unanimity offers zero fault tolerance.
-3. *Majority Voting Without Rounds*: A value is chosen if a majority of nodes
-   accept it.
-   *Flaw*: If the network partitions while a proposal is in flight, the nodes in
-   one partition may later accept a different proposal from a new coordinator,
-   overwriting the previously chosen value.
+*First writer wins.* Each librarian writes whichever slip reaches her first. Runner A
+reaches librarian 1 first, runner B reaches librarian 2 first, and now copy 1 says 50
+and copy 2 says 80, forever. What survives: every librarian keeps local state and
+answers from it. What fails: nothing ties the local decisions together.
 
-== The Quorum Intersection Principle
+*One master.* Appoint librarian 1 as the only writer; the others copy her. This works
+until she falls asleep. If librarian 2 takes over, she must know whether librarian 1
+already wrote something that reached a copy, and she cannot ask a sleeping colleague.
+What survives: one active proposer at a time keeps the protocol simple. What fails: a
+takeover has no safe way to learn the past.
 
-To tolerate failures while preventing split brain, Paxos relies on *quorums*.
-In a cluster of $N$ nodes, a majority quorum $Q$ contains at least:
+*Unanimity.* Write a value only when all three librarians agree. Nobody can ever
+disagree, but if one librarian is asleep or one runner is lost, the line stays blank
+forever. What survives: a value is settled by a *set* of acceptances, not by one
+person. What fails: the set is too large to survive a single absence.
 
-$ |Q| >= floor(frac(N, 2)) + 1 $
+The final protocol combines the three survivors: durable local state, one proposer at
+a time, and a settling set of acceptances large enough to overlap every other such set
+yet small enough to survive absences.
 
-For a 3-node cluster, any quorum contains at least 2 nodes. For a 5-node cluster,
-a quorum contains at least 3 nodes.
+#exercise([1.1], [
+  A cluster has four voters. Write down two sets of two voters that do not intersect.
+  Describe one execution in which each set accepts a different value for slot 1, and
+  name the invariant that fails.
+])
+
+== The failure model
+
+A proof is only as good as the world it assumes. This library assumes four rules.
+
++ *Nodes crash-stop.* A node runs the algorithm exactly until it halts, and it may
+  halt between any two instructions. After halting it says nothing. It comes back
+  only if the host rebuilds it from a durable journal, and is then the same member
+  only because it remembers what it wrote.
++ *The network is asynchronous.* There is no bound on how long a message takes. The
+  core reads no clock; the host feeds it logical ticks, which affect only liveness.
++ *Runners lose, duplicate and reorder.* Any message may be dropped, delivered twice,
+  or delivered after a message sent later. Every handler in `src/election.odin` and
+  `src/consensus.odin` must be harmless under duplicates and correct under reordering.
++ *Nobody lies.* A delivered message is exactly what its sender wrote, and the sender
+  followed the algorithm: the non-Byzantine assumption. `node_step` rejects senders
+  outside the membership with `.Not_Member` but does not authenticate; that is the
+  host transport's job.
+
+#warning([The disk is part of the algorithm], [
+  Rule one hides the whole difficulty. A node that halts and forgets can break a
+  promise it already made. The only defence is to make the promise durable before
+  anyone else can act on it; the section on durable storage shows the code.
+])
+
+== Quorums
+
+We cannot wait for everyone, and we cannot let anyone act alone. A *quorum* is large
+enough to matter and small enough to assemble.
+#definition([Quorum], [
+  A set of acceptors whose acceptance settles a value. The defining property is not
+  size but overlap: any quorum used to read the past and any quorum used to write a
+  value share at least one acceptor.
+])
+
+With $N$ acceptors and simple majorities, a quorum has at least $floor(N / 2) + 1$
+members. Two majorities of an $N$-element set cannot be disjoint, because together
+they would hold more than $N$ elements. The overlapping member is the witness who
+carries the past into the future.
 
 #book_figure(
-  [The Pigeonhole Principle guarantees that any two majority quorums $Q_1$ and $Q_2$
-  must overlap in at least one common witness node: $Q_1 ∩ Q_2 ≠ ∅$.],
+  [Any two majority quorums share at least one acceptor. That acceptor is the only
+  link between a value chosen earlier and a leader elected later.],
   quorum_picture(),
 )
 
-Because any two quorums must intersect:
-$ |Q_1 ∩ Q_2| = |Q_1| + |Q_2| - |Q_1 ∪ Q_2| >= (frac(N+1, 2) + frac(N+1, 2)) - N = 1 $
+The library does not hard-code majorities. It stores a read quorum size for phase one
+and a write quorum size for phase two, defaults both to the majority, and validates
+only the property that matters:
 
-Every quorum you could ever assemble contains at least one node that was present
-in any previously assembled quorum! That overlapping node serves as the *witness*.
-
-== Ballots and Lexicographical Ordering
-
-Nodes may attempt to coordinate the cluster at the same time. To avoid ambiguity,
-every attempt is tagged with a globally unique, strictly ordered *Ballot*.
-
-In `paxos-odin`, a `Ballot` is defined in `src/protocol.odin`:
-
-#code_file("src/protocol.odin", [
+#code_file("src/membership.odin", [
 ```odin
-Ballot :: struct {
-	round: u32,
-	node:  NodeId,
+	majority := total / 2 + 1
+	read := read_quorum_override if read_quorum_override != 0 else majority
+	write := write_quorum_override if write_quorum_override != 0 else majority
+	if read <= 0 || read > total do return .Invalid_Read_Quorum
+	if write <= 0 || write > total do return .Invalid_Write_Quorum
+	if read + write <= total do return .Non_Intersecting_Quorums
+	validated.read_quorum_size, validated.write_quorum_size = read, write
+```
+])
+
+Odin's integer division makes `5 / 2 + 1` evaluate to `3`: five members with default
+quorums need three promises and three acceptances. A host may lower the write quorum
+to two only if it raises the read quorum to four, because the sum must exceed `total`.
+The error names the consequence, not the arithmetic: `.Non_Intersecting_Quorums`.
+
+Why odd counts? Three acceptors need two and survive one crash. Four need three and
+still survive only one: the fourth member costs a machine, a journal and a link and
+buys nothing. Five need three and survive two. Voting groups are usually three or five.
+
+=== Intersection is not memory
+
+Suppose acceptors 1 and 2 accept `olive_oil = 50`. Later a new leader asks acceptors 2
+and 3 what they have accepted. The sets intersect at acceptor 2, so on paper the
+leader must learn about the 50.
+
+Now suppose acceptor 2 kept its vote only in RAM and lost power in between. It
+restarts with an empty line and says it has never voted. The new leader proposes 80 to
+acceptors 2 and 3, they accept, and the ledger has chosen two values. The intersection
+still exists; the knowledge does not. Overlap is a property of sets; safety also needs
+a property of memory, the subject of the section on durable storage.
+
+== Ballots
+
+Because proposers fail, we must allow many attempts to fill one line and be able to
+say which attempt is later. Each attempt is a *ballot*; ballots are unique and totally
+ordered.
+
+#code_file("src/ballot.odin", [
+```odin
+// A ballot is one 64-bit integer, so B1 (a total order on ballots) is integer
+// comparison and every message and record carries eight bytes:
+//
+//   bits 63..24  round      (40 bits, the campaign counter; round 0 is reserved for
+//                            slot owners under rotating ownership)
+//   bits 23..16  priority   (8 bits, breaks ties between rounds)
+//   bits 15..0   node       (16 bits, the proposer; makes every ballot unique)
+Ballot :: distinct u64
+
+BALLOT_ZERO      :: Ballot(0)
+BALLOT_ROUND_BITS :: 40
+MAX_ROUND        :: u64(1) << BALLOT_ROUND_BITS - 1
+
+ballot_make :: #force_inline proc(round: u64, priority: u8, node: Node_Id) -> Ballot {
+	return Ballot(round << 24 | u64(priority) << 16 | u64(node))
 }
 
-ballot_cmp :: proc(a, b: Ballot) -> int {
-	if a.round < b.round do return -1
-	if a.round > b.round do return 1
-	if a.node < b.node   do return -1
-	if a.node > b.node   do return 1
-	return 0
+ballot_round :: #force_inline proc(b: Ballot) -> u64 {
+	return u64(b) >> 24
+}
+
+ballot_priority :: #force_inline proc(b: Ballot) -> u8 {
+	return u8(u64(b) >> 16)
+}
+
+ballot_node :: #force_inline proc(b: Ballot) -> Node_Id {
+	return Node_Id(u64(b))
 }
 ```
 ])
 
-The ballot consists of two components:
-- `round`: A monotonically increasing integer counter.
-- `node`: The unique identifier of the proposing node ($1, 2, dots, N$).
+A ballot is a triple `(round, priority, node)` packed into one unsigned integer, with
+the round in the high 40 bits, the priority in the next 8 and the 16-bit `Node_Id` in
+the low bits. Because each field sits above the fields that rank below it, the plain
+integer order `<` on two ballots is exactly the lexicographic order on the triples.
+A greater `round` always wins. Within a round, a greater `priority` wins; the host
+sets it through `Node_Options.priority` to prefer some members as leaders. Within a
+round and a priority, the greater `node` id wins, and because node ids are unique
+inside a membership, two members never produce the same ballot. `ballot_make` packs
+the triple and `ballot_round`, `ballot_priority` and `ballot_node` unpack it;
+everything else in the library compares ballots with `<` and `==`. Forty round bits
+are enough for `MAX_ROUND` campaigns before `.Ballot_Exhausted`; `BALLOT_ZERO` is
+`Ballot(0)`, below every ballot a campaign can produce. Round 0 itself is reserved
+for slot owners under rotating ownership, which a later chapter covers.
 
-Because no two nodes share the same `node` ID, ballot equality implies identical
-proposers:
-$ b_1 = b_2 <=> b_1."round" = b_2."round" and b_1."node" = b_2."node" $
+#table(
+  columns: (auto, auto, 1fr),
+  table.header([*Left*], [*Right*], [*`left < right`*]),
+  [`(4, 0, 2)`], [`(5, 0, 1)`], [`true`: the higher round dominates.],
+  [`(7, 2, 9)`], [`(7, 3, 1)`], [`true`: same round, priority decides.],
+  [`(9, 0, 1)`], [`(9, 0, 4)`], [`true`: same round and priority, node id decides.],
+)
 
-Ballots are ordered lexicographically:
-$ b_1 > b_2 <=> (b_1."round" > b_2."round") or (b_1."round" = b_2."round" and b_1."node" > b_2."node") $
+#exercise([2.1], [
+  Order the ballots (round 2, priority 0, node 1), (1, 5, 3), (2, 0, 3), (1, 5, 1).
+  Which one wins a contest, and why does priority sit between round and node?
+])
 
-== Why Durable Storage is Mandatory
+== Votes and the meaning of "chosen"
 
-Quorum intersection proves that at least one node witnessed the previous decision.
-However, that guarantee holds *only if the witness remembers what it saw*.
+An acceptor *votes* by accepting a proposal: it records a ballot and a value for the
+slot, in the `vote_ballot` and `value` columns of its `Ledger`, and holds at most one
+vote per slot, the latest.
 
-Suppose Node 1 and Node 2 accept ballot $(1, 1)$ with value `"A"`. Value `"A"` is now
-chosen by majority quorum $\{1, 2\}$.
-Now Node 2 crashes, reboots, and forgets its memory because it was stored in volatile RAM.
-A new leader emerges with ballot $(2, 3)$ and queries quorum $\{2, 3\}$.
-Because Node 2 forgot its vote, it tells Leader 3: *"I have never voted for anything!"*
-Leader 3 then proposes `"B"`, and quorum $\{2, 3\}$ accepts it.
+#definition([Chosen], [
+  A value $v$ is chosen for a slot when a write quorum of acceptors has each accepted
+  $v$ under the same ballot. Being chosen is a fact about the acceptors' durable
+  state. It does not require any proposer, learner or client to know that it happened.
+])
 
-*Catastrophe!* Slot 1 has now chosen both `"A"` and `"B"`.
+The moment the last acceptor of a write quorum makes its vote durable, the value is
+chosen, even if that acceptor's reply is lost, even if the leader dies in the next
+microsecond, even if no learner ever hears. Every later rule exists to make sure a
+fact nobody knows about is still respected.
 
-#warning([The Indelible Memory Invariant], [
-  In Lamport's original Paxos paper, the priests of Paxos wrote all ledger
-  entries in indelible ink. In systems software, this means a node MUST
-  synchronize its promises and votes to stable storage (such as an append-only
-  write-ahead log with `fsync`) *before* acknowledging any message to peers.
+#predict([
+  A leader collects acceptances for `olive_oil = 50` from acceptors 1 and 2 out of
+  three, then crashes before it sends a single commit. A new leader starts a ballot.
+  What value must the new leader end up proposing, and which acceptor will tell it?
+])
+
+== Three invariants
+
+Lamport's proof of the Synod protocol rests on three conditions on ballots, each of
+which the library keeps in a specific place.
+
+#table(
+  columns: (auto, 1fr, 1.1fr),
+  table.header([*Rule*], [*Statement*], [*Where the library keeps it*]),
+  [B1], [Every ballot is unique.],
+    [`start_campaign` builds `ballot_make(greatest + 1, node.priority, node.id)`;
+     `membership_init` rejects `.Duplicate_Node_Id` and `.Invalid_Node_Id`.],
+  [B2], [Every phase-one quorum intersects every phase-two quorum.],
+    [`membership_init` returns `.Non_Intersecting_Quorums` unless
+     `read_quorum_size + write_quorum_size > total`.],
+  [B3], [If any acceptor in the phase-one quorum has voted, the new ballot proposes
+     the value of the greatest-ballot vote reported.],
+    [`on_promise` keeps only the greatest vote per slot, and a reported decision
+     dominates every vote; `resolve_chunk` passes that value to `send_accept`.],
+)
+
+B1 makes "later" well defined. B2 makes sure a later ballot cannot avoid meeting a
+witness. B3 tells the later ballot what to do with what the witness says, and it is
+the rule people get wrong. It is not "the value with the most votes" and not "the most
+recent value you heard". Among the votes reported by your read quorum, find the one
+with the greatest ballot and propose its value; if nobody reported a vote, propose
+what you like. Older votes may belong to attempts that never reached a quorum, so
+counting them counts noise. The proof below shows that the greatest-ballot vote
+carries the chosen value whenever a choice was made.
+
+== The greatest-vote proof
+
+Here is the proof that B1, B2 and B3 together keep safety. Chapter 2 uses it to
+explain why each message field exists, and the safety-argument chapter restates it as
+formal lemmas, each mapped to the procedure that keeps it.
+
+*Claim.* Suppose value $v$ is chosen at ballot $b$, so a write quorum $W$ of acceptors
+each accepted $(b, v)$. Then every ballot $b' > b$ whose leader sends an Accept sends
+the value $v$.
+
+*Proof.* By strong induction on $b'$. Fix $b' > b$ and assume the claim for every
+ballot strictly between $b$ and $b'$.
+
+The leader of $b'$ finished phase one, so a read quorum $R$ promised $b'$. By B2, $R$
+and $W$ share some acceptor $a$. Acceptor $a$ did two things: it accepted $(b, v)$ and
+it promised $b'$. Had it promised $b'$ first, then when $(b, v)$ arrived, $b < b'$
+would have been below its promise and it would have refused, contradicting $a in W$.
+So $a$ accepted $(b, v)$ *before* promising $b'$.
+
+When $a$ answered the prepare for $b'$, its slot therefore held a vote with ballot at
+least $b$: either $(b, v)$ itself, or a later vote at some $b''$ with $b < b'' < b'$
+that overwrote it. By the induction hypothesis every such $b''$ carried $v$. So the
+greatest-ballot vote reported by $R$ has ballot at least $b$ and value $v$, and by B3
+the leader of $b'$ proposes $v$. $qed$
+
+Three facts had to hold, and each is a line of code. Acceptors refuse ballots below
+their promise: `on_accept` calls `send_nack` when `msg.ballot < l.promised`, where `l`
+is the acceptor's `Ledger`. Acceptors report their vote in the promise: `on_prepare`
+sends one `Promise_Message` per used cell. And acceptor $a$ still remembered both when
+asked, which is where durable storage enters.
+
+#exercise([4.2], [
+  Fill in the blanks of the faded proof. Value $x$ was chosen at ballot 12 by write
+  quorum $W$. A leader at ballot 20 collects promises from read quorum $R$. Because
+  $R$ and $W$ share an acceptor, call it $a$, and because $a$ could not have promised
+  20 before accepting ballot 12 (otherwise it would have
+  #box(width: 4em, line(length: 100%, stroke: 0.5pt)) the accept), $a$ reports a vote
+  with ballot at least #box(width: 3em, line(length: 100%, stroke: 0.5pt)). Any
+  reported vote with ballot strictly between 12 and 20 carries value
+  #box(width: 3em, line(length: 100%, stroke: 0.5pt)) by the
+  #box(width: 8em, line(length: 100%, stroke: 0.5pt)). So the greatest reported vote
+  carries #box(width: 3em, line(length: 100%, stroke: 0.5pt)), and rule
+  #box(width: 2em, line(length: 100%, stroke: 0.5pt)) makes ballot 20 propose it.
+], hint: [The same value fills three of the blanks.])
+
+== Why durable storage is mandatory
+
+The proof used the phrase "still remembered". An acceptor that votes, replies, and then
+loses the vote to a power failure has told the leader something no longer true. Worse,
+an acceptor that promises $b'$, replies, and then forgets may later accept a ballot
+below $b'$, which is exactly the refusal the proof relied on.
+
+Lamport's priests wrote in indelible ink. Here, a promise or a vote is a `Write` record
+the host must append to a journal and sync before any message from the same transition
+leaves the machine. The `Ledger` that holds the durable state refuses to move backwards:
+
+#code_file("src/ledger.odin", [
+```odin
+ledger_apply :: proc(l: ^Ledger($Value, $WINDOW), write: Write(Value)) -> Error {
+	switch w in write {
+	case Write_Promise:
+		if w.ballot < l.promised do return .Promise_Regression
+		l.promised = w.ballot
+	// ...
+	case Write_Vote(Value):
+		if w.slot == 0 do return .Invalid_Slot
+		if w.ballot < l.promised do return .Promise_Regression
+		// ...
+```
+])
+
+`.Promise_Regression` is not a protocol message. It is a self-check: a `Write_Promise`
+or `Write_Vote` that would lower the promised ballot is refused, because the protocol
+never produces one. A host that sees it has a journal written out of order or
+corrupted, and the hint in `explain_error` says to stop the node. The other half of
+indelible ink lives in `Effects`: every transition returns its writes and messages in
+one batch, and with the default `Durability_Gate.Enforced` the batch refuses to hand
+out messages until the host calls `confirm_writes_durable`. Chapter 2 walks through
+that gate at every crash point.
+
+#exercise([4.1], [
+  A node writes `Write_Promise` for ballot (5, 0, 2) but crashes before the write is
+  synced, then restarts and receives Prepare for ballot (4, 0, 3). What may it answer,
+  and which rule of the host contract decides?
+])
+
+== From rules to messages
+
+We have not named a single message, yet the protocol is determined. Read the
+invariants as instructions to a proposer and the messages fall out.
+
++ B1 says: pick a ballot greater than any you have seen. That needs no message, only a
+  memory of the greatest round observed.
++ B3 needs the votes of a read quorum, and the proof needs those acceptors to refuse
+  everything below your ballot from now on. One message asks for both: *Prepare*,
+  carrying the ballot. The reply, *Promise*, carries the acceptor's vote for the slot
+  if it has one.
++ B2 says: count promises until you have a read quorum, then apply B3 and pick.
++ Send the ballot and the value to the acceptors: *Accept*. An acceptor that has not
+  promised anything greater records the vote durably and replies *Accepted*.
++ Count Accepted replies until you have a write quorum. The value is chosen. Tell
+  everyone: *Commit*.
+
+#book_figure(
+  [The five messages in order. Phase one earns the right to propose and learns the
+  past; phase two writes the future.],
+  phase_flow(),
+)
+
+One more message follows from liveness rather than safety. An acceptor that receives a
+Prepare or an Accept below its promise must not stay silent, or the proposer waits
+forever; it answers *Nack* with the ballot it has promised. Chapter 2 shows all six.
+
+#checkpoint([Before chapter 2], [
+  Answer without looking up. Why does a four-member cluster tolerate no more crashes
+  than a three-member one? Which of B1, B2, B3 does `.Non_Intersecting_Quorums`
+  protect? If a read quorum reports `((3, 0, 1), apple)`, `((9, 0, 2), apple)` and
+  `((7, 0, 3), pear)`, which value must the new leader propose, and what breaks if the
+  acceptor that reported `((9, 0, 2), apple)` kept that vote only in memory?
 ])
 
 #teach_back([
-  Explain to a colleague why simple majority voting fails when servers can restart,
-  and how combining majority quorums with write-ahead disk logging guarantees safety.
+  Without notes, explain to a new engineer why "ask a majority" is not enough. Your
+  explanation must contain a crash, a durable record, an intersecting acceptor, and
+  the rule for selecting one prior vote. Then check whether you said "greatest ballot"
+  and not "most common value", and whether you named `Write_Promise` and
+  `Write_Vote` as the two records that must be synced before a reply.
 ])

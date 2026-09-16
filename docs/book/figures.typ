@@ -123,33 +123,96 @@
   edge((2, 0), (3, 0), "-|>", [sealed]),
 )
 
-#let benchmark_comparison_table() = {
-  block(
-    width: 100%,
-    inset: 9pt,
-    radius: 5pt,
-    fill: blue_light,
-    stroke: 0.5pt + rule,
-  )[
-    #text(size: 11pt, weight: "bold")[Empirical 3-Way Benchmark Comparison]
-    #linebreak()
-    #text(size: 8pt, fill: gray)[Workload: u64-3n · 131,072 values · 3 voters · in-memory zero-I/O · AMD host · lower latency is better]
-    #v(6pt)
+// Benchmark tables are generated from the recorded results file written by
+// `make bench-compare` (tools/bench_compare.py). Nothing here is typed by hand: the
+// machine, tool versions, and every number come from bench/results/latest.json.
+#let bench = json("/bench/results/latest.json")
 
+#let bench_rows(impl, workload, mode) = bench.runs.filter(r =>
+  r.impl == impl and r.workload == workload and r.mode == mode)
+
+#let bench_ns(impl, workload, mode) = {
+  let rows = bench_rows(impl, workload, mode)
+  if rows.len() == 0 { none } else { rows.at(0).ns_per_value }
+}
+
+#let fmt_ns(v) = {
+  if v == none { [--] }
+  else if v >= 1e6 { [#calc.round(v / 1e6, digits: 2) ms] }
+  else if v >= 1e4 { [#calc.round(v / 1e3, digits: 1) µs] }
+  else { [#calc.round(v, digits: 0) ns] }
+}
+
+#let bench_host = [
+  #bench.meta.cpu, #bench.meta.os · odin #bench.meta.odin, zig #bench.meta.zig,
+  #bench.meta.rustc · Odin build `#bench.meta.odin_build` · recorded #bench.meta.date
+]
+
+#let bench_impls = (
+  ("paxos-odin", [paxos-odin]),
+  ("paxos-zig", [paxos-zig]),
+  ("omnipaxos", [OmniPaxos]),
+  ("libpaxos3", [LibPaxos3]),
+)
+
+// (workload, mode, LibPaxos3 mode name when it differs, label)
+#let bench_cases = (
+  ("u64-3n", "sync", "sync-preexec", [3 voters, 8 B, one value at a time]),
+  ("u64-3n", "pipeline8", none, [3 voters, 8 B, 8 in flight]),
+  ("u64-3n", "pipeline64", none, [3 voters, 8 B, 64 in flight]),
+  ("u64-5n", "sync", none, [5 voters, 8 B, one value at a time]),
+  ("u64-5n", "pipeline8", none, [5 voters, 8 B, 8 in flight]),
+  ("blob1k-3n", "sync", none, [3 voters, 1 KiB, one value at a time]),
+  ("blob1k-3n", "pipeline8", none, [3 voters, 1 KiB, 8 in flight]),
+  ("owned-3n", "sync", none, [3 owners, 8 B, one value at a time, rotating ownership]),
+  ("owned-3n", "pipeline8", none, [3 owners, 8 B, 8 in flight, rotating ownership]),
+)
+
+#let benchmark_comparison_table() = {
+  block(width: 100%, inset: 9pt, radius: 5pt, fill: blue_light, stroke: 0.5pt + rule)[
+    #text(size: 11pt, weight: "bold")[Nanoseconds per committed value, in-process transport]
+    #linebreak()
+    #text(size: 8pt, fill: gray)[#bench_host]
+    #v(6pt)
     #table(
-      columns: (1.2fr, 1.2fr, 1.2fr, 1.2fr, 1.4fr),
-      table.header(
-        [*Workload Mode*], [*Paxos-Odin*], [*Paxos-Zig*], [*OmniPaxos (Rust)*], [*Performance Ratio*],
-      ),
-      [Synchronous (`sync`)], [114.7 ns · 8.72M/s], [119.1 ns · 8.40M/s], [1,031.1 ns · 0.97M/s], [Odin 1.04x Zig / 9.0x Omni],
-      [Pipelined (`pipeline8`)], [115.6 ns · 8.65M/s], [120.2 ns · 8.32M/s], [197.8 ns · 5.05M/s], [Odin 1.04x Zig / 1.7x Omni],
-      [Pipelined (`pipeline64`)], [113.2 ns · 8.83M/s], [118.2 ns · 8.46M/s], [78.6 ns · 12.7M/s†], [Odin 1.04x Zig],
-      [Batched (`batch16`)], [111.2 ns · 8.99M/s], [117.9 ns · 8.48M/s], [N/A (no batch API)], [Odin 1.06x Zig],
-      [Batched (`batch256`)], [108.8 ns · 9.19M/s], [119.8 ns · 8.35M/s], [N/A (no batch API)], [Odin 1.10x Zig],
+      columns: (1.6fr, 0.7fr, 0.7fr, 0.7fr, 0.7fr),
+      align: (left, right, right, right, right),
+      table.header([*Workload*], ..bench_impls.map(i => [*#i.at(1)*])),
+      ..bench_cases.map(c => (
+        c.at(3),
+        ..bench_impls.map(i => {
+          let mode = if i.at(0) == "libpaxos3" and c.at(2) != none { c.at(2) } else { c.at(1) }
+          fmt_ns(bench_ns(i.at(0), c.at(0), mode))
+        }),
+      )).flatten(),
     )
     #v(3pt)
     #text(size: 7.5pt, fill: gray)[
-      Measured on Linux x86_64 host with Odin nightly and LLVM -O3. †OmniPaxos coalesces batches into large dynamic log chunks in pipeline64, sending 12,288 messages vs 786,432 envelopes in Odin/Zig, but incurs 1,031 ns in single-command sync mode.
+      Median of repeated samples per harness. Every implementation ran on this machine in the
+      same session; "--" means the harness has no such mode. LibPaxos3 runs a heavier
+      phase-one pre-execution path and reports it as `sync-preexec`.
     ]
   ]
 }
+
+#let benchmark_durable_table() = {
+  let rows = bench.runs.filter(r => r.mode.starts-with("durable"))
+  block(width: 100%, inset: 9pt, radius: 5pt, fill: blue_light, stroke: 0.5pt + rule)[
+    #text(size: 11pt, weight: "bold")[With a journal and a storage barrier]
+    #linebreak()
+    #text(size: 8pt, fill: gray)[#bench_host]
+    #v(6pt)
+    #table(
+      columns: (0.8fr, 1.2fr, 1fr, 0.8fr, 0.8fr),
+      align: (left, left, left, right, right),
+      table.header([*Library*], [*Workload*], [*Mode*], [*Per value*], [*fsync per value*]),
+      ..rows.map(r => (
+        [#r.impl], [#r.workload], [#r.mode], fmt_ns(r.ns_per_value),
+        if "syncs_per_value" in r { [#calc.round(r.syncs_per_value, digits: 2)] } else { [--] },
+      )).flatten(),
+    )
+  ]
+}
+
+// Kept for chapters that only need this library's own numbers.
+#let benchmark_results_table() = benchmark_comparison_table()
