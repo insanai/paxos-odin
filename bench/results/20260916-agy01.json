@@ -1,0 +1,393 @@
+{
+ "meta": {
+  "date": "2026-09-16T14:40:24Z",
+  "host": "agy01",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+  "os": "Linux 7.0.0-28-generic",
+  "odin": "odin version dev-2026-09-nightly:a2fb372",
+  "zig": "0.16.0",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "git": "728b4b6",
+  "paxos_zig_git": "71863b7",
+  "odin_build": "-o:speed -no-bounds-check -microarch:native"
+ },
+ "runs": [
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 164.6910400390625,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 149.3667449951172,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n",
+   "mode": "pipeline64",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 148.68038177490234,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n",
+   "mode": "batch16",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 146.73426818847656,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n",
+   "mode": "batch256",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 144.9304428100586,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-5n",
+   "mode": "sync",
+   "nodes": 5,
+   "payload_bytes": 8,
+   "values": 65536,
+   "ns_per_value": 225.280029296875,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-5n",
+   "mode": "pipeline8",
+   "nodes": 5,
+   "payload_bytes": 8,
+   "values": 65536,
+   "ns_per_value": 196.94737243652344,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "owned-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 168.99891662597656,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "owned-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 161.35302734375,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "blob1k-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 1024,
+   "values": 16384,
+   "ns_per_value": 485.81604003906256,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "blob1k-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 1024,
+   "values": 16384,
+   "ns_per_value": 520.87158203125,
+   "syncs_per_value": 0.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n-durable",
+   "mode": "durable-sync",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 2048,
+   "ns_per_value": 27992358.904785156,
+   "syncs_per_value": 6.0
+  },
+  {
+   "impl": "paxos-odin",
+   "workload": "u64-3n-durable",
+   "mode": "durable-pipeline8",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 2048,
+   "ns_per_value": 3820341.9853515625,
+   "syncs_per_value": 0.75
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 117.12,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 117.37,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n",
+   "mode": "pipeline64",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 111.93,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n",
+   "mode": "batch16",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 117.75,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n",
+   "mode": "batch256",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 115.27,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n-slack",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 111.39,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "blob64-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 64,
+   "values": 65536,
+   "ns_per_value": 208.87,
+   "messages": 393216
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "blob64-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 64,
+   "values": 65536,
+   "ns_per_value": 214.0,
+   "messages": 393216
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "blob1k-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 1024,
+   "values": 16384,
+   "ns_per_value": 2699.93,
+   "messages": 98304
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "blob1k-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 1024,
+   "values": 16384,
+   "ns_per_value": 2739.77,
+   "messages": 98304
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-5n",
+   "mode": "sync",
+   "nodes": 5,
+   "payload_bytes": 8,
+   "values": 65536,
+   "ns_per_value": 209.58,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-5n",
+   "mode": "pipeline8",
+   "nodes": 5,
+   "payload_bytes": 8,
+   "values": 65536,
+   "ns_per_value": 205.71,
+   "messages": 786432
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "u64-3n-moving",
+   "mode": "batch64",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 262144,
+   "ns_per_value": 139.8
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "durable-u64-3n",
+   "mode": "fsync-each",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 512,
+   "ns_per_value": 28071425.73
+  },
+  {
+   "impl": "paxos-zig",
+   "workload": "durable-u64-3n",
+   "mode": "group8",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 512,
+   "ns_per_value": 3646983.89
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "u64-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 996.62,
+   "messages": 786432
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "u64-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 196.38,
+   "messages": 98304
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "u64-3n",
+   "mode": "pipeline64",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 77.6,
+   "messages": 12288
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "blob64-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 64,
+   "values": 65536,
+   "ns_per_value": 1101.63,
+   "messages": 393216
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "blob64-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 64,
+   "values": 65536,
+   "ns_per_value": 218.98,
+   "messages": 49152
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "blob1k-3n",
+   "mode": "sync",
+   "nodes": 3,
+   "payload_bytes": 1024,
+   "values": 16384,
+   "ns_per_value": 1243.76,
+   "messages": 98304
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "blob1k-3n",
+   "mode": "pipeline8",
+   "nodes": 3,
+   "payload_bytes": 1024,
+   "values": 16384,
+   "ns_per_value": 418.77,
+   "messages": 12288
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "u64-5n",
+   "mode": "sync",
+   "nodes": 5,
+   "payload_bytes": 8,
+   "values": 65536,
+   "ns_per_value": 2714.32,
+   "messages": 786432
+  },
+  {
+   "impl": "omnipaxos",
+   "workload": "u64-5n",
+   "mode": "pipeline8",
+   "nodes": 5,
+   "payload_bytes": 8,
+   "values": 65536,
+   "ns_per_value": 444.9,
+   "messages": 98304
+  },
+  {
+   "impl": "libpaxos3",
+   "workload": "u64-3n",
+   "mode": "sync-preexec",
+   "nodes": 3,
+   "payload_bytes": 8,
+   "values": 131072,
+   "ns_per_value": 2246.74,
+   "messages": 1572864
+  }
+ ]
+}
