@@ -12,3 +12,8 @@ docs/build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+*$py.class
