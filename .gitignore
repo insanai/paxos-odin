@@ -1,0 +1,14 @@
+# Build outputs
+bin/
+docs/build/
+
+# Object files and libraries
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# OS files
+.DS_Store
+Thumbs.db
