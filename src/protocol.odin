@@ -1,6 +1,5 @@
 package paxos
 
-import "core:mem"
 import "core:math"
 import "core:os"
 import "core:fmt"
@@ -300,11 +299,15 @@ effects_confirm_writes_durable :: #force_inline proc(effects: ^Effects($Value, $
 	effects.writes_confirmed = true
 }
 
-effects_writes_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Write(Value) {
+effects_writes_slice :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+) -> []Write(Value) {
 	return small_array.slice(&effects.writes)
 }
 
-effects_messages_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Envelope(Value) {
+effects_messages_slice :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+) -> []Envelope(Value) {
 	when GATE == .Enforced {
 		if !effects.writes_confirmed {
 			host_order_violation("messages_slice before confirm_writes_durable")
@@ -313,15 +316,21 @@ effects_messages_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMB
 	return small_array.slice(&effects.messages)
 }
 
-effects_committed_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Committed(Value) {
+effects_committed_slice :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+) -> []Committed(Value) {
 	return small_array.slice(&effects.committed)
 }
 
-effects_requests_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Host_Request {
+effects_requests_slice :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+) -> []Host_Request {
 	return small_array.slice(&effects.requests)
 }
 
-effects_requires_power_loss_barrier :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> bool {
+effects_requires_power_loss_barrier :: proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+) -> bool {
 	for w in small_array.slice(&effects.writes) {
 		switch _ in w {
 		case Write_Promise, Write_Accept(Value):
@@ -332,23 +341,35 @@ effects_requires_power_loss_barrier :: proc(effects: ^Effects($Value, $MAX_MEMBE
 	return false
 }
 
-effects_add_write :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), w: Write(Value)) {
+effects_add_write :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+	w: Write(Value),
+) {
 	ok := small_array.push_back(&effects.writes, w)
 	assert(ok, "Writes buffer overrun")
 	effects.writes_confirmed = false
 }
 
-effects_add_message :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), env: Envelope(Value)) {
+effects_add_message :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+	env: Envelope(Value),
+) {
 	ok := small_array.push_back(&effects.messages, env)
 	assert(ok, "Messages buffer overrun")
 }
 
-effects_add_committed :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), c: Committed(Value)) {
+effects_add_committed :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+	c: Committed(Value),
+) {
 	ok := small_array.push_back(&effects.committed, c)
 	assert(ok, "Committed buffer overrun")
 }
 
-effects_add_request :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), req: Host_Request) {
+effects_add_request :: #force_inline proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+	req: Host_Request,
+) {
 	ok := small_array.push_back(&effects.requests, req)
 	assert(ok, "Requests buffer overrun")
 }
@@ -360,7 +381,9 @@ Pre_Durable_Iterator :: struct($Value: typeid) {
 	cursor:   int,
 }
 
-effects_pre_durable_messages :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> Pre_Durable_Iterator(Value) {
+effects_pre_durable_messages :: proc(
+	effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE),
+) -> Pre_Durable_Iterator(Value) {
 	return Pre_Durable_Iterator(Value){
 		messages = small_array.slice(&effects.messages),
 		cursor   = 0,

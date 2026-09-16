@@ -1,6 +1,5 @@
 package paxos
 
-import "core:math"
 import "core:container/small_array"
 
 // A decided configuration change: next members plus opaque handover metadata.
@@ -185,7 +184,7 @@ replicated_log_propose_stop_sign :: proc(
 	if next_configuration_id <= node.configuration_id {
 		return 0, .ConfigurationIdRegression
 	}
-	if next_configuration_id == math.max(u64) {
+	if next_configuration_id == max(u64) {
 		return 0, .ConfigurationIdExhausted
 	}
 

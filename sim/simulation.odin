@@ -175,13 +175,22 @@ sim_restart_node :: proc(sim: ^Simulator, node_idx: int) {
 	}
 	sim.alive += {node_idx}
 	if sim.config.verbose {
-		fmt.printf("  [Recovery: Restart] Node %d restarted and replayed %d journal writes\n", id, small_array.len(sim.journals[node_idx]))
+		fmt.printf(
+			"  [Recovery: Restart] Node %d restarted and replayed %d journal writes\n",
+			id,
+			small_array.len(sim.journals[node_idx]),
+		)
 	}
 }
 
 sim_run :: proc(sim: ^Simulator) {
 	if sim.config.verbose {
-		fmt.printf("Starting Paxos simulation with seed %d, %d steps, %d nodes\n", sim.config.seed, sim.config.steps, sim.config.node_count)
+		fmt.printf(
+			"Starting Paxos simulation with seed %d, %d steps, %d nodes\n",
+			sim.config.seed,
+			sim.config.steps,
+			sim.config.node_count,
+		)
 	}
 
 	eff: paxos.Effects(u64, MAX_SIM_NODES, 256)
@@ -191,7 +200,7 @@ sim_run :: proc(sim: ^Simulator) {
 	_ = paxos.node_campaign(&sim.nodes[0], 0, &eff)
 	process_effects(sim, 0, &eff)
 
-	for step in 1..=sim.config.steps {
+	for _ in 1..=sim.config.steps {
 		action := prng_int_max(&sim.prng, 6)
 
 		switch action {
@@ -335,7 +344,13 @@ sim_run :: proc(sim: ^Simulator) {
 				for i in 0..<sim.config.node_count {
 					val, committed := paxos.node_committed_at(&sim.nodes[i], slot)
 					if committed && val != expected.? {
-						fmt.eprintf("Quiescence check failed: Node %d slot %d has %d, expected %d\n", paxos.membership_get(sim.membership, i), slot, val, expected.?)
+						fmt.eprintf(
+							"Quiescence check failed: Node %d slot %d has %d, expected %d\n",
+							paxos.membership_get(sim.membership, i),
+							slot,
+							val,
+							expected.?,
+						)
 						os.exit(1)
 					}
 				}

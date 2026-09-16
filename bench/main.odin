@@ -203,11 +203,26 @@ main :: proc() {
 		fmt.println("{")
 		fmt.printf("  \"iterations\": %d,\n", cfg.iterations)
 		fmt.println("  \"results\": [")
-		fmt.printf("    {\"mode\": \"sync\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n", sync_ops, sync_lat)
-		fmt.printf("    {\"mode\": \"pipeline8\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n", pipe8_ops, pipe8_lat)
-		fmt.printf("    {\"mode\": \"pipeline64\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n", pipe64_ops, pipe64_lat)
-		fmt.printf("    {\"mode\": \"batch16\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n", batch16_ops, batch16_lat)
-		fmt.printf("    {\"mode\": \"batch256\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f}\n", batch256_ops, batch256_lat)
+		fmt.printf(
+			"    {\"mode\": \"sync\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n",
+			sync_ops, sync_lat,
+		)
+		fmt.printf(
+			"    {\"mode\": \"pipeline8\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n",
+			pipe8_ops, pipe8_lat,
+		)
+		fmt.printf(
+			"    {\"mode\": \"pipeline64\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n",
+			pipe64_ops, pipe64_lat,
+		)
+		fmt.printf(
+			"    {\"mode\": \"batch16\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n",
+			batch16_ops, batch16_lat,
+		)
+		fmt.printf(
+			"    {\"mode\": \"batch256\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f}\n",
+			batch256_ops, batch256_lat,
+		)
 		fmt.println("  ]")
 		fmt.println("}")
 	} else {
@@ -218,11 +233,41 @@ main :: proc() {
 		fmt.println("================================================================================")
 		fmt.printf("%-20s %18s %15s %12s\n", "Mode", "Throughput", "Latency / Op", "Values")
 		fmt.println("--------------------------------------------------------------------------------")
-		fmt.printf("%-20s %12s ops/s %15s %12s\n", "sync", fmt.tprintf("%d", int(sync_ops)), fmt.tprintf("%.1f ns", sync_lat), fmt.tprintf("%d", cfg.iterations))
-		fmt.printf("%-20s %12s ops/s %15s %12s\n", "pipeline8", fmt.tprintf("%d", int(pipe8_ops)), fmt.tprintf("%.1f ns", pipe8_lat), fmt.tprintf("%d", cfg.iterations))
-		fmt.printf("%-20s %12s ops/s %15s %12s\n", "pipeline64", fmt.tprintf("%d", int(pipe64_ops)), fmt.tprintf("%.1f ns", pipe64_lat), fmt.tprintf("%d", cfg.iterations))
-		fmt.printf("%-20s %12s ops/s %15s %12s\n", "batch16", fmt.tprintf("%d", int(batch16_ops)), fmt.tprintf("%.1f ns", batch16_lat), fmt.tprintf("%d", cfg.iterations))
-		fmt.printf("%-20s %12s ops/s %15s %12s\n", "batch256", fmt.tprintf("%d", int(batch256_ops)), fmt.tprintf("%.1f ns", batch256_lat), fmt.tprintf("%d", cfg.iterations))
+		fmt.printf(
+			"%-20s %12s ops/s %15s %12s\n",
+			"sync",
+			fmt.tprintf("%d", int(sync_ops)),
+			fmt.tprintf("%.1f ns", sync_lat),
+			fmt.tprintf("%d", cfg.iterations),
+		)
+		fmt.printf(
+			"%-20s %12s ops/s %15s %12s\n",
+			"pipeline8",
+			fmt.tprintf("%d", int(pipe8_ops)),
+			fmt.tprintf("%.1f ns", pipe8_lat),
+			fmt.tprintf("%d", cfg.iterations),
+		)
+		fmt.printf(
+			"%-20s %12s ops/s %15s %12s\n",
+			"pipeline64",
+			fmt.tprintf("%d", int(pipe64_ops)),
+			fmt.tprintf("%.1f ns", pipe64_lat),
+			fmt.tprintf("%d", cfg.iterations),
+		)
+		fmt.printf(
+			"%-20s %12s ops/s %15s %12s\n",
+			"batch16",
+			fmt.tprintf("%d", int(batch16_ops)),
+			fmt.tprintf("%.1f ns", batch16_lat),
+			fmt.tprintf("%d", cfg.iterations),
+		)
+		fmt.printf(
+			"%-20s %12s ops/s %15s %12s\n",
+			"batch256",
+			fmt.tprintf("%d", int(batch256_ops)),
+			fmt.tprintf("%.1f ns", batch256_lat),
+			fmt.tprintf("%d", cfg.iterations),
+		)
 		fmt.println("================================================================================")
 	}
 }
