@@ -119,3 +119,64 @@ test_replicated_log_stop_sign_seals_epoch :: proc(t: ^testing.T) {
 	_, sealed_err := paxos.replicated_log_propose(&log_node, 888, &post_eff)
 	testing.expect(t, sealed_err == .LogSealed, "Subsequent proposals must fail with LogSealed")
 }
+
+@(test)
+test_replicated_log_handover_and_recovery :: proc(t: ^testing.T) {
+	m: paxos.Membership(1)
+	nodes := [1]paxos.NodeId{1}
+	_ = paxos.membership_init(&m, nodes[:])
+
+	log_node: paxos.Replicated_Log_Node(u64, 1, 64, 16)
+	_ = paxos.replicated_log_init(&log_node, 1, 10, m)
+
+	eff: paxos.Effects(paxos.Entry(u64, 1, 256), 1, 64)
+	paxos.effects_init(&eff)
+	_ = paxos.replicated_log_campaign(&log_node, 0, &eff)
+	paxos.effects_confirm_writes_durable(&eff)
+	for msg in paxos.effects_messages_slice(&eff) {
+		s_eff: paxos.Effects(paxos.Entry(u64, 1, 256), 1, 64)
+		paxos.effects_init(&s_eff)
+		_ = paxos.replicated_log_step(&log_node, msg, &s_eff)
+		paxos.effects_confirm_writes_durable(&s_eff)
+		for rep in paxos.effects_messages_slice(&s_eff) {
+			f_eff: paxos.Effects(paxos.Entry(u64, 1, 256), 1, 64)
+			paxos.effects_init(&f_eff)
+			_ = paxos.replicated_log_step(&log_node, rep, &f_eff)
+			paxos.effects_confirm_writes_durable(&f_eff)
+		}
+	}
+
+	// Propose command 555
+	prop_eff: paxos.Effects(paxos.Entry(u64, 1, 256), 1, 64)
+	paxos.effects_init(&prop_eff)
+	_, _ = paxos.replicated_log_propose(&log_node, 555, &prop_eff)
+	paxos.effects_confirm_writes_durable(&prop_eff)
+
+	// Create stop sign for handover
+	next_nodes := [1]paxos.NodeId{2}
+	meta := [3]u8{'r', 'f', 'c'}
+	ss, ss_err := paxos.stop_sign_create(paxos.Stop_Sign(1, 256), 20, next_nodes[:], meta[:])
+	testing.expect(t, ss_err == .None, "stop_sign_create")
+
+	// Handover to new configuration via init_from_stop
+	anchor := paxos.Trim_Anchor{trim_id = 1, chosen_trim_slot = 1, history_hash = {}}
+	next_node: paxos.Replicated_Log_Node(u64, 1, 64, 16)
+	handover_err := paxos.replicated_log_init_from_stop(&next_node, 2, ss, anchor, 1)
+	testing.expect(t, handover_err == .None, "replicated_log_init_from_stop")
+	testing.expect(t, paxos.replicated_log_configuration_id(&next_node) == 20, "Conf ID is 20")
+	testing.expect(t, paxos.replicated_log_memory_floor(&next_node) == 1, "Floor is 1")
+	testing.expect(t, paxos.replicated_log_proposal_frontier(&next_node) == 2, "Frontier is 2")
+
+	// Test continue_at
+	next_m: paxos.Membership(1)
+	_ = paxos.membership_init(&next_m, next_nodes[:])
+	cont_node: paxos.Replicated_Log_Node(u64, 1, 64, 16)
+	cont_err := paxos.replicated_log_continue_at(&cont_node, 2, next_m, 21, anchor, 1)
+	testing.expect(t, cont_err == .None, "replicated_log_continue_at")
+	testing.expect(t, paxos.replicated_log_configuration_id(&cont_node) == 21, "Conf ID is 21")
+
+	// Test begin_recovery
+	rec_err := paxos.replicated_log_begin_recovery(&cont_node, anchor)
+	testing.expect(t, rec_err == .None, "replicated_log_begin_recovery")
+	testing.expect(t, paxos.replicated_log_memory_floor(&cont_node) == 1, "Memory floor is 1")
+}

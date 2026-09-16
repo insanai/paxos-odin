@@ -589,6 +589,48 @@ Node :: struct(
 	memory_floor:                        Slot,
 }
 
+@(private="file")
+clear_election :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) {
+	for i in 0..<MAX_MEMBERS {
+		node.election[i] = {}
+		bit_set_reset(&node.promise_seen[i])
+	}
+	node.recover_base = 0
+	for i in 0..<WINDOW_SLOTS {
+		node.recovered[i] = {}
+		node.lead[i] = {}
+	}
+}
+
+@(private="file")
+durable_assert_valid :: proc(state: ^Durable_State($Value, $WINDOW_SLOTS)) {
+	for i in 0..<WINDOW_SLOTS {
+		cell := &state.cells[i]
+		if cell.slot != 0 {
+			assert(durable_cell_index(cell.slot, WINDOW_SLOTS) == i, "Durable cell index invariant broken")
+		}
+		if cell.accepted != nil {
+			assert(!ballot_less_than(state.promised, cell.accepted.?.ballot), "Promised ballot invariant broken")
+		}
+	}
+}
+
+@(private="file")
+node_assert_valid :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) {
+	assert(node.id != 0, "Node ID cannot be zero")
+	if node.voting_member {
+		assert(membership_contains(node.membership, node.id), "Voting member must be in membership")
+	} else {
+		assert(!membership_contains(node.membership, node.id), "Non-voter cannot be in membership")
+		assert(!node.campaign_enabled, "Non-voter cannot campaign")
+	}
+	assert(small_array.len(node.membership.members) > 0, "Membership cannot be empty")
+	assert(small_array.len(node.membership.members) <= MAX_MEMBERS, "Membership exceeds MAX_MEMBERS")
+	assert(node.next_slot >= 1, "Next slot must be at least 1")
+	durable_assert_valid(&node.durable)
+}
+
+// Initializes a voting node in follower status with default leader priority.
 node_init :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	id: NodeId,
@@ -597,6 +639,7 @@ node_init :: proc(
 	return node_init_with_priority(node, id, membership, 0)
 }
 
+// Initializes a voting node with a static election priority for deterministic tie-breaking.
 node_init_with_priority :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	id: NodeId,
@@ -631,17 +674,14 @@ node_init_with_priority :: proc(
 
 	for i in 0..<MAX_MEMBERS {
 		node.peer_decided_through[i] = 0
-		node.election[i] = {}
-		bit_set_reset(&node.promise_seen[i])
 		node.resend_cursor[i] = 0
 	}
-	for i in 0..<WINDOW_SLOTS {
-		node.recovered[i] = {}
-		node.lead[i] = {}
-	}
+	clear_election(node)
+	node_assert_valid(node)
 	return .None
 }
 
+// Initializes a non-voting learner participant.
 node_init_learner :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	id: NodeId,
@@ -655,9 +695,32 @@ node_init_learner :: proc(
 	node.id = id
 	node.voting_member = false
 	node.campaign_enabled = false
+	node_assert_valid(node)
 	return .None
 }
 
+// Restores a node from replayed durable state at floor zero with default priority.
+node_restore :: proc(
+	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
+	id: NodeId,
+	membership: Membership(MAX_MEMBERS),
+	durable: Durable_State(Value, WINDOW_SLOTS),
+) -> Error {
+	return node_restore_with_priority(node, id, membership, durable, 0)
+}
+
+// Restores a prioritized node from replayed durable state at floor zero.
+node_restore_with_priority :: proc(
+	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
+	id: NodeId,
+	membership: Membership(MAX_MEMBERS),
+	durable: Durable_State(Value, WINDOW_SLOTS),
+	priority: u32,
+) -> Error {
+	return node_restore_at(node, id, membership, durable, 0, priority)
+}
+
+// Restores a node from replayed durable state resuming at the specified memory floor.
 node_restore_at :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	id: NodeId,
@@ -669,13 +732,23 @@ node_restore_at :: proc(
 	err := node_init_with_priority(node, id, membership, priority)
 	if err != .None do return err
 	node.durable = durable
-	node.memory_floor = floor
-	node.delivered_through = floor
-	node.next_slot = floor + 1
+
+	base := math.max(floor, node.durable.anchor.chosen_trim_slot)
+	for &cell in node.durable.cells {
+		if cell.slot == 0 || cell.slot > base do continue
+		if cell.committed == nil {
+			cell = {}
+		}
+	}
+	node.memory_floor = base
+	node.delivered_through = base
+	node.next_slot = math.max(highest_used_slot(node), base) + 1
 	node.leader_base = node.next_slot
+	node_assert_valid(node)
 	return .None
 }
 
+// Resumes an empty node on the same slot line carrying an inherited trim anchor across a handover.
 node_continue_at :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	id: NodeId,
@@ -684,6 +757,7 @@ node_continue_at :: proc(
 	anchor: Trim_Anchor,
 	priority: u32 = 0,
 ) -> Error {
+	if anchor.chosen_trim_slot > floor do return .TrimRegression
 	err := node_init_with_priority(node, id, membership, priority)
 	if err != .None do return err
 	node.durable.anchor = anchor
@@ -691,33 +765,85 @@ node_continue_at :: proc(
 	node.delivered_through = floor
 	node.next_slot = floor + 1
 	node.leader_base = node.next_slot
+	node_assert_valid(node)
 	return .None
 }
 
+// Resets this node onto an installed state snapshot image at anchor; history prefix ends at anchor.
+node_begin_recovery :: proc(
+	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
+	anchor: Trim_Anchor,
+) -> Error {
+	node_assert_valid(node)
+	if anchor.chosen_trim_slot < node.durable.anchor.chosen_trim_slot {
+		return .TrimRegression
+	}
+	node.durable.anchor = anchor
+	for &cell in node.durable.cells {
+		cell = {}
+	}
+	node.memory_floor = anchor.chosen_trim_slot
+	node.delivered_through = anchor.chosen_trim_slot
+	node.next_slot = anchor.chosen_trim_slot + 1
+	node.role = .Follower
+	clear_election(node)
+	node_assert_valid(node)
+	return .None
+}
+
+// Restores a non-voting learner from its commit-only journal.
+node_restore_learner :: proc(
+	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
+	id: NodeId,
+	membership: Membership(MAX_MEMBERS),
+	durable: Durable_State(Value, WINDOW_SLOTS),
+) -> Error {
+	err := node_init_learner(node, id, membership)
+	if err != .None do return err
+	node.durable = durable
+	node.next_slot = highest_used_slot(node) + 1
+	node_assert_valid(node)
+	return .None
+}
+
+// Records that the host has durably consumed every released entry through through.
 node_advance_memory_floor :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	through: Slot,
 ) -> Error {
-	if through <= node.memory_floor do return .None
-	node.memory_floor = through
+	node_assert_valid(node)
+	if through > node.delivered_through do return .InvalidSlot
+	if through > node.memory_floor {
+		node.memory_floor = through
+	}
+	node_assert_valid(node)
 	return .None
 }
 
+// Returns the memory floor: the greatest slot whose cell the host has released for reuse.
 node_memory_floor :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Slot {
 	return node.memory_floor
 }
 
+// Returns the adopted chosen-trim anchor.
 node_trim_anchor :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Trim_Anchor {
 	return node.durable.anchor
 }
 
+// Adopts a chosen trim record; emits Write_Trim_Anchor for durability.
 node_install_chosen_trim :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	anchor: Trim_Anchor,
 	effects: ^Effects(Value, MAX_MEMBERS, WINDOW_SLOTS, GATE),
 ) -> Error {
+	node_assert_valid(node)
 	effects_reset(effects)
-	if anchor.trim_id < node.durable.anchor.trim_id || anchor.chosen_trim_slot < node.durable.anchor.chosen_trim_slot {
+	if anchor.chosen_trim_slot > node.delivered_through {
+		return .InvalidSlot
+	}
+	current := &node.durable.anchor
+	if anchor.trim_id <= current.trim_id do return .None
+	if anchor.chosen_trim_slot < current.chosen_trim_slot {
 		return .TrimRegression
 	}
 	effects_add_write(effects, Write_Trim_Anchor(anchor))
@@ -725,9 +851,11 @@ node_install_chosen_trim :: proc(
 	if anchor.chosen_trim_slot > node.memory_floor {
 		node.memory_floor = math.min(anchor.chosen_trim_slot, node.delivered_through)
 	}
+	node_assert_valid(node)
 	return .None
 }
 
+// Enables or disables election campaigning for this node.
 node_set_campaign_enabled :: proc(
 	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
 	enabled: bool,
@@ -738,21 +866,64 @@ node_set_campaign_enabled :: proc(
 	}
 }
 
-node_current_leader :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> (NodeId, bool) {
+// Returns true if election campaigning is currently enabled.
+node_is_campaign_enabled :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> bool {
+	return node.campaign_enabled
+}
+
+// Returns the current leader ID hint if known.
+node_current_leader :: proc(
+	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
+) -> (NodeId, bool) {
 	if node.leader_hint != nil do return node.leader_hint.?, true
 	return 0, false
 }
 
+// Returns the greatest contiguous slot released to application.
 node_decided_through :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Slot {
 	return node.delivered_through
 }
 
+// Returns the slot line index where leadership began.
 node_leader_base :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Slot {
 	return node.leader_base
 }
 
+// Returns the slot the next proposal would take.
 node_proposal_frontier :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Slot {
 	return node.next_slot
+}
+
+// Reports whether delivered prefix has caught up to leader base, licensing read-only state queries.
+node_is_leader_caught_up :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> bool {
+	return node.delivered_through + 1 >= node.leader_base
+}
+
+// Returns the current role of the node (Follower, Preparing, Leader).
+node_role :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Role {
+	return node.role
+}
+
+// Returns the current ballot number of this node.
+node_ballot :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Ballot {
+	return node.ballot
+}
+
+// Returns the local node ID.
+node_id :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> NodeId {
+	return node.id
+}
+
+// Returns true if this node is a voting member of the consensus group.
+node_is_voting_member :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> bool {
+	return node.voting_member
+}
+
+// Returns a pointer to this node's internal durable state for inspection.
+node_durable_state :: proc(
+	node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE),
+) -> ^Durable_State(Value, WINDOW_SLOTS) {
+	return &node.durable
 }
 
 node_committed_at :: proc(
@@ -887,7 +1058,9 @@ chunk_limit :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOT
 highest_used_slot :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Slot {
 	max_s: Slot = 0
 	for cell in node.durable.cells {
-		if cell.slot > max_s do max_s = cell.slot
+		if (cell.accepted != nil || cell.committed != nil) && cell.slot > max_s {
+			max_s = cell.slot
+		}
 	}
 	return max_s
 }
@@ -896,7 +1069,12 @@ highest_used_slot :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUN
 highest_recovered_slot :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) -> Slot {
 	max_s: Slot = 0
 	for cell in node.recovered {
-		if cell.slot > max_s && cell.accepted != nil {
+		if cell.accepted != nil && cell.slot > max_s {
+			max_s = cell.slot
+		}
+	}
+	for cell in node.durable.cells {
+		if cell.committed != nil && cell.slot > max_s {
 			max_s = cell.slot
 		}
 	}
