@@ -1,0 +1,29 @@
+{
+  "scope": "Odin HEAD source versus revised Odin source; same current benchmark driver; not a Zig comparison",
+  "compiler": "odin version dev-2026-09-nightly:a2fb372",
+  "iterations": 32768,
+  "outer_repetitions": 3,
+  "inner_samples": 5,
+  "amortized_nanoseconds_per_value": {
+    "sync": {
+      "baseline": 118.37570190429688,
+      "current": 117.35040283203125
+    },
+    "pipeline8": {
+      "baseline": 117.89395141601562,
+      "current": 122.1954345703125
+    },
+    "pipeline64": {
+      "baseline": 117.2779541015625,
+      "current": 118.2435302734375
+    },
+    "batch16": {
+      "baseline": 113.24932861328125,
+      "current": 114.28948974609375
+    },
+    "batch256": {
+      "baseline": 115.79440307617188,
+      "current": 115.36380004882812
+    }
+  }
+}

@@ -17,3 +17,21 @@
 
 #pagebreak()
 #include "records/0004-fast-path-leases.typ"
+
+#pagebreak()
+#include "records/0005-idiomatic-odin-api-surface.typ"
+
+#pagebreak()
+#include "records/0006-reconfiguration-and-epoch-isolation.typ"
+
+#pagebreak()
+#include "records/0007-review-findings-and-verification-evidence.typ"
+
+#pagebreak()
+#include "records/0008-safety-argument.typ"
+
+#pagebreak()
+#include "records/0009-data-oriented-ledger.typ"
+
+#pagebreak()
+#include "records/0010-rotating-slot-ownership.typ"
