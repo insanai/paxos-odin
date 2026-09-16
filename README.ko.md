@@ -25,8 +25,12 @@
 
    `paxos-odin`은 이 계약을 런타임에 엄격하게 검증합니다. 미확인 쓰기가 남아있는 상태에서 `messages_slice`를 호출하거나 상태 전이를 재진입하면, Elm 스타일의 상세 진단 리포트를 출력하며 즉시 중단(panic)됩니다. 파이프라이닝된 Phase 2 제안을 위해 검증된 `pre_durable_messages` 반복자도 제공합니다.
 
-3. **제로 동적 할당 (Zero Dynamic Allocations):**
-   모든 주요 구조체(`Node`, `Effects`, `Replicated_Log_Node`, `Learner`)는 컴파일 타임 상수(`MAX_MEMBERS`, `WINDOW_SLOTS`, `CHUNK_SLOTS`)를 기반으로 정적 배열과 비트셋(`Member_Set`, `Slot_Set`)을 사용하여 $O(1)$ 정족수 연산과 슬롯 추적을 수행합니다. 가비지 컬렉션이나 런타임 OOM(Out Of Memory)이 원천 배제됩니다.
+3. **관용적 Odin 자료구조 및 제로 동적 할당 (Idiomatic Odin Data Structures & Zero Allocations):**
+   C/Zig 스타일의 포인터 트릭이나 수동 워드 배열 비트셋 대신, Odin 고유의 표준 언어 및 라이브러리 구문을 전면 활용합니다:
+   - **네이티브 `bit_set`:** 멤버 추적 및 정족수 연산에 내장 `bit_set[0..<MAX_MEMBERS]`를 적용하여 언어 기본 연산자(`in`, `+=`, `-=`, `card()`)로 명확하게 표현합니다.
+   - **`core:container/small_array`:** 부수효과 버퍼(`writes`, `messages`, `committed`, `requests`), 멤버십 목록, Stop Sign 메타데이터에 `small_array.Small_Array`를 사용하여 수동 길이 관리와 인덱스 연산 오류를 제거했습니다.
+   - **`core:container/queue`:** 네트워크 시뮬레이션 및 벤치마크 하네스에서 고정 슬라이스 기반의 양방향 `Queue`를 활용하여 $O(1)$ 무복사(zero-copy) 패킷 전달을 수행합니다.
+   - 컴파일 타임 파라미터(`MAX_MEMBERS`, `WINDOW_SLOTS`, `CHUNK_SLOTS`)를 통해 합의 전이 중 힙 메모리 할당이 전혀 발생하지 않으며 런타임 OOM이나 가비지 컬렉션 지연이 원천 차단됩니다.
 
 4. **Stop Sign 기반 복제 로그 (Replicated Log with Stop Signs):**
    동적 멤버십 변경과 스냅샷을 위해 Lamport의 Stop Sign 규율을 지원합니다. 슬롯 $S$에 Stop Sign이 제안되면 해당 슬롯에서 로그가 봉인(sealed)되며, 새로운 에포크가 시작되기 전까지 추가 제안이 안전하게 거부됩니다.

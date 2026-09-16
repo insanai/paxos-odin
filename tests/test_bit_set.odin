@@ -36,3 +36,16 @@ test_bit_set_large :: proc(t: ^testing.T) {
 	testing.expect(t, paxos.bit_set_contains(bs, 255), "Contains 255")
 	testing.expect(t, !paxos.bit_set_contains(bs, 65), "Does not contain 65")
 }
+
+@(test)
+test_native_bit_set :: proc(t: ^testing.T) {
+	members: bit_set[0..<7]
+	testing.expect(t, card(members) == 0, "Initial card should be 0")
+	members += {0, 3, 6}
+	testing.expect(t, card(members) == 3, "Card should be 3")
+	testing.expect(t, 3 in members, "3 should be in members")
+	testing.expect(t, !(1 in members), "1 should not be in members")
+	members -= {3}
+	testing.expect(t, card(members) == 2, "Card should be 2 after removal")
+	testing.expect(t, !(3 in members), "3 should no longer be in members")
+}

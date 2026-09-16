@@ -1,48 +1,46 @@
 package paxos
 
-import "core:math/bits"
+// In idiomatic Odin, small sets (up to 128 items) use the built-in bit_set type:
+// e.g. bit_set[0..<MAX_MEMBERS].
+// For large compile-time bounded bitsets (such as tracking slots across sliding windows),
+// Bit_Set is backed by an array of Odin's native bit_set[0..<64] rather than raw integers.
 
-// A fixed-capacity set whose storage is optimized for size and performance.
-// Uses an array of 64-bit words to represent up to N bits without heap allocation.
+WORD_BITS :: 64
+Word :: bit_set[0..<WORD_BITS]
+
 Bit_Set :: struct($N: int) {
-	words: [(N + 63) / 64]u64,
+	words: [(N + WORD_BITS - 1) / WORD_BITS]Word,
 }
 
-// Inserts an index into the set. Returns true if the element was freshly inserted,
-// or false if it was already present.
+// Inserts an index into the set using native set union. Returns true if the element
+// was freshly inserted, or false if it was already present.
 bit_set_insert :: proc(bs: ^Bit_Set($N), index: int) -> bool {
 	assert(index >= 0 && index < N, "Bit_Set index out of bounds")
-	word_idx := index / 64
-	bit_idx := uint(index % 64)
-	mask := u64(1) << bit_idx
-	if (bs.words[word_idx] & mask) != 0 {
-		return false
-	}
-	bs.words[word_idx] |= mask
+	w := index / WORD_BITS
+	b := index % WORD_BITS
+	if b in bs.words[w] do return false
+	bs.words[w] += {b}
 	return true
 }
 
-// Returns whether the given index is present in the set.
+// Returns whether the given index is present in the set using native membership testing.
 bit_set_contains :: proc(bs: Bit_Set($N), index: int) -> bool {
 	assert(index >= 0 && index < N, "Bit_Set index out of bounds")
-	word_idx := index / 64
-	bit_idx := uint(index % 64)
-	mask := u64(1) << bit_idx
-	return (bs.words[word_idx] & mask) != 0
+	return (index % WORD_BITS) in bs.words[index / WORD_BITS]
 }
 
-// Returns the number of elements currently in the set.
+// Returns the number of elements currently in the set using native card().
 bit_set_count :: proc(bs: Bit_Set($N)) -> int {
 	total := 0
 	for w in bs.words {
-		total += int(bits.count_ones(w))
+		total += card(w)
 	}
 	return total
 }
 
 // Clears all elements from the set.
 bit_set_reset :: proc(bs: ^Bit_Set($N)) {
-	for i in 0..<len(bs.words) {
-		bs.words[i] = 0
+	for &w in bs.words {
+		w = {}
 	}
 }

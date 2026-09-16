@@ -10,7 +10,7 @@ test_membership_validation :: proc(t: ^testing.T) {
 
 	err := paxos.membership_init(&m, nodes[:])
 	testing.expect(t, err == .None, "Membership init should succeed")
-	testing.expect(t, m.count == 3, "Count is 3")
+	testing.expect(t, paxos.membership_count(m) == 3, "Count is 3")
 	testing.expect(t, paxos.membership_read_quorum(m) == 2, "Read quorum should be 2")
 	testing.expect(t, paxos.membership_write_quorum(m) == 2, "Write quorum should be 2")
 	testing.expect(t, paxos.membership_contains(m, 2), "Membership contains 2")

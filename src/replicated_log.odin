@@ -1,55 +1,62 @@
 package paxos
 
 import "core:math"
+import "core:container/small_array"
 
 // A decided configuration change: next members plus opaque handover metadata.
 Stop_Sign :: struct($MAX_MEMBERS: int = 7, $MAX_METADATA_BYTES: int = 256) {
 	configuration_id: u64,
-	members:          [MAX_MEMBERS]NodeId,
-	member_count:     int,
-	metadata:         [MAX_METADATA_BYTES]u8,
-	metadata_count:   int,
+	members:          small_array.Small_Array(MAX_MEMBERS, NodeId),
+	metadata:         small_array.Small_Array(MAX_METADATA_BYTES, u8),
 }
 
-stop_sign_create :: proc(
-	$MAX_MEMBERS: int,
-	$MAX_METADATA_BYTES: int,
+stop_sign_init :: proc(
+	ss: ^Stop_Sign($MAX_MEMBERS, $MAX_METADATA_BYTES),
 	configuration_id: u64,
 	members: []NodeId,
 	metadata: []u8,
-) -> (Stop_Sign(MAX_MEMBERS, MAX_METADATA_BYTES), Error) {
-	if configuration_id == 0 do return {}, .InvalidConfigurationId
-	if len(metadata) > MAX_METADATA_BYTES do return {}, .MetadataTooLarge
-	if len(members) == 0 do return {}, .EmptyMembership
-	if len(members) > MAX_MEMBERS do return {}, .TooManyMembers
+) -> Error {
+	if configuration_id == 0 do return .InvalidConfigurationId
+	if len(metadata) > MAX_METADATA_BYTES do return .MetadataTooLarge
+	if len(members) == 0 do return .EmptyMembership
+	if len(members) > MAX_MEMBERS do return .TooManyMembers
 
 	for m, i in members {
-		if m == 0 do return {}, .InvalidNodeId
+		if m == 0 do return .InvalidNodeId
 		for prev in 0..<i {
-			if members[prev] == m do return {}, .DuplicateNodeId
+			if members[prev] == m do return .DuplicateNodeId
 		}
 	}
 
-	ss := Stop_Sign(MAX_MEMBERS, MAX_METADATA_BYTES){
-		configuration_id = configuration_id,
-		member_count     = len(members),
-		metadata_count   = len(metadata),
+	ss.configuration_id = configuration_id
+	small_array.clear(&ss.members)
+	small_array.clear(&ss.metadata)
+	for m in members {
+		small_array.push_back(&ss.members, m)
 	}
-	for i in 0..<len(members) {
-		ss.members[i] = members[i]
+	for b in metadata {
+		small_array.push_back(&ss.metadata, b)
 	}
-	for i in 0..<len(metadata) {
-		ss.metadata[i] = metadata[i]
-	}
-	return ss, .None
+	return .None
+}
+
+stop_sign_create :: proc(
+	$T: typeid/Stop_Sign($MAX_MEMBERS, $MAX_METADATA_BYTES),
+	configuration_id: u64,
+	members: []NodeId,
+	metadata: []u8,
+) -> (T, Error) {
+	ss: T
+	err := stop_sign_init(&ss, configuration_id, members, metadata)
+	return ss, err
 }
 
 stop_sign_members_slice :: proc(ss: ^Stop_Sign($MAX_MEMBERS, $MAX_METADATA_BYTES)) -> []NodeId {
-	return ss.members[:ss.member_count]
+	return small_array.slice(&ss.members)
 }
 
 stop_sign_metadata_slice :: proc(ss: ^Stop_Sign($MAX_MEMBERS, $MAX_METADATA_BYTES)) -> []u8 {
-	return ss.metadata[:ss.metadata_count]
+	return small_array.slice(&ss.metadata)
 }
 
 // One log entry: an application command or a sealing stop sign.
@@ -182,7 +189,7 @@ replicated_log_propose_stop_sign :: proc(
 		return 0, .ConfigurationIdExhausted
 	}
 
-	ss, err := stop_sign_create(MAX_MEMBERS, MAX_METADATA_BYTES, next_configuration_id, next_members, metadata)
+	ss, err := stop_sign_create(Stop_Sign(MAX_MEMBERS, MAX_METADATA_BYTES), next_configuration_id, next_members, metadata)
 	if err != .None do return 0, err
 
 	entry := Entry(Value, MAX_MEMBERS, MAX_METADATA_BYTES)(ss)

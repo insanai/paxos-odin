@@ -3,6 +3,7 @@ package paxos_sim
 import "core:fmt"
 import "core:math"
 import "core:os"
+import "core:container/small_array"
 import paxos "../src"
 
 MAX_SIM_NODES     :: 5
@@ -58,19 +59,17 @@ Config :: struct {
 }
 
 Simulator :: struct {
-	config:         Config,
-	prng:           Prng,
-	membership:     paxos.Membership(MAX_SIM_NODES),
-	nodes:          [MAX_SIM_NODES]paxos.Node(u64, MAX_SIM_NODES, 256, 64),
-	alive:          [MAX_SIM_NODES]bool,
-	journals:       [MAX_SIM_NODES][MAX_SIM_JOURNAL]paxos.Write(u64),
-	journal_counts: [MAX_SIM_NODES]int,
-	queue:          [MAX_SIM_MESSAGES]paxos.Envelope(u64),
-	queue_count:    int,
-	partitions:     [MAX_SIM_NODES][MAX_SIM_NODES]bool,
-	golden:         [MAX_SIM_SLOTS]Maybe(u64),
-	golden_max:     paxos.Slot,
-	proposal_seq:   u64,
+	config:       Config,
+	prng:         Prng,
+	membership:   paxos.Membership(MAX_SIM_NODES),
+	nodes:        [MAX_SIM_NODES]paxos.Node(u64, MAX_SIM_NODES, 256, 64),
+	alive:        bit_set[0..<MAX_SIM_NODES],
+	journals:     [MAX_SIM_NODES]small_array.Small_Array(MAX_SIM_JOURNAL, paxos.Write(u64)),
+	queue:        small_array.Small_Array(MAX_SIM_MESSAGES, paxos.Envelope(u64)),
+	partitions:   [MAX_SIM_NODES]bit_set[0..<MAX_SIM_NODES],
+	golden:       [MAX_SIM_SLOTS]Maybe(u64),
+	golden_max:   paxos.Slot,
+	proposal_seq: u64,
 }
 
 sim_init :: proc(sim: ^Simulator, cfg: Config) {
@@ -83,22 +82,21 @@ sim_init :: proc(sim: ^Simulator, cfg: Config) {
 	}
 	_ = paxos.membership_init(&sim.membership, node_ids[:cfg.node_count])
 
+	sim.alive = {}
 	for i in 0..<cfg.node_count {
 		_ = paxos.node_init_with_priority(&sim.nodes[i], node_ids[i], sim.membership, u32(i))
-		sim.alive[i] = true
-		sim.journal_counts[i] = 0
+		sim.alive += {i}
+		small_array.clear(&sim.journals[i])
 	}
 	for i in 0..<MAX_SIM_NODES {
-		for j in 0..<MAX_SIM_NODES {
-			sim.partitions[i][j] = false
-		}
+		sim.partitions[i] = {}
 	}
 	for i in 0..<MAX_SIM_SLOTS {
 		sim.golden[i] = nil
 	}
 	sim.golden_max = 0
 	sim.proposal_seq = 100
-	sim.queue_count = 0
+	small_array.clear(&sim.queue)
 }
 
 @(private="file")
@@ -133,14 +131,13 @@ process_effects :: proc(
 	node_idx: int,
 	effects: ^paxos.Effects(u64, MAX_SIM_NODES, 256),
 ) {
-	node_id := sim.membership.ids[node_idx]
+	node_id := paxos.membership_get(sim.membership, node_idx)
 
 	// 1. Host Write-Ahead Log: Persist writes
 	writes := paxos.effects_writes_slice(effects)
 	for w in writes {
-		assert(sim.journal_counts[node_idx] < MAX_SIM_JOURNAL, "Journal full")
-		sim.journals[node_idx][sim.journal_counts[node_idx]] = w
-		sim.journal_counts[node_idx] += 1
+		ok := small_array.push_back(&sim.journals[node_idx], w)
+		assert(ok, "Journal full")
 	}
 
 	// 2. Check and record committed entries into golden oracle
@@ -153,36 +150,32 @@ process_effects :: proc(
 	// 4. Queue outbound messages
 	msgs := paxos.effects_messages_slice(effects)
 	for env in msgs {
-		if sim.queue_count < MAX_SIM_MESSAGES {
-			sim.queue[sim.queue_count] = env
-			sim.queue_count += 1
-		}
+		_ = small_array.push_back(&sim.queue, env)
 	}
 }
 
 @(private="file")
 sim_crash_node :: proc(sim: ^Simulator, node_idx: int) {
-	if !sim.alive[node_idx] do return
-	sim.alive[node_idx] = false
+	if !(node_idx in sim.alive) do return
+	sim.alive -= {node_idx}
 	if sim.config.verbose {
-		fmt.printf("  [Fault: Crash] Node %d crashed\n", sim.membership.ids[node_idx])
+		fmt.printf("  [Fault: Crash] Node %d crashed\n", paxos.membership_get(sim.membership, node_idx))
 	}
 }
 
 @(private="file")
 sim_restart_node :: proc(sim: ^Simulator, node_idx: int) {
-	if sim.alive[node_idx] do return
-	id := sim.membership.ids[node_idx]
+	if node_idx in sim.alive do return
+	id := paxos.membership_get(sim.membership, node_idx)
 
 	// Reset node state and replay journal
 	_ = paxos.node_init_with_priority(&sim.nodes[node_idx], id, sim.membership, u32(node_idx))
-	for j in 0..<sim.journal_counts[node_idx] {
-		w := sim.journals[node_idx][j]
+	for w in small_array.slice(&sim.journals[node_idx]) {
 		_ = paxos.durable_replay_fold(&sim.nodes[node_idx].durable, w)
 	}
-	sim.alive[node_idx] = true
+	sim.alive += {node_idx}
 	if sim.config.verbose {
-		fmt.printf("  [Recovery: Restart] Node %d restarted and replayed %d journal writes\n", id, sim.journal_counts[node_idx])
+		fmt.printf("  [Recovery: Restart] Node %d restarted and replayed %d journal writes\n", id, small_array.len(sim.journals[node_idx]))
 	}
 }
 
@@ -204,7 +197,7 @@ sim_run :: proc(sim: ^Simulator) {
 		switch action {
 		case 0: // Propose value on random alive node
 			node_idx := prng_int_max(&sim.prng, sim.config.node_count)
-			if sim.alive[node_idx] {
+			if node_idx in sim.alive {
 				paxos.effects_init(&eff)
 				sim.proposal_seq += 1
 				val := sim.proposal_seq
@@ -216,26 +209,25 @@ sim_run :: proc(sim: ^Simulator) {
 
 		case 1: // Tick random alive node
 			node_idx := prng_int_max(&sim.prng, sim.config.node_count)
-			if sim.alive[node_idx] {
+			if node_idx in sim.alive {
 				paxos.effects_init(&eff)
 				_ = paxos.node_tick(&sim.nodes[node_idx], 0, &eff)
 				process_effects(sim, node_idx, &eff)
 			}
 
 		case 2: // Deliver random in-flight message
-			if sim.queue_count > 0 {
-				idx := prng_int_max(&sim.prng, sim.queue_count)
-				env := sim.queue[idx]
-				// Remove message from queue by swapping with last
-				sim.queue[idx] = sim.queue[sim.queue_count - 1]
-				sim.queue_count -= 1
+			q_len := small_array.len(sim.queue)
+			if q_len > 0 {
+				idx := prng_int_max(&sim.prng, q_len)
+				env := small_array.get(sim.queue, idx)
+				small_array.unordered_remove(&sim.queue, idx)
 
 				from_idx, f_ok := paxos.membership_index_of(sim.membership, env.from)
 				to_idx, t_ok := paxos.membership_index_of(sim.membership, env.to)
 
 				if f_ok && t_ok {
 					// Check partition
-					if !sim.partitions[from_idx][to_idx] && sim.alive[to_idx] {
+					if !(to_idx in sim.partitions[from_idx]) && (to_idx in sim.alive) {
 						// Drop check
 						if prng_int_max(&sim.prng, 1000) >= sim.config.faults.drop_permille {
 							paxos.effects_init(&eff)
@@ -245,9 +237,8 @@ sim_run :: proc(sim: ^Simulator) {
 							}
 						}
 						// Duplicate check
-						if prng_int_max(&sim.prng, 1000) < sim.config.faults.duplicate_permille && sim.queue_count < MAX_SIM_MESSAGES {
-							sim.queue[sim.queue_count] = env
-							sim.queue_count += 1
+						if prng_int_max(&sim.prng, 1000) < sim.config.faults.duplicate_permille {
+							_ = small_array.push_back(&sim.queue, env)
 						}
 					}
 				}
@@ -257,21 +248,28 @@ sim_run :: proc(sim: ^Simulator) {
 			a := prng_int_max(&sim.prng, sim.config.node_count)
 			b := prng_int_max(&sim.prng, sim.config.node_count)
 			if a != b {
-				current := sim.partitions[a][b]
-				sim.partitions[a][b] = !current
-				sim.partitions[b][a] = !current
+				is_cut := b in sim.partitions[a]
+				if is_cut {
+					sim.partitions[a] -= {b}
+					sim.partitions[b] -= {a}
+				} else {
+					sim.partitions[a] += {b}
+					sim.partitions[b] += {a}
+				}
 				if sim.config.verbose {
-					state_str := "cut" if !current else "healed"
-					fmt.printf("  [Fault: Link] Link (%d <-> %d) %s\n", sim.membership.ids[a], sim.membership.ids[b], state_str)
+					state_str := "healed" if is_cut else "cut"
+					fmt.printf(
+						"  [Fault: Link] Link (%d <-> %d) %s\n",
+						paxos.membership_get(sim.membership, a),
+						paxos.membership_get(sim.membership, b),
+						state_str,
+					)
 				}
 			}
 
 		case 4: // Crash node
 			if prng_int_max(&sim.prng, 1000) < sim.config.faults.crash_permille {
-				alive_count := 0
-				for a in sim.alive[:sim.config.node_count] {
-					if a do alive_count += 1
-				}
+				alive_count := card(sim.alive)
 				// Keep at least a majority alive to allow progress
 				if alive_count > paxos.membership_read_quorum(sim.membership) {
 					target := prng_int_max(&sim.prng, sim.config.node_count)
@@ -281,7 +279,7 @@ sim_run :: proc(sim: ^Simulator) {
 
 		case 5: // Restart crashed node
 			target := prng_int_max(&sim.prng, sim.config.node_count)
-			if !sim.alive[target] {
+			if !(target in sim.alive) {
 				sim_restart_node(sim, target)
 			}
 		}
@@ -296,23 +294,17 @@ sim_run :: proc(sim: ^Simulator) {
 
 	for i in 0..<sim.config.node_count {
 		sim_restart_node(sim, i)
-		for j in 0..<sim.config.node_count {
-			sim.partitions[i][j] = false
-		}
+		sim.partitions[i] = {}
 	}
 
 	// Drain network and run ticks until network is quiescent
 	for round in 1..=400 {
 		// Deliver all queued messages
-		for sim.queue_count > 0 {
-			env := sim.queue[0]
-			for i in 0..<sim.queue_count - 1 {
-				sim.queue[i] = sim.queue[i + 1]
-			}
-			sim.queue_count -= 1
+		for small_array.len(sim.queue) > 0 {
+			env := small_array.pop_front(&sim.queue)
 
 			to_idx, ok := paxos.membership_index_of(sim.membership, env.to)
-			if ok && sim.alive[to_idx] {
+			if ok && (to_idx in sim.alive) {
 				paxos.effects_init(&eff)
 				err := paxos.node_step(&sim.nodes[to_idx], env, &eff)
 				if err == .None {
@@ -323,14 +315,14 @@ sim_run :: proc(sim: ^Simulator) {
 
 		// Tick all nodes
 		for i in 0..<sim.config.node_count {
-			if sim.alive[i] {
+			if i in sim.alive {
 				paxos.effects_init(&eff)
 				_ = paxos.node_tick(&sim.nodes[i], 0, &eff)
 				process_effects(sim, i, &eff)
 			}
 		}
 
-		if sim.queue_count == 0 && round > 50 {
+		if small_array.len(sim.queue) == 0 && round > 50 {
 			break
 		}
 	}
@@ -343,7 +335,7 @@ sim_run :: proc(sim: ^Simulator) {
 				for i in 0..<sim.config.node_count {
 					val, committed := paxos.node_committed_at(&sim.nodes[i], slot)
 					if committed && val != expected.? {
-						fmt.eprintf("Quiescence check failed: Node %d slot %d has %d, expected %d\n", sim.membership.ids[i], slot, val, expected.?)
+						fmt.eprintf("Quiescence check failed: Node %d slot %d has %d, expected %d\n", paxos.membership_get(sim.membership, i), slot, val, expected.?)
 						os.exit(1)
 					}
 				}

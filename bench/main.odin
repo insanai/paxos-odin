@@ -5,6 +5,7 @@ import "core:time"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:container/queue"
 import paxos "../src"
 
 BENCH_MAX_MEMBERS :: 3
@@ -19,16 +20,11 @@ Benchmark_Config :: struct {
 drain_network :: proc(
 	nodes: ^[BENCH_MAX_MEMBERS]paxos.Node(u64, BENCH_MAX_MEMBERS, BENCH_WINDOW, BENCH_CHUNK),
 	membership: paxos.Membership(BENCH_MAX_MEMBERS),
-	queue: ^[4096]paxos.Envelope(u64),
-	queue_count: ^int,
+	q: ^queue.Queue(paxos.Envelope(u64)),
 	eff: ^paxos.Effects(u64, BENCH_MAX_MEMBERS, BENCH_WINDOW),
 ) {
-	for queue_count^ > 0 {
-		env := queue^[0]
-		for i in 0..<queue_count^ - 1 {
-			queue^[i] = queue^[i + 1]
-		}
-		queue_count^ -= 1
+	for queue.len(q^) > 0 {
+		env := queue.pop_front(q)
 
 		to_idx, ok := paxos.membership_index_of(membership, env.to)
 		if ok {
@@ -38,10 +34,7 @@ drain_network :: proc(
 				paxos.effects_confirm_writes_durable(eff)
 				msgs := paxos.effects_messages_slice(eff)
 				for m in msgs {
-					if queue_count^ < len(queue^) {
-						queue^[queue_count^] = m
-						queue_count^ += 1
-					}
+					_, _ = queue.push_back(q, m)
 				}
 			}
 		}
@@ -65,9 +58,11 @@ run_benchmark_mode :: proc(
 		_ = paxos.node_init_with_priority(&nodes^[i], nodes_ids[i], m, u32(i))
 	}
 
-	queue := new([4096]paxos.Envelope(u64))
-	defer free(queue)
-	queue_count := 0
+	backing := new([16384]paxos.Envelope(u64))
+	defer free(backing)
+
+	q: queue.Queue(paxos.Envelope(u64))
+	queue.init_from_slice(&q, backing[:])
 
 	eff := new(paxos.Effects(u64, BENCH_MAX_MEMBERS, BENCH_WINDOW))
 	defer free(eff)
@@ -77,10 +72,9 @@ run_benchmark_mode :: proc(
 	_ = paxos.node_campaign(&nodes^[0], 0, eff)
 	paxos.effects_confirm_writes_durable(eff)
 	for msg in paxos.effects_messages_slice(eff) {
-		queue^[queue_count] = msg
-		queue_count += 1
+		queue.push_back(&q, msg)
 	}
-	drain_network(nodes, m, queue, &queue_count, eff)
+	drain_network(nodes, m, &q, eff)
 
 	// Run warm-up
 	for i in 1..=50 {
@@ -88,10 +82,9 @@ run_benchmark_mode :: proc(
 		_, _ = paxos.node_propose(&nodes^[0], u64(i), eff)
 		paxos.effects_confirm_writes_durable(eff)
 		for msg in paxos.effects_messages_slice(eff) {
-			queue^[queue_count] = msg
-			queue_count += 1
+			queue.push_back(&q, msg)
 		}
-		drain_network(nodes, m, queue, &queue_count, eff)
+		drain_network(nodes, m, &q, eff)
 		// Advance memory floor to avoid window exhaustion
 		_ = paxos.node_advance_memory_floor(&nodes^[0], paxos.Slot(i))
 		_ = paxos.node_advance_memory_floor(&nodes^[1], paxos.Slot(i))
@@ -116,12 +109,9 @@ run_benchmark_mode :: proc(
 			if err == .None {
 				paxos.effects_confirm_writes_durable(eff)
 				for msg in paxos.effects_messages_slice(eff) {
-					if queue_count < len(queue^) {
-						queue^[queue_count] = msg
-						queue_count += 1
-					}
+					queue.push_back(&q, msg)
 				}
-				drain_network(nodes, m, queue, &queue_count, eff)
+				drain_network(nodes, m, &q, eff)
 				executed += chunk
 			}
 		} else {
@@ -130,15 +120,12 @@ run_benchmark_mode :: proc(
 			if err == .None {
 				paxos.effects_confirm_writes_durable(eff)
 				for msg in paxos.effects_messages_slice(eff) {
-					if queue_count < len(queue^) {
-						queue^[queue_count] = msg
-						queue_count += 1
-					}
+					queue.push_back(&q, msg)
 				}
 				executed += 1
 			}
 			if executed % pipelined_window == 0 || executed == iterations {
-				drain_network(nodes, m, queue, &queue_count, eff)
+				drain_network(nodes, m, &q, eff)
 			}
 		}
 
@@ -161,7 +148,7 @@ run_benchmark_mode :: proc(
 
 main :: proc() {
 	cfg := Benchmark_Config{
-		iterations  = 10000,
+		iterations = 10000,
 		json_output = false,
 	}
 
@@ -173,43 +160,33 @@ main :: proc() {
 			}
 		} else if arg == "--json" {
 			cfg.json_output = true
-		} else if arg == "--help" || arg == "-h" {
-			fmt.println("Usage: paxos-bench [--iterations=N] [--json]")
-			return
 		}
 	}
 
-	if !cfg.json_output {
+	sync_ops, sync_lat := run_benchmark_mode("Synchronous", cfg.iterations, 1, false)
+	pipe_ops, pipe_lat := run_benchmark_mode("Pipelined (16)", cfg.iterations, 16, false)
+	batch_ops, batch_lat := run_benchmark_mode("Batched (16)", cfg.iterations, 16, true)
+
+	if cfg.json_output {
+		fmt.println("{")
+		fmt.printf("  \"iterations\": %d,\n", cfg.iterations)
+		fmt.println("  \"results\": [")
+		fmt.printf("    {\"mode\": \"synchronous\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n", sync_ops, sync_lat)
+		fmt.printf("    {\"mode\": \"pipelined_16\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f},\n", pipe_ops, pipe_lat)
+		fmt.printf("    {\"mode\": \"batched_16\", \"ops_per_sec\": %.2f, \"avg_latency_ns\": %.2f}\n", batch_ops, batch_lat)
+		fmt.println("  ]")
+		fmt.println("}")
+	} else {
 		fmt.println("================================================================================")
 		fmt.println("  PAXOS-ODIN IN-MEMORY WORKLOAD BENCHMARK")
 		fmt.println("  Cluster: 3 nodes | Pure State Machine (Zero-I/O, In-Memory)")
 		fmt.printf("  Iterations: %d per mode\n", cfg.iterations)
 		fmt.println("================================================================================")
-		fmt.printf("%-20s %15s %20s %15s\n", "Mode", "Throughput", "Latency / Op", "Iterations")
+		fmt.printf("%-25s %15s %20s %15s\n", "Mode", "Throughput", "Latency / Op", "Iterations")
 		fmt.println("--------------------------------------------------------------------------------")
-	}
-
-	// 1. Synchronous (drain after every single proposal)
-	ops_sync, lat_sync := run_benchmark_mode("Synchronous", cfg.iterations, 1, false)
-	if !cfg.json_output {
-		fmt.printf("%-20s %10d ops/s %14.1f ns %15d\n", "Synchronous", int(ops_sync), lat_sync, cfg.iterations)
-	}
-
-	// 2. Pipelined (window of 16 proposals)
-	ops_pipe, lat_pipe := run_benchmark_mode("Pipelined (16)", cfg.iterations, 16, false)
-	if !cfg.json_output {
-		fmt.printf("%-20s %10d ops/s %14.1f ns %15d\n", "Pipelined (16)", int(ops_pipe), lat_pipe, cfg.iterations)
-	}
-
-	// 3. Batched (batch size 16)
-	ops_batch, lat_batch := run_benchmark_mode("Batched (16)", cfg.iterations, 16, true)
-	if !cfg.json_output {
-		fmt.printf("%-20s %10d ops/s %14.1f ns %15d\n", "Batched (16)", int(ops_batch), lat_batch, cfg.iterations)
+		fmt.printf("%-20s %15s ops/s %15s %12s\n", "Synchronous", fmt.tprintf("%d", int(sync_ops)), fmt.tprintf("%.1f ns", sync_lat), fmt.tprintf("%d", cfg.iterations))
+		fmt.printf("%-20s %15s ops/s %15s %12s\n", "Pipelined (16)", fmt.tprintf("%d", int(pipe_ops)), fmt.tprintf("%.1f ns", pipe_lat), fmt.tprintf("%d", cfg.iterations))
+		fmt.printf("%-20s %15s ops/s %15s %12s\n", "Batched (16)", fmt.tprintf("%d", int(batch_ops)), fmt.tprintf("%.1f ns", batch_lat), fmt.tprintf("%d", cfg.iterations))
 		fmt.println("================================================================================")
-	} else {
-		fmt.printf(
-			"{ \"iterations\": %d, \"synchronous_ops_sec\": %d, \"pipelined_ops_sec\": %d, \"batched_ops_sec\": %d }\n",
-			cfg.iterations, int(ops_sync), int(ops_pipe), int(ops_batch),
-		)
 	}
 }

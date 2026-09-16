@@ -4,6 +4,7 @@ import "core:mem"
 import "core:math"
 import "core:os"
 import "core:fmt"
+import "core:container/small_array"
 
 // Stable identity of one voting member. Zero is reserved as a sentinel.
 NodeId :: u32
@@ -68,8 +69,7 @@ Accepted :: struct($Value: typeid) {
 
 // Fixed voting membership and validated quorum sizes.
 Membership :: struct($MAX_MEMBERS: int = 7) {
-	ids:               [MAX_MEMBERS]NodeId,
-	count:             int,
+	members:           small_array.Small_Array(MAX_MEMBERS, NodeId),
 	read_quorum_size:  int,
 	write_quorum_size: int,
 }
@@ -83,35 +83,35 @@ membership_init :: proc(
 	if len(node_ids) == 0 do return .EmptyMembership
 	if len(node_ids) > MAX_MEMBERS do return .TooManyMembers
 
-	m.count = 0
+	small_array.clear(&m.members)
 	for id, index in node_ids {
 		if id == 0 do return .InvalidNodeId
 		for prev in 0..<index {
-			if m.ids[prev] == id do return .DuplicateNodeId
+			if small_array.get(m.members, prev) == id do return .DuplicateNodeId
 		}
-		m.ids[index] = id
-		m.count += 1
+		small_array.push_back(&m.members, id)
 	}
 
-	majority := m.count / 2 + 1
+	total := small_array.len(m.members)
+	majority := total / 2 + 1
 	m.read_quorum_size = read_quorum_override if read_quorum_override > 0 else majority
 	m.write_quorum_size = write_quorum_override if write_quorum_override > 0 else majority
 
-	if m.read_quorum_size <= 0 || m.read_quorum_size > m.count {
+	if m.read_quorum_size <= 0 || m.read_quorum_size > total {
 		return .InvalidReadQuorum
 	}
-	if m.write_quorum_size <= 0 || m.write_quorum_size > m.count {
+	if m.write_quorum_size <= 0 || m.write_quorum_size > total {
 		return .InvalidWriteQuorum
 	}
-	if m.read_quorum_size + m.write_quorum_size <= m.count {
+	if m.read_quorum_size + m.write_quorum_size <= total {
 		return .NonIntersectingQuorums
 	}
 	return .None
 }
 
 membership_index_of :: proc(m: Membership($MAX_MEMBERS), id: NodeId) -> (int, bool) {
-	for i in 0..<m.count {
-		if m.ids[i] == id do return i, true
+	for i in 0..<small_array.len(m.members) {
+		if small_array.get(m.members, i) == id do return i, true
 	}
 	return -1, false
 }
@@ -119,6 +119,18 @@ membership_index_of :: proc(m: Membership($MAX_MEMBERS), id: NodeId) -> (int, bo
 membership_contains :: proc(m: Membership($MAX_MEMBERS), id: NodeId) -> bool {
 	_, found := membership_index_of(m, id)
 	return found
+}
+
+membership_count :: proc(m: Membership($MAX_MEMBERS)) -> int {
+	return small_array.len(m.members)
+}
+
+membership_get :: proc(m: Membership($MAX_MEMBERS), index: int) -> NodeId {
+	return small_array.get(m.members, index)
+}
+
+membership_slice :: proc(m: ^Membership($MAX_MEMBERS)) -> []NodeId {
+	return small_array.slice(&m.members)
 }
 
 membership_read_quorum :: proc(m: Membership($MAX_MEMBERS)) -> int {
@@ -251,14 +263,10 @@ Serve_Range_Request :: struct {
 }
 
 Effects :: struct($Value: typeid, $MAX_MEMBERS: int = 7, $WINDOW_SLOTS: int = 256, $GATE: Durability_Gate = .Enforced) {
-	writes:           [1 + WINDOW_SLOTS * 2]Write(Value),
-	writes_count:     int,
-	messages:         [MAX_MEMBERS * (WINDOW_SLOTS + 2)]Envelope(Value),
-	messages_count:   int,
-	committed:        [WINDOW_SLOTS + 1]Committed(Value),
-	committed_count:  int,
-	requests:         [MAX_MEMBERS]Host_Request,
-	requests_count:   int,
+	writes:           small_array.Small_Array(1 + WINDOW_SLOTS * 2, Write(Value)),
+	messages:         small_array.Small_Array(MAX_MEMBERS * (WINDOW_SLOTS + 2), Envelope(Value)),
+	committed:        small_array.Small_Array(WINDOW_SLOTS + 1, Committed(Value)),
+	requests:         small_array.Small_Array(MAX_MEMBERS, Host_Request),
 	writes_confirmed: bool,
 }
 
@@ -268,10 +276,10 @@ host_order_violation :: proc(msg: string) -> ! {
 }
 
 effects_init :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
-	effects.writes_count = 0
-	effects.messages_count = 0
-	effects.committed_count = 0
-	effects.requests_count = 0
+	small_array.clear(&effects.writes)
+	small_array.clear(&effects.messages)
+	small_array.clear(&effects.committed)
+	small_array.clear(&effects.requests)
 	effects.writes_confirmed = true
 }
 
@@ -281,10 +289,10 @@ effects_reset :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GA
 			host_order_violation("reset discarded unconfirmed writes")
 		}
 	}
-	effects.writes_count = 0
-	effects.messages_count = 0
-	effects.committed_count = 0
-	effects.requests_count = 0
+	small_array.clear(&effects.writes)
+	small_array.clear(&effects.messages)
+	small_array.clear(&effects.committed)
+	small_array.clear(&effects.requests)
 	effects.writes_confirmed = true
 }
 
@@ -293,7 +301,7 @@ effects_confirm_writes_durable :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $
 }
 
 effects_writes_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Write(Value) {
-	return effects.writes[:effects.writes_count]
+	return small_array.slice(&effects.writes)
 }
 
 effects_messages_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Envelope(Value) {
@@ -302,20 +310,20 @@ effects_messages_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_S
 			host_order_violation("messages_slice before confirm_writes_durable")
 		}
 	}
-	return effects.messages[:effects.messages_count]
+	return small_array.slice(&effects.messages)
 }
 
 effects_committed_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Committed(Value) {
-	return effects.committed[:effects.committed_count]
+	return small_array.slice(&effects.committed)
 }
 
 effects_requests_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Host_Request {
-	return effects.requests[:effects.requests_count]
+	return small_array.slice(&effects.requests)
 }
 
 effects_requires_power_loss_barrier :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> bool {
-	for i in 0..<effects.writes_count {
-		switch _ in effects.writes[i] {
+	for w in small_array.slice(&effects.writes) {
+		switch _ in w {
 		case Write_Promise, Write_Accept(Value):
 			return true
 		case Write_Commit(Value), Write_Trim_Anchor:
@@ -325,28 +333,24 @@ effects_requires_power_loss_barrier :: proc(effects: ^Effects($Value, $MAX_MEMBE
 }
 
 effects_add_write :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), w: Write(Value)) {
-	assert(effects.writes_count < len(effects.writes), "Writes buffer overrun")
-	effects.writes[effects.writes_count] = w
-	effects.writes_count += 1
+	ok := small_array.push_back(&effects.writes, w)
+	assert(ok, "Writes buffer overrun")
 	effects.writes_confirmed = false
 }
 
 effects_add_message :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), env: Envelope(Value)) {
-	assert(effects.messages_count < len(effects.messages), "Messages buffer overrun")
-	effects.messages[effects.messages_count] = env
-	effects.messages_count += 1
+	ok := small_array.push_back(&effects.messages, env)
+	assert(ok, "Messages buffer overrun")
 }
 
 effects_add_committed :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), c: Committed(Value)) {
-	assert(effects.committed_count < len(effects.committed), "Committed buffer overrun")
-	effects.committed[effects.committed_count] = c
-	effects.committed_count += 1
+	ok := small_array.push_back(&effects.committed, c)
+	assert(ok, "Committed buffer overrun")
 }
 
 effects_add_request :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), req: Host_Request) {
-	assert(effects.requests_count < len(effects.requests), "Requests buffer overrun")
-	effects.requests[effects.requests_count] = req
-	effects.requests_count += 1
+	ok := small_array.push_back(&effects.requests, req)
+	assert(ok, "Requests buffer overrun")
 }
 
 // Pre-durable iterator returning only Accept messages that can be pipelined
@@ -358,7 +362,7 @@ Pre_Durable_Iterator :: struct($Value: typeid) {
 
 effects_pre_durable_messages :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> Pre_Durable_Iterator(Value) {
 	return Pre_Durable_Iterator(Value){
-		messages = effects.messages[:effects.messages_count],
+		messages = small_array.slice(&effects.messages),
 		cursor   = 0,
 	}
 }
@@ -519,7 +523,7 @@ Election_Peer :: struct {
 Lead_Cell :: struct($Value: typeid, $MAX_MEMBERS: int = 7) {
 	slot:             Slot,
 	proposal:         Maybe(Value),
-	acknowledgements: Bit_Set(MAX_MEMBERS),
+	acknowledgements: bit_set[0..<MAX_MEMBERS],
 }
 
 Node :: struct(
@@ -623,7 +627,7 @@ node_init_learner :: proc(
 	if id == 0 do return .InvalidNodeId
 	if membership_contains(membership, id) do return .LearnerIsVoter
 
-	err := node_init_with_priority(node, membership.ids[0], membership, 0)
+	err := node_init_with_priority(node, small_array.get(membership.members, 0), membership, 0)
 	if err != .None do return err
 	node.id = id
 	node.voting_member = false
@@ -781,8 +785,7 @@ broadcast_peers :: proc(
 	effects: ^Effects(Value, MAX_MEMBERS, WINDOW_SLOTS, GATE),
 	msg: Message(Value),
 ) {
-	for i in 0..<node.membership.count {
-		peer := node.membership.ids[i]
+	for peer in small_array.slice(&node.membership.members) {
 		if peer != node.id {
 			effects_add_message(effects, Envelope(Value){from = node.id, to = peer, message = msg})
 		}
@@ -795,8 +798,7 @@ broadcast_all :: proc(
 	effects: ^Effects(Value, MAX_MEMBERS, WINDOW_SLOTS, GATE),
 	msg: Message(Value),
 ) {
-	for i in 0..<node.membership.count {
-		peer := node.membership.ids[i]
+	for peer in small_array.slice(&node.membership.members) {
 		effects_add_message(effects, Envelope(Value){from = node.id, to = peer, message = msg})
 	}
 }
@@ -890,14 +892,14 @@ quorum_fences :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SL
 	max_chosen: Slot = node.delivered_through
 	chosen_peer: Maybe(NodeId) = nil
 
-	for i in 0..<node.membership.count {
+	for i in 0..<small_array.len(node.membership.members) {
 		peer := &node.election[i]
 		if peer.anchor.chosen_trim_slot > max_trim {
 			max_trim = peer.anchor.chosen_trim_slot
 		}
 		if peer.chosen_through > max_chosen {
 			max_chosen = peer.chosen_through
-			chosen_peer = node.membership.ids[i]
+			chosen_peer = small_array.get(node.membership.members, i)
 		}
 	}
 	return Fences{trim = max_trim, chosen = max_chosen, chosen_peer = chosen_peer}
@@ -939,7 +941,7 @@ start_campaign :: proc(
 	node.noop_set = true
 	node.election_ticks = 0
 
-	for i in 0..<node.membership.count {
+	for i in 0..<small_array.len(node.membership.members) {
 		node.election[i] = {}
 		bit_set_reset(&node.promise_seen[i])
 	}
@@ -1088,7 +1090,7 @@ maybe_resolve_chunk :: proc(
 ) -> Error {
 	complete := 0
 	any_more := false
-	for i in 0..<node.membership.count {
+	for i in 0..<small_array.len(node.membership.members) {
 		peer := &node.election[i]
 		if !peer.range_described do continue
 		if peer.received_in_range >= peer.expected_in_range {
@@ -1176,7 +1178,7 @@ begin_next_chunk :: proc(
 	effects: ^Effects(Value, MAX_MEMBERS, WINDOW_SLOTS, GATE),
 ) {
 	node.recover_base = chunk_limit(node) + 1
-	for i in 0..<node.membership.count {
+	for i in 0..<small_array.len(node.membership.members) {
 		node.election[i] = {}
 		bit_set_reset(&node.promise_seen[i])
 	}
@@ -1221,7 +1223,7 @@ send_accept :: proc(
 		lead^ = Lead_Cell(Value, MAX_MEMBERS){slot = slot}
 	}
 	lead.proposal = value
-	bit_set_reset(&lead.acknowledgements)
+	lead.acknowledgements = {}
 
 	node.durable.promised = node.ballot
 	cell, ok := claim_live(node, slot)
@@ -1231,7 +1233,7 @@ send_accept :: proc(
 	effects_add_write(effects, Write_Accept(Value){ballot = node.ballot, slot = slot, value = value})
 
 	local_member, _ := membership_index_of(node.membership, node.id)
-	bit_set_insert(&lead.acknowledgements, local_member)
+	lead.acknowledgements += {local_member}
 
 	if membership_quorum(node.membership) == 1 {
 		record_commit(node, slot, value, effects) or_return
@@ -1309,8 +1311,8 @@ on_accepted :: proc(
 	member, found := membership_index_of(node.membership, from)
 	if !found do return .None
 
-	bit_set_insert(&cell.acknowledgements, member)
-	if bit_set_count(cell.acknowledgements) < membership_write_quorum(node.membership) {
+	cell.acknowledgements += {member}
+	if card(cell.acknowledgements) < membership_write_quorum(node.membership) {
 		return .None
 	}
 	if _, ok := durable_committed_at(&node.durable, msg.slot); ok do return .None
@@ -1519,8 +1521,7 @@ node_tick :: proc(
 		}
 		if node.resend_ticks >= node.resend_interval_ticks {
 			node.resend_ticks = 0
-			for i in 0..<node.membership.count {
-				peer := node.membership.ids[i]
+			for peer in small_array.slice(&node.membership.members) {
 				if peer != node.id {
 					resend_to(node, peer, effects)
 				}

@@ -25,8 +25,12 @@ Translated from the rigorous verification principles of [`paxos-zig`](https://gi
 
    `paxos-odin` enforces this invariant at runtime. Calling `messages_slice` or re-entering transition logic while uncommitted writes remain unconfirmed halts immediately with an Elm-style diagnostic report. An audited `pre_durable_messages` iterator permits pipelined Phase 2 proposals while preserving crash safety.
 
-3. **Zero Dynamic Allocations:**
-   All structures (`Node`, `Effects`, `Replicated_Log_Node`, `Learner`) are statically parameterized with compile-time bounds (`MAX_MEMBERS`, `WINDOW_SLOTS`, `CHUNK_SLOTS`). Bitsets (`Member_Set`, `Slot_Set`) provide $O(1)$ quorum and slot tracking without heap allocations or garbage collection pauses.
+3. **Idiomatic Odin Data Structures & Zero Dynamic Allocations:**
+   Rather than translating C/Zig-style pointer twiddling or custom word-array bitsets, `paxos-odin` embraces native Odin constructs:
+   - **First-Class `bit_set`:** Member tracking and quorums use Odin's built-in `bit_set[0..<MAX_MEMBERS]` with native language operators (`in`, `+=`, `-=`, `card()`).
+   - **`core:container/small_array`:** Bounded effect collections (`writes`, `messages`, `committed`, `requests`), membership lists, and Stop Sign metadata utilize `small_array.Small_Array`, eliminating manual length bookkeeping and index manipulation.
+   - **`core:container/queue`:** Network simulation and benchmark harness use Odin's double-ended `Queue` with fixed backing slices for $O(1)$ zero-copy delivery.
+   - Statically parameterized compile-time bounds (`MAX_MEMBERS`, `WINDOW_SLOTS`, `CHUNK_SLOTS`) guarantee zero heap allocations and eliminate OOM during consensus transitions.
 
 4. **Replicated Log with Stop Signs:**
    Supports distributed reconfigurations, clean epoch transitions, and cluster snapshots using Lamport's Stop Sign discipline. Once a Stop Sign is proposed at slot $S$, the log is sealed at $S$, rejecting subsequent proposals until a new epoch begins.
