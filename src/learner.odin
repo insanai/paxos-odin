@@ -1,5 +1,7 @@
 package paxos
 
+import "base:intrinsics"
+
 // Result of recording a certified chosen value in the learner window.
 Learn_Result :: enum {
 	// Value was buffered in the window; a gap below it prevents immediate release.
@@ -24,22 +26,19 @@ Learner_Cell :: struct($Value: typeid) {
 
 // Bounded non-voting learner that releases only a contiguous prefix of chosen values.
 // Out-of-order decisions are buffered in a sliding ring-buffer window.
-Learner :: struct($Value: typeid, $MAX_ENTRIES: int = 256) {
+Learner :: struct(
+	$Value: typeid,
+	$MAX_ENTRIES: int = DEFAULT_MAX_ENTRIES,
+) where intrinsics.type_is_comparable(Value) {
 	configuration_id: u64,
 	learned:          [MAX_ENTRIES]Learner_Cell(Value),
 	released_through: Slot,
 }
 
-learner_init :: proc(
-	l: ^Learner($Value, $MAX_ENTRIES),
-	configuration_id: u64,
-) -> Error {
-	if configuration_id == 0 do return .InvalidConfigurationId
-	l.configuration_id = configuration_id
-	l.released_through = 0
-	for i in 0..<MAX_ENTRIES {
-		l.learned[i] = Learner_Cell(Value){slot = 0}
-	}
+learner_init :: proc(l: ^Learner($Value, $MAX_ENTRIES), configuration_id: u64) -> Error {
+	#assert(MAX_ENTRIES > 0, "Empty learner window. Hint: Set MAX_ENTRIES to a positive capacity.")
+	if configuration_id == 0 do return .Invalid_Configuration_Id
+	l^ = Learner(Value, MAX_ENTRIES){configuration_id = configuration_id}
 	return .None
 }
 
@@ -55,27 +54,27 @@ learner_learn_chosen :: proc(
 	value: Value,
 ) -> (Learn_Result, Error) {
 	if configuration_id != l.configuration_id {
-		return .Buffered, .ConfigurationMismatch
+		return .Buffered, .Configuration_Mismatch
 	}
-	if slot == 0 do return .Buffered, .InvalidSlot
+	if slot == 0 do return .Buffered, .Invalid_Slot
 
 	if slot <= l.released_through {
 		cell := &l.learned[learner_cell_index(slot, MAX_ENTRIES)]
-		if cell.slot == slot && !values_equal(cell.value, value) {
-			return .Duplicate, .ConflictingChosenValue
+		if cell.slot == slot && cell.value != value {
+			return .Duplicate, .Conflicting_Chosen_Value
 		}
 		return .Duplicate, .None
 	}
 
-	if slot > l.released_through + Slot(MAX_ENTRIES) {
-		return .Buffered, .WindowFull
+	if slot - l.released_through > Slot(MAX_ENTRIES) {
+		return .Buffered, .Window_Full
 	}
 
 	idx := learner_cell_index(slot, MAX_ENTRIES)
 	cell := &l.learned[idx]
 	if cell.slot == slot {
-		if !values_equal(cell.value, value) {
-			return .Duplicate, .ConflictingChosenValue
+		if cell.value != value {
+			return .Duplicate, .Conflicting_Chosen_Value
 		}
 		return .Duplicate, .None
 	}
@@ -84,7 +83,7 @@ learner_learn_chosen :: proc(
 	before := l.released_through
 
 	// Advance contiguous prefix
-	for {
+	for l.released_through < max(Slot) {
 		next := l.released_through + 1
 		next_idx := learner_cell_index(next, MAX_ENTRIES)
 		if l.learned[next_idx].slot != next do break
@@ -103,15 +102,15 @@ learner_read_chosen :: proc(
 	from_slot: Slot,
 	output: []Chosen_Value(Value),
 ) -> (int, Error) {
-	if from_slot == 0 do return 0, .InvalidSlot
+	if from_slot == 0 do return 0, .Invalid_Slot
 	if from_slot > l.released_through do return 0, .None
 
-	if from_slot + Slot(MAX_ENTRIES) <= l.released_through {
+	if l.released_through - from_slot >= Slot(MAX_ENTRIES) {
 		return 0, .Trimmed
 	}
 
 	count := int(l.released_through - from_slot + 1)
-	if len(output) < count do return 0, .ReadBufferTooSmall
+	if len(output) < count do return 0, .Read_Buffer_Too_Small
 
 	for i in 0..<count {
 		slot := from_slot + Slot(i)
@@ -123,10 +122,7 @@ learner_read_chosen :: proc(
 }
 
 // Returns a released chosen value still resident in the window.
-learner_chosen_at :: proc(
-	l: ^Learner($Value, $MAX_ENTRIES),
-	slot: Slot,
-) -> (Value, bool) {
+learner_chosen_at :: proc(l: ^Learner($Value, $MAX_ENTRIES), slot: Slot) -> (Value, bool) {
 	if slot == 0 || slot > l.released_through do return Value{}, false
 	cell := &l.learned[learner_cell_index(slot, MAX_ENTRIES)]
 	if cell.slot != slot do return Value{}, false

@@ -5,375 +5,329 @@ Error :: enum {
 	None = 0,
 
 	// Membership errors
-	EmptyMembership,
-	TooManyMembers,
-	InvalidNodeId,
-	DuplicateNodeId,
-	InvalidReadQuorum,
-	InvalidWriteQuorum,
-	NonIntersectingQuorums,
+	Empty_Membership,
+	Too_Many_Members,
+	Invalid_Node_Id,
+	Duplicate_Node_Id,
+	Invalid_Read_Quorum,
+	Invalid_Write_Quorum,
+	Non_Intersecting_Quorums,
 
 	// Input and addressing errors
-	NotMember,
-	WrongRecipient,
-	InvalidPeer,
-	InvalidSlot,
-	ReadBufferTooSmall,
-	UnknownNode,
+	Not_Member,
+	Wrong_Recipient,
+	Invalid_Peer,
+	Invalid_Slot,
+	Read_Buffer_Too_Small,
+	Unknown_Node,
 
 	// Role and capability errors
-	NotVoter,
-	NotLearner,
-	LearnerIsVoter,
-	LearnerMessageForbidden,
-	ConfigurationMismatch,
+	Not_Voter,
+	Not_Learner,
+	Learner_Is_Voter,
+	Learner_Message_Forbidden,
+	Configuration_Mismatch,
 
 	// Liveness and progress errors
-	NotLeader,
-	LeaderCatchingUp,
-	WindowFull,
-	GlobalSlotExhausted,
-	EmptyBatch,
-	SlotBufferTooSmall,
-	BallotExhausted,
-	InvalidPromise,
-	MissingNoop,
-	MissingProposedValue,
-	CampaignDisabled,
+	Not_Leader,
+	Leader_Catching_Up,
+	Window_Full,
+	Global_Slot_Exhausted,
+	Empty_Batch,
+	Slot_Buffer_Too_Small,
+	Ballot_Exhausted,
+	Invalid_Promise,
+	Missing_Noop,
+	Missing_Proposed_Value,
+	Campaign_Disabled,
 
 	// Durability and safety violations
-	PromiseRegression,
-	ConflictingValue,
-	ConflictingCommit,
-	ConflictingChosenValue,
-	TrimRegression,
+	Promise_Regression,
+	Conflicting_Value,
+	Conflicting_Commit,
+	Conflicting_Chosen_Value,
+	Trim_Regression,
 
 	// Replicated log and window errors
-	InvalidConfigurationId,
-	MetadataTooLarge,
-	LogSealed,
-	BatchTooLarge,
-	ConfigurationIdRegression,
-	ConfigurationIdExhausted,
-	WindowOverrun,
+	Invalid_Configuration_Id,
+	Metadata_Too_Large,
+	Log_Sealed,
+	Batch_Too_Large,
+	Configuration_Id_Regression,
+	Configuration_Id_Exhausted,
+	Window_Overrun,
 	Trimmed,
 }
 
-// Returns a concise, Elm-style operator explanation and recovery hint for any protocol error.
-explain_error :: proc(err: Error) -> string {
-	switch err {
-	case .None:
-		return "No error."
-
-	// Membership errors
-	case .EmptyMembership:
-		return `
+// Every error explains itself: a title, the cause, and a corrective `Hint:`. The table is
+// data, so adding an enum value without an entry fails the exhaustive-explanation test.
+@(rodata)
+EXPLANATIONS := [Error]string{
+	.None = "No error.",
+	.Empty_Membership = `
 -- EMPTY MEMBERSHIP ------------------------------------------------------------
 
 A consensus configuration needs at least one voting member.
 Hint: Pass a slice with at least one non-zero ID to membership_init().
-`
-	case .TooManyMembers:
-		return `
+`,
+	.Too_Many_Members = `
 -- TOO MANY MEMBERS ------------------------------------------------------------
 
 The membership is larger than the compile-time MAX_MEMBERS bound.
 Hint: Reduce the member slice or deliberately raise MAX_MEMBERS.
-`
-	case .InvalidNodeId:
-		return `
+`,
+	.Invalid_Node_Id = `
 -- INVALID NODE ID -------------------------------------------------------------
 
 Node ID zero is reserved as a sentinel.
 Hint: Assign every logical member a stable, non-zero ID.
-`
-	case .DuplicateNodeId:
-		return `
+`,
+	.Duplicate_Node_Id = `
 -- DUPLICATE NODE ID -----------------------------------------------------------
 
 The membership contains one voting identity more than once.
 Hint: Validate uniqueness before calling membership_init().
-`
-	case .InvalidReadQuorum:
-		return `
+`,
+	.Invalid_Read_Quorum = `
 -- INVALID READ QUORUM ----------------------------------------------------------
 
-The phase-one size is zero or exceeds the actual member count.
-Hint: Choose 1 <= read_quorum_size <= member_count.
-`
-	case .InvalidWriteQuorum:
-		return `
+The phase-one quorum override is negative or exceeds the member count.
+Hint: Use zero for a majority, or choose 1 <= read_quorum_size <= member_count.
+`,
+	.Invalid_Write_Quorum = `
 -- INVALID WRITE QUORUM ---------------------------------------------------------
 
-The phase-two size is zero or exceeds the actual member count.
-Hint: Choose 1 <= write_quorum_size <= member_count.
-`
-	case .NonIntersectingQuorums:
-		return `
+The phase-two quorum override is negative or exceeds the member count.
+Hint: Use zero for a majority, or choose 1 <= write_quorum_size <= member_count.
+`,
+	.Non_Intersecting_Quorums = `
 -- NON-INTERSECTING QUORUMS ----------------------------------------------------
 
 A phase-one quorum might miss a prior phase-two quorum.
 Hint: Require read_quorum_size + write_quorum_size > member_count.
-`
-
-	// Input and addressing errors
-	case .NotMember:
-		return `
+`,
+	.Not_Member = `
 -- NOT A MEMBER ----------------------------------------------------------------
 
 The source, target, or local ID is outside the active membership.
 Hint: Check the configuration ID and authenticated peer identity.
-`
-	case .WrongRecipient:
-		return `
+`,
+	.Wrong_Recipient = `
 -- WRONG RECIPIENT --------------------------------------------------------------
 
 The envelope target is not the node processing it.
 Hint: Repair transport routing before retrying the envelope.
-`
-	case .InvalidPeer:
-		return `
+`,
+	.Invalid_Peer = `
 -- INVALID PEER -----------------------------------------------------------------
 
 A peer-only operation targeted the local node itself.
 Hint: Pass a different member ID to the peer operation.
-`
-	case .InvalidSlot:
-		return `
+`,
+	.Invalid_Slot = `
 -- INVALID SLOT -----------------------------------------------------------------
 
 Slot zero is reserved and cannot address a log entry.
 Hint: Use a one-based slot.
-`
-	case .ReadBufferTooSmall:
-		return `
+`,
+	.Read_Buffer_Too_Small = `
 -- READ BUFFER TOO SMALL --------------------------------------------------------
 
 The caller buffer cannot hold the available decided suffix.
 Hint: Size output for decided_through - from_slot + 1 entries.
-`
-	case .UnknownNode:
-		return `
+`,
+	.Unknown_Node = `
 -- UNKNOWN NODE -----------------------------------------------------------------
 
 The example or host router does not recognize this node ID.
 Hint: Reconcile routing state with the active membership.
-`
-
-	// Role errors
-	case .NotVoter:
-		return `
+`,
+	.Not_Voter = `
 -- NOT A VOTER ------------------------------------------------------------------
 
 A voter-only operation ran on a node outside the voting membership.
 Hint: Route proposals and campaigns to a configured voting member.
-`
-	case .NotLearner:
-		return `
+`,
+	.Not_Learner = `
 -- NOT A LEARNER ----------------------------------------------------------------
 
 A learner-only operation ran on a voting member.
 Hint: Use the voter step path; learn_chosen is for non-voting nodes.
-`
-	case .LearnerIsVoter:
-		return `
+`,
+	.Learner_Is_Voter = `
 -- LEARNER IS A VOTER -----------------------------------------------------------
 
 A learner was initialized with an ID inside the voting membership.
 Hint: Give learners IDs outside the configured voter set.
-`
-	case .LearnerMessageForbidden:
-		return `
+`,
+	.Learner_Message_Forbidden = `
 -- LEARNER MESSAGE FORBIDDEN ----------------------------------------------------
 
 A learner received a message kind only voters may process.
-Hint: Send learners commits and heartbeats only.
-`
-	case .ConfigurationMismatch:
-		return `
+Hint: Send learners commits only, or call node_learn_chosen() with a certified decision.
+`,
+	.Configuration_Mismatch = `
 -- CONFIGURATION MISMATCH -------------------------------------------------------
 
 The message's configuration ID differs from the local one.
-Hint: Finish the configuration handover before mixing traffic.
-`
-
-	// Progress errors
-	case .NotLeader:
-		return `
+Hint: Discard stale messages or route them to their original configuration.
+Do not relabel old traffic with the new configuration ID.
+`,
+	.Not_Leader = `
 -- NOT LEADER ------------------------------------------------------------------
 
 This node has not completed phase one for its current ballot.
 Hint: Route to current_leader() or wait for a successful campaign.
-`
-	case .LeaderCatchingUp:
-		return `
+`,
+	.Leader_Catching_Up = `
 -- LEADER CATCHING UP -----------------------------------------------------------
 
-Slots inherited in phase one are undelivered; deliver through leader_base() - 1.
-`
-	case .WindowFull:
-		return `
+The leader has not yet delivered every slot inherited from an earlier ballot.
+Hint: Process catch-up messages through leader_base() - 1, then retry the proposal.
+`,
+	.Window_Full = `
 -- WINDOW FULL ------------------------------------------------------------------
 
-Every consensus cell holds a live slot; this is transient flow control.
-Hint: Retry after the memory floor advances past delivered slots.
-`
-	case .GlobalSlotExhausted:
-		return `
+The proposal or learned slot does not fit in the available consensus window.
+Hint: Deliver missing decisions, durably consume the released prefix, and call
+advance_memory_floor() through that prefix before retrying. Never advance past it.
+`,
+	.Global_Slot_Exhausted = `
 -- GLOBAL SLOT EXHAUSTED --------------------------------------------------------
 
 The 64-bit global slot space is exhausted and never wraps to zero.
-Hint: This database has reached the end of its logical history.
-`
-	case .EmptyBatch:
-		return `
+Hint: Stop allocating slots. Move to a separately identified log if more history
+is needed; resetting the counter in this log would reuse consensus instances.
+`,
+	.Empty_Batch = `
 -- EMPTY BATCH -----------------------------------------------------------------
 
 A batch proposal contained no values.
 Hint: Skip the call or submit at least one value.
-`
-	case .SlotBufferTooSmall:
-		return `
+`,
+	.Slot_Buffer_Too_Small = `
 -- SLOT BUFFER TOO SMALL ---------------------------------------------------------
 
 The output slot slice is shorter than the value batch.
 Hint: Provide at least values.len slot elements.
-`
-	case .BallotExhausted:
-		return `
+`,
+	.Ballot_Exhausted = `
 -- BALLOT EXHAUSTED -------------------------------------------------------------
 
 The node cannot create a round greater than max(u64).
 Hint: Stop this epoch and investigate the runaway campaign source.
-`
-	case .InvalidPromise:
-		return `
+`,
+	.Invalid_Promise = `
 -- INVALID PROMISE --------------------------------------------------------------
 
-A completion marker claims more accepted entries than window_slots.
-Hint: Reject the peer and verify codec and protocol bounds.
-`
-	case .MissingNoop:
-		return `
+A promise describes an invalid recovery range or too many accepted entries.
+Hint: Check first/last against the requested chunk and keep accepted_count <=
+CHUNK_SLOTS. Verify that all members use compatible recovery chunk sizes.
+`,
+	.Missing_Noop = `
 -- MISSING NO-OP ----------------------------------------------------------------
 
 Leader recovery needs the host's no-op value to fill a hole.
 Hint: Supply a deterministic no-op to campaign() or tick().
-`
-	case .MissingProposedValue:
-		return `
+`,
+	.Missing_Proposed_Value = `
 -- MISSING PROPOSED VALUE --------------------------------------------------------
 
 An acknowledgement names a slot with no local leader proposal.
-Hint: Preserve proposal state until the slot commits.
-`
-	case .CampaignDisabled:
-		return `
+Hint: Stop this node and inspect its leader-state lifecycle. Keep the slot
+proposal until a decision or a new campaign; do not invent a replacement value.
+`,
+	.Campaign_Disabled = `
 -- CAMPAIGN DISABLED ------------------------------------------------------------
 
 This voter is configured to never start elections.
-Hint: Campaign from a member whose priority permits leadership.
-`
-
-	// Safety errors
-	case .PromiseRegression:
-		return `
+Hint: Route the request to a campaign-enabled voter, or explicitly enable
+this voter with set_campaign_enabled(). Priority only breaks ballot ties.
+`,
+	.Promise_Regression = `
 -- PROMISE REGRESSION -----------------------------------------------------------
 
 Replay attempted to move the durable promise to a lower ballot.
 Hint: Stop the node and inspect journal ordering or corruption.
-`
-	case .ConflictingValue:
-		return `
+`,
+	.Conflicting_Value = `
 -- CONFLICTING VALUE -----------------------------------------------------------
 
 One ballot and slot contain two different values.
 Hint: Stop the node and preserve the full message and journal trace.
-`
-	case .ConflictingCommit:
-		return `
+`,
+	.Conflicting_Commit = `
 -- CONFLICTING COMMIT ----------------------------------------------------------
 
 One slot observed two different committed values.
 Hint: Treat this as a safety incident; stop and retain all evidence.
-`
-	case .ConflictingChosenValue:
-		return `
+`,
+	.Conflicting_Chosen_Value = `
 -- CONFLICTING CHOSEN VALUE -----------------------------------------------------
 
 A learner saw two different chosen values for one slot.
 Hint: Treat this as a safety incident; stop and retain all evidence.
-`
-	case .TrimRegression:
-		return `
+`,
+	.Trim_Regression = `
 -- TRIM REGRESSION --------------------------------------------------------------
 
 A trim anchor moved backward or conflicts with the adopted one.
 Hint: Stop the node and inspect trim records and journal ordering.
-`
-
-	// Log errors
-	case .InvalidConfigurationId:
-		return `
+`,
+	.Invalid_Configuration_Id = `
 -- INVALID CONFIGURATION ID -----------------------------------------------------
 
 Configuration ID zero is reserved.
 Hint: Persist and use a positive epoch identity.
-`
-	case .MetadataTooLarge:
-		return `
+`,
+	.Metadata_Too_Large = `
 -- METADATA TOO LARGE -----------------------------------------------------------
 
 Stop-sign metadata exceeds MAX_METADATA_BYTES.
 Hint: Store a smaller durable snapshot identifier or raise the bound.
-`
-	case .LogSealed:
-		return `
+`,
+	.Log_Sealed = `
 -- LOG SEALED -------------------------------------------------------------------
 
 A stop sign is pending or decided in this configuration.
-Hint: Finish handover to the decided next configuration.
-`
-	case .BatchTooLarge:
-		return `
+Hint: Finish deciding and delivering the stop sign, then install the agreed
+state in its next configuration. A pending stop alone does not authorize handover.
+`,
+	.Batch_Too_Large = `
 -- BATCH TOO LARGE --------------------------------------------------------------
 
-The command batch exceeds MAX_BATCH.
-Hint: Split the batch or deliberately raise the compile-time bound.
-`
-	case .ConfigurationIdRegression:
-		return `
+The command batch contains more than CHUNK_SLOTS values.
+Hint: Split it into batches of at most CHUNK_SLOTS, or increase CHUNK_SLOTS
+without exceeding WINDOW_SLOTS.
+`,
+	.Configuration_Id_Regression = `
 -- CONFIGURATION ID REGRESSION --------------------------------------------------
 
 The proposed configuration ID is not newer than the current ID.
 Hint: Allocate a strictly increasing durable configuration ID.
-`
-	case .ConfigurationIdExhausted:
-		return `
+`,
+	.Configuration_Id_Exhausted = `
 -- CONFIGURATION ID EXHAUSTED ---------------------------------------------------
 
 No configuration ID exists after max(u64).
 Hint: Stop and investigate configuration churn before recovery.
-`
-	case .WindowOverrun:
-		return `
+`,
+	.Window_Overrun = `
 -- WINDOW OVERRUN ---------------------------------------------------------------
 
 A journal record addresses a cell still occupied by an earlier slot.
-Hint: Stop the node; the journal ran past the window without an anchor.
-`
-	case .Trimmed:
-		return `
+Hint: Stop the node and check journal order and retained trim certificates.
+Restore the certified prefix before reusing a cell that still holds an open vote.
+`,
+	.Trimmed = `
 -- LOG ENTRY TRIMMED ------------------------------------------------------------
 
 The requested slot prefix was released and trimmed below the window floor.
 Hint: Read trimmed history from the host's long-term journal or snapshot.
-`
-	}
-	return `
--- UNEXPECTED ERROR -------------------------------------------------------------
+`,
+}
 
-The error is not one of the library's documented protocol errors.
-Hint: Preserve the original host I/O or transport context in logs.
-`
+// Returns the Elm-style explanation and recovery hint for a protocol error.
+explain_error :: proc(err: Error) -> string {
+	return EXPLANATIONS[err]
 }
