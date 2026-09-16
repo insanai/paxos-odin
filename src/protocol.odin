@@ -604,30 +604,34 @@ clear_election :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_S
 
 @(private="file")
 durable_assert_valid :: proc(state: ^Durable_State($Value, $WINDOW_SLOTS)) {
-	for i in 0..<WINDOW_SLOTS {
-		cell := &state.cells[i]
-		if cell.slot != 0 {
-			assert(durable_cell_index(cell.slot, WINDOW_SLOTS) == i, "Durable cell index invariant broken")
-		}
-		if cell.accepted != nil {
-			assert(!ballot_less_than(state.promised, cell.accepted.?.ballot), "Promised ballot invariant broken")
+	when ODIN_DEBUG {
+		for i in 0..<WINDOW_SLOTS {
+			cell := &state.cells[i]
+			if cell.slot != 0 {
+				assert(durable_cell_index(cell.slot, WINDOW_SLOTS) == i, "Durable cell index invariant broken")
+			}
+			if cell.accepted != nil {
+				assert(!ballot_less_than(state.promised, cell.accepted.?.ballot), "Promised ballot invariant broken")
+			}
 		}
 	}
 }
 
 @(private="file")
 node_assert_valid :: proc(node: ^Node($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS, $GATE)) {
-	assert(node.id != 0, "Node ID cannot be zero")
-	if node.voting_member {
-		assert(membership_contains(node.membership, node.id), "Voting member must be in membership")
-	} else {
-		assert(!membership_contains(node.membership, node.id), "Non-voter cannot be in membership")
-		assert(!node.campaign_enabled, "Non-voter cannot campaign")
+	when ODIN_DEBUG {
+		assert(node.id != 0, "Node ID cannot be zero")
+		if node.voting_member {
+			assert(membership_contains(node.membership, node.id), "Voting member must be in membership")
+		} else {
+			assert(!membership_contains(node.membership, node.id), "Non-voter cannot be in membership")
+			assert(!node.campaign_enabled, "Non-voter cannot campaign")
+		}
+		assert(small_array.len(node.membership.members) > 0, "Membership cannot be empty")
+		assert(small_array.len(node.membership.members) <= MAX_MEMBERS, "Membership exceeds MAX_MEMBERS")
+		assert(node.next_slot >= 1, "Next slot must be at least 1")
+		durable_assert_valid(&node.durable)
 	}
-	assert(small_array.len(node.membership.members) > 0, "Membership cannot be empty")
-	assert(small_array.len(node.membership.members) <= MAX_MEMBERS, "Membership exceeds MAX_MEMBERS")
-	assert(node.next_slot >= 1, "Next slot must be at least 1")
-	durable_assert_valid(&node.durable)
 }
 
 // Initializes a voting node in follower status with default leader priority.
