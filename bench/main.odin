@@ -46,8 +46,9 @@ drain_network :: proc(
 	queue_count^ = 0
 }
 
-run_benchmark_mode :: proc(
-	mode_name: string,
+import "core:slice"
+
+run_single_sample :: proc(
 	iterations: int,
 	pipelined_window: int,
 	batched: bool,
@@ -117,6 +118,12 @@ run_benchmark_mode :: proc(
 					queue_count += 1
 				}
 				drain_network(nodes, queue, &queue_count, eff)
+				decided := paxos.node_decided_through(&nodes^[0])
+				if decided > 0 {
+					for j in 0..<BENCH_MAX_MEMBERS {
+						_ = paxos.node_advance_memory_floor(&nodes^[j], decided)
+					}
+				}
 				executed += chunk
 			}
 		} else {
@@ -132,14 +139,12 @@ run_benchmark_mode :: proc(
 			}
 			if executed % pipelined_window == 0 || executed == iterations {
 				drain_network(nodes, queue, &queue_count, eff)
-			}
-		}
-
-		// Keep memory floor moving to prevent window exhaustion
-		decided := paxos.node_decided_through(&nodes^[0])
-		if decided > 0 {
-			for j in 0..<BENCH_MAX_MEMBERS {
-				_ = paxos.node_advance_memory_floor(&nodes^[j], decided)
+				decided := paxos.node_decided_through(&nodes^[0])
+				if decided > 0 {
+					for j in 0..<BENCH_MAX_MEMBERS {
+						_ = paxos.node_advance_memory_floor(&nodes^[j], decided)
+					}
+				}
 			}
 		}
 	}
@@ -149,6 +154,26 @@ run_benchmark_mode :: proc(
 	ops_per_sec = f64(iterations) / elapsed_sec
 	avg_latency_ns = (elapsed_sec * 1e9) / f64(iterations)
 	return ops_per_sec, avg_latency_ns
+}
+
+run_benchmark_mode :: proc(
+	mode_name: string,
+	iterations: int,
+	pipelined_window: int,
+	batched: bool,
+) -> (ops_per_sec: f64, avg_latency_ns: f64) {
+	SAMPLE_COUNT :: 5
+	samples: [SAMPLE_COUNT]f64
+
+	for s in 0..<SAMPLE_COUNT {
+		_, lat := run_single_sample(iterations, pipelined_window, batched)
+		samples[s] = lat
+	}
+
+	slice.sort(samples[:])
+	median_lat := samples[SAMPLE_COUNT / 2]
+	median_ops := 1e9 / median_lat
+	return median_ops, median_lat
 }
 
 main :: proc() {

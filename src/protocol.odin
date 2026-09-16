@@ -275,7 +275,7 @@ host_order_violation :: proc(msg: string) -> ! {
 	os.exit(1)
 }
 
-effects_init :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
+effects_init :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
 	small_array.clear(&effects.writes)
 	small_array.clear(&effects.messages)
 	small_array.clear(&effects.committed)
@@ -283,7 +283,7 @@ effects_init :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GAT
 	effects.writes_confirmed = true
 }
 
-effects_reset :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
+effects_reset :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
 	when GATE == .Enforced {
 		if !effects.writes_confirmed {
 			host_order_violation("reset discarded unconfirmed writes")
@@ -296,15 +296,15 @@ effects_reset :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GA
 	effects.writes_confirmed = true
 }
 
-effects_confirm_writes_durable :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
+effects_confirm_writes_durable :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) {
 	effects.writes_confirmed = true
 }
 
-effects_writes_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Write(Value) {
+effects_writes_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Write(Value) {
 	return small_array.slice(&effects.writes)
 }
 
-effects_messages_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Envelope(Value) {
+effects_messages_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Envelope(Value) {
 	when GATE == .Enforced {
 		if !effects.writes_confirmed {
 			host_order_violation("messages_slice before confirm_writes_durable")
@@ -313,11 +313,11 @@ effects_messages_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_S
 	return small_array.slice(&effects.messages)
 }
 
-effects_committed_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Committed(Value) {
+effects_committed_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Committed(Value) {
 	return small_array.slice(&effects.committed)
 }
 
-effects_requests_slice :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Host_Request {
+effects_requests_slice :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE)) -> []Host_Request {
 	return small_array.slice(&effects.requests)
 }
 
@@ -332,23 +332,23 @@ effects_requires_power_loss_barrier :: proc(effects: ^Effects($Value, $MAX_MEMBE
 	return false
 }
 
-effects_add_write :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), w: Write(Value)) {
+effects_add_write :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), w: Write(Value)) {
 	ok := small_array.push_back(&effects.writes, w)
 	assert(ok, "Writes buffer overrun")
 	effects.writes_confirmed = false
 }
 
-effects_add_message :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), env: Envelope(Value)) {
+effects_add_message :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), env: Envelope(Value)) {
 	ok := small_array.push_back(&effects.messages, env)
 	assert(ok, "Messages buffer overrun")
 }
 
-effects_add_committed :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), c: Committed(Value)) {
+effects_add_committed :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), c: Committed(Value)) {
 	ok := small_array.push_back(&effects.committed, c)
 	assert(ok, "Committed buffer overrun")
 }
 
-effects_add_request :: proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), req: Host_Request) {
+effects_add_request :: #force_inline proc(effects: ^Effects($Value, $MAX_MEMBERS, $WINDOW_SLOTS, $GATE), req: Host_Request) {
 	ok := small_array.push_back(&effects.requests, req)
 	assert(ok, "Requests buffer overrun")
 }
