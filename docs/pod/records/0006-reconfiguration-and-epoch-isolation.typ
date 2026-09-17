@@ -108,10 +108,11 @@ Every scenario checks the same four oracles: `seal_expect_agreement` (every memb
 
 = Current Contract Review (2026-09-17)
 
-This protocol is implemented. A pending seal can disappear when recovery replaces
-an unchosen stop-sign vote. A decided seal persists. Under ownership, peers may
-already have chosen values above a stop; the wrapper prevents their application
-release in the old configuration, rather than preventing all core choices.
+This protocol is fully implemented. A pending seal clears if phase-one recovery
+replaces an unchosen stop-sign proposal. A decided seal persists across restarts.
+Under rotating ownership, concurrent owners may reach decisions above a stop slot;
+the wrapper prevents these unreleased choices from being delivered in the retired
+configuration, ensuring that the successor configuration decides those slots afresh.
 
 = References
 

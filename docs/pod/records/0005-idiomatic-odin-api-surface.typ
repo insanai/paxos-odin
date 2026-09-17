@@ -83,11 +83,11 @@ Zero means the default for every field, so `node_init` takes `options := Node_Op
 
 == `Node_Id` is `u16`
 
-A ballot needs the proposer's id to be unique, and the redesign packs the ballot into one integer. Sixteen bits leave forty for the round and eight for the priority, and `MAX_SUPPORTED_MEMBERS = 65535` is larger than the `128` that `0.1.0` allowed. The `0.1.0` alternative "larger membership bound", rejected then because acknowledgements were a native `bit_set`, is now taken: `acknowledgements` is `[WINDOW_SLOTS]Bit_Set(MAX_MEMBERS)`, the array-backed set from `src/bit_set.odin`, and `review_thousand_voters_reach_quorum` exercises a membership above `LINEAR_LOOKUP_LIMIT`.
+A ballot needs the proposer's id to be unique, and the redesign packs the ballot into one integer. Sixteen bits leave forty for the round and eight for the priority, and `MAX_SUPPORTED_MEMBERS = 65535` is larger than the `128` that `0.1.0` allowed. The `0.1.0` alternative "larger membership bound", previously rejected when acknowledgements relied on a 128-bit native `bit_set`, has now been adopted: `acknowledgements` is `[WINDOW_SLOTS]Bit_Set(MAX_MEMBERS)`, the array-backed set from `src/bit_set.odin`, and `review_thousand_voters_reach_quorum` exercises a membership above `LINEAR_LOOKUP_LIMIT`.
 
 == `Ballot` is one packed `u64`
 
-`Ballot :: distinct u64` with `ballot_make(round, priority, node)` and the accessors `ballot_round`, `ballot_priority`, `ballot_node` replaces the three-field struct and `ballot_less_than`. Call sites compare ballots with `<`, `max`, and `==` directly, which is what Lamport's B1 asks for. The `distinct` keeps a `Slot` or a raw `u64` from being passed as a ballot. `BALLOT_ZERO` is the empty promise, and round zero is reserved for slot owners (POD 0010).
+`Ballot :: distinct u64` with `ballot_make(round, priority, node)` and the accessors `ballot_round`, `ballot_priority`, `ballot_node` replaces the three-field struct and `ballot_less_than`. Call sites compare ballots with `<`, `max`, and `==` directly, which is what Lamport's B1 asks for. The `distinct` keyword prevents a `Slot` or raw `u64` from being inadvertently passed as a ballot. `BALLOT_ZERO` is the empty promise, and round zero is reserved for slot owners (POD 0010).
 
 == `Ledger` replaces `Durable_State`
 
@@ -176,11 +176,12 @@ remain historical records. Membership now canonicalizes ids in ascending order,
 so callers need not agree on input order. Binary search uses that same array;
 there is no separate membership index array.
 
-Recovery scratch is chunk-sized and selection is frozen before phase two; these
-are internal layout changes. Effects still borrow payloads until the next
-transition. Ownership admission probes its actual slots before mutating state,
-and `resubmits_dropped` exposes overflow of its best-effort queue. POD 0011 proposes
-a separate Python API over a C boundary; it does not change these Odin conventions.
+Recovery scratch is chunk-sized and candidate selection is frozen before
+entering phase two; these remain internal layout optimizations. Effects buffers
+continue to borrow payloads until the next transition. Ownership admission probes
+target slots before mutating state, and `resubmits_dropped` exposes any overflow
+in its best-effort queue. POD 0011 defines a separate Python API over a C boundary
+without altering these Odin conventions.
 
 = References
 

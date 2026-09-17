@@ -75,8 +75,8 @@ point. Counts of calls to `tick` alone cannot establish elapsed time.
 Flexible Paxos requires read/write intersection. It does not require two read
 quorums to intersect. A claim that only one partition can hold a read quorum is
 therefore invalid. Choose grant quorums and restrictions, then prove that every
-competing write path intersects a live restriction, including an already prepared
-leader issuing phase two. Fencing only new elections or global Prepare messages
+competing write path intersects a live restriction, including a previously prepared
+leader issuing phase-two accepts. Fencing only new elections or global Prepare messages
 is insufficient; Accept, heartbeat adoption, bounded prepares and recovery need
 explicit treatment.
 
@@ -86,7 +86,7 @@ A voter that forgets a live grant on restart can violate it immediately. Specify
 either durable grant recovery with a clock model that survives restart, or a
 conservative restart quarantine with proved bounds. A vague guard interval that
 "covers restart time" is not enough. A recovered leader must discard stale lease
-authority. The resulting writes and barriers must fit POD 0003.
+authority, and the resulting writes and barriers must conform to POD 0003.
 
 == Applied state and membership
 
@@ -98,10 +98,11 @@ state, stop signs and client completion.
 
 = Rotating Ownership
 
-Ownership has several independent proposers and no `Role.Leader`. A revoker
-returns to follower after driving its range. Neither a leader hint nor a caught-up
-prefix grants exclusive authority. This proposal does not specify an ownership
-lease; that would require a separate proof of the relevant writer restrictions.
+Rotating ownership features several independent proposers and no persistent
+`Role.Leader`. A revoker returns to follower status after driving its assigned range.
+Neither a leader hint nor a caught-up prefix grants exclusive authority. This
+proposal does not specify an ownership lease; that would require a separate proof
+of the relevant writer restrictions.
 
 = Validation Required Before Commitment
 
@@ -112,8 +113,8 @@ checks and responses. Add deterministic counterexamples for receipt-based expiry
 forgotten grants and phase-two writes by a previously prepared competitor.
 
 Tests supplement the proof; they cannot establish an unspecified clock model.
-Until the obligations are resolved, the record stays in discussion and no public
-`can_serve_local_read` promise should be added to the core or Python SDK.
+Until these proof obligations are resolved, this record remains in discussion, and
+no public `can_serve_local_read` capability will be added to the core or Python SDK.
 
 = Alternatives and Open Questions
 
