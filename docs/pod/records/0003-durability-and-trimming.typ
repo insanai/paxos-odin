@@ -57,7 +57,7 @@ If a node sends a `Promise_Message` or an `Accepted_Message` before the matching
   inset: 6pt,
   fill: (col, row) => if row == 0 { rgb("f1f5f9") } else { none },
   [*Record*], [*Meaning*], [*Emitted by*],
-  [`Write_Promise{ballot}`], [The global promise (`Ledger.promised`, Lamport's `maxBal` for every decree at or above the recovery base).], [`start_campaign` for its own ballot; `on_prepare` for a `.Global` prepare; `on_heartbeat` for a heartbeat above the promise.],
+  [`Write_Promise{ballot}`], [The global promise (`Ledger.promised`, Lamport's `maxBal` for every decree at or above the recovery base).], [`start_campaign` for its own ballot; `on_prepare` upon receiving a `.Global` prepare; `on_heartbeat` when adopting a heartbeat ballot above the current promise.],
   [`Write_Promise_At{ballot, slot}`], [A promise for one decree only (`Ledger.promised_at[cell]`), made to a `.Bounded` prepare, which is a revocation under rotating ownership.], [`promise_bounded`, once per decree in `[first, last]` above the memory floor.],
   [`Write_Vote(V){ballot, slot, value: ^V}`], [A vote (`vote_ballot[cell]`, `value[cell]`, state `.Voted`).], [`send_accept` for the proposer's own vote; `on_accept` for an acceptor's vote.],
   [`Write_Chosen(V){slot, value: ^V}`], [A decision (state `.Chosen`). Derived state: a decision is implied by a write quorum of votes.], [`record_commit`, on a local quorum, a `Commit_Message`, a recovered decision, or a host-certified value.],
@@ -72,7 +72,7 @@ If a node sends a `Promise_Message` or an `Accepted_Message` before the matching
 
 Two obligations follow:
 
-1. *Copy at the journal.* A host persists every write before it runs another transition on the node, so serialising the record inside the commit sequence is enough. A host that keeps records in memory (a test journal, an in-process queue) copies the value when it appends. `Journal_Record{write, value}` and `journal_append` in `tests/harness.odin`, and `Sim_Record` with `persist_sim_write` in `sim/simulation.odin`, are the reference shape: the record is stored with its own copy, and `journal_replay` (or `sim_restart_node`) points `x.value` back at that copy before folding the record into a fresh `Ledger`.
+1. *Copy at the journal.* A host persists every write before it runs another transition on the node, so serialising the record inside the commit sequence is enough. A host retaining records in memory (such as a test journal or an in-process queue) must copy the value during append. `Journal_Record{write, value}` with `journal_append` in `tests/harness.odin`, and `Sim_Record` with `persist_sim_write` in `sim/simulation.odin`, demonstrate this reference pattern: the record is stored with its own copy, and `journal_replay` (or `sim_restart_node`) points `x.value` back at that copy before folding the record into a fresh `Ledger`.
 2. *Copy at the transport.* An envelope points into the sender's ledger, which the sender may overwrite in its next transition. `Packet{envelope, value}` with `packet_of` (copy on enqueue, using `message_value`) and `packet_envelope` (repoint at the packet's copy for the duration of `step`) appears in `tests/harness.odin`, `examples/counter.odin`, `sim/simulation.odin`, and `bench/main.odin`. A real codec does the same thing by serialising before the next transition.
 
 POD 0009 records why the payloads are pointers.
@@ -111,7 +111,7 @@ The second diagnostic reads `reset discarded unconfirmed writes.` under the same
 3. committed entries are applied only after their commit record is durable;
 4. a crash between the writes and the barrier is recovered from the journal, never by confirming writes that did not complete.
 
-This mode exists for hosts that group several transitions behind one storage barrier. `test_host_managed_gate` shows it compiling and returning messages with an unconfirmed promise in the batch.
+This mode exists for hosts that group several transitions behind one storage barrier. `test_host_managed_gate` verifies that this configuration compiles and returns messages even with an unconfirmed promise in the batch.
 
 == Batch lifecycle
 
@@ -207,9 +207,9 @@ confirmed, so no message, released entry or served range can be read before its
 writes are durable. No transition may begin while a batch is unfinished, and
 finishing requires confirmation, so a batch is never discarded while it holds
 unconfirmed writes. Closing a node with an unconfirmed batch is permitted -
-`close` must work from a `finally` - but it reports the count of abandoned
-records rather than hiding it. Recovery is journal replay; the bridge never
-confirms writes whose persistence is uncertain.
+since `close` must execute reliably within a `finally` block - but it reports the
+count of abandoned records rather than hiding them. Recovery is journal replay;
+the bridge never confirms writes whose persistence is uncertain.
 
 A second library, compiled with `.Enforced`, runs the entire Python test suite as
 a standing proof that the bridge never trips the core's own gate. Both libraries

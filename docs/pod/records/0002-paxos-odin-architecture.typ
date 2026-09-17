@@ -56,18 +56,18 @@ Nothing in a batch owns a value: writes, messages, and committed entries point i
   fill: (col, row) => if row == 0 { rgb("f1f5f9") } else { none },
   [*File*], [*Responsibility*],
   [`ballot.odin`], [`Node_Id :: u16`, `Slot :: u64`, the packed `Ballot`, `ballot_make` and its accessors, `cell_of` (the window mask), and `slot_add` (saturating slot arithmetic).],
-  [`bit_set.odin`], [`Bit_Set(N)`: an array of native `bit_set[0..<64]` words with `bit_set_insert`, `bit_set_remove`, `bit_set_contains`, `bit_set_count`, `bit_set_reset`, `bit_set_next`, and `bit_set_last`. Memberships and window bitmaps use it.],
+  [`bit_set.odin`], [`Bit_Set(N)`: an array of native `bit_set[0..<64]` words providing `bit_set_insert`, `bit_set_remove`, `bit_set_contains`, `bit_set_count`, `bit_set_reset`, `bit_set_next`, and `bit_set_last`. Used by memberships and window bitmaps.],
   [`membership.odin`], [`Membership(MAX_MEMBERS)` with its stable member index (members sorted by id), `LINEAR_LOOKUP_LIMIT`, and quorum validation (obligation B2).],
   [`ledger.odin`], [`Ledger(Value, WINDOW)`, `Cell_State`, `Trim_Anchor`, the five `Write` records, cell access (`ledger_cell`, `ledger_vote_at`, `ledger_chosen_at`, `ledger_open`, `ledger_claim`, `ledger_record_vote`, `ledger_record_chosen`), and journal replay (`ledger_apply`, `ledger_replay_fold`).],
   [`messages.odin`], [The nine wire messages, `Prepare_Scope`, `Message(Value)`, `Envelope(Value)`, `message_value`, `Committed(Value)`, and `Host_Request`.],
   [`effects.odin`], [`Durability_Gate`, `Effects(Value, M, W, C, GATE)` with its exact capacities, the runtime gate, the accessors, `effects_requires_power_loss_barrier`, and the pre-durable iterator.],
   [`node.odin`], [`Role`, `Node_Options`, `Election_Peer`, the `Node` struct, lifecycle (`node_init`, `node_init_learner`, `node_restore`, `node_continue_at`, `node_restore_learner`, `node_begin_recovery`), the memory floor, trim installation, the queries, and `node_assert_valid`.],
   [`election.odin`], [Phase one: campaigns, `on_prepare` and `promise_bounded`, `on_promise` and `on_promise_range`, `quorum_fences`, `maybe_resolve_chunk`, `resolve_chunk` (obligation B3), `begin_next_chunk`, and `become_leader`.],
-  [`consensus.odin`], [Phase two and everything that keeps the log moving: `claim_live`, `emit_contiguous`, `send_accept`, `on_accept`, `on_accepted`, `on_commit`, `record_commit`, heartbeats, `on_learn`, `on_nack`, proposals and batches, `node_tick`, `resend_to`, and `node_step`, the single dispatch point.],
+  [`consensus.odin`], [Phase two consensus transitions and steady-state execution: `claim_live`, `emit_contiguous`, `send_accept`, `on_accept`, `on_accepted`, `on_commit`, `record_commit`, heartbeats, `on_learn`, `on_nack`, proposals and batches, `node_tick`, `resend_to`, and `node_step`, the single dispatch point.],
   [`ownership.odin`], [Rotating slot ownership: `owner_of`, `ownership_ballot`, own-slot arithmetic, `propose_owned`, skips (`SKIP_BURST`), `start_revocation`, resubmission, and `tick_ownership`.],
 )
 
-Three files layer on the core: `replicated_log.odin` (stop signs, sealing, `Log_Envelope`), `learner.odin` (the standalone non-voting window), and `errors.odin` (the `Error` enum and its explanations). Every file respects the structural limits of POD 0001 (`tools/check_style.py`: at most 1,408 lines per file, 108 columns per line, 70 lines of logic per procedure).
+Three higher-level files layer directly on the core: `replicated_log.odin` (stop signs, sealing, `Log_Envelope`), `learner.odin` (the standalone non-voting window), and `errors.odin` (the `Error` enum and its explanations). Every file respects the structural limits of POD 0001 (`tools/check_style.py`: at most 1,408 lines per file, 108 columns per line, 70 lines of logic per procedure).
 
 = Types and Capacities
 
@@ -146,11 +146,11 @@ The mapping to "The Part-Time Parliament" is direct. `promised` is `maxBal` for 
 
 == Values are referenced, not copied
 
-`Promise_Message`, `Accept_Message`, and `Commit_Message` carry `value: ^Value`; `Write_Vote` and `Write_Chosen` carry `value: ^Value`; `Committed` carries `value: ^Value`. Outbound, a pointer refers into the sending node's ledger (`&l.value[cell]`, or `&node.pass_through` for a decision released past the window edge) and stays valid until that node's next transition. Inbound, the host points it at the decoded value for the duration of the `step` call. `message_value(message)` returns the pointer and whether the kind carries one. An in-process transport that queues envelopes copies the value at enqueue time, as a codec would: the `Packet` type and `packet_of`/`packet_envelope` procedures in `tests/harness.odin`, `examples/counter.odin`, `sim/simulation.odin`, and `bench/main.odin` are that idiom. `Message(Value)` is 64 bytes and `Envelope(Value)` 72 bytes for every `Value`.
+`Promise_Message`, `Accept_Message`, and `Commit_Message` carry `value: ^Value`; `Write_Vote` and `Write_Chosen` carry `value: ^Value`; `Committed` carries `value: ^Value`. Outbound, a pointer refers into the sending node's ledger (`&l.value[cell]`, or `&node.pass_through` for a decision released past the window edge) and stays valid until that node's next transition. Inbound, the host points it at the decoded value for the duration of the `step` call. `message_value(message)` returns the pointer and whether the kind carries one. An in-process transport that queues envelopes copies the value at enqueue time, as a codec would: the `Packet` type and `packet_of`/`packet_envelope` procedures in `tests/harness.odin`, `examples/counter.odin`, `sim/simulation.odin`, and `bench/main.odin` illustrate this pattern. `Message(Value)` is 64 bytes and `Envelope(Value)` 72 bytes for every `Value`.
 
 == Membership and quorums
 
-`Membership(MAX_MEMBERS)` holds `members` (a `small_array` of `Node_Id` sorted by id whatever order the host gave; that position is the member's stable index in every per-member array of a node and the owner order under rotating ownership), `read_quorum_size`, and `write_quorum_size`. `membership_index_of` scans linearly for memberships of at most `LINEAR_LOOKUP_LIMIT = 8` members and binary-searches the sorted members above that. `membership_init` validates non-zero unique ids, defaults both quorums to a majority when the overrides are zero, and rejects `read + write <= total` with `.Non_Intersecting_Quorums` (obligation B2). Validation builds a local candidate and assigns it only on success, so a failed call leaves the caller's value untouched. `review_thousand_voters_reach_quorum` exercises the binary-search path; `review_hundred_twenty_eight_voters` the acknowledgement bitmap across a word boundary.
+`Membership(MAX_MEMBERS)` holds `members` (a `small_array` of `Node_Id` sorted by id whatever order the host gave; that position is the member's stable index in every per-member array of a node and the owner order under rotating ownership), `read_quorum_size`, and `write_quorum_size`. `membership_index_of` scans linearly for memberships of at most `LINEAR_LOOKUP_LIMIT = 8` members and binary-searches the sorted members above that. `membership_init` validates non-zero unique ids, defaults both quorums to a majority when the overrides are zero, and rejects `read + write <= total` with `.Non_Intersecting_Quorums` (obligation B2). Validation builds a local candidate and assigns it only on success, so a failed call leaves the caller's value untouched. `review_thousand_voters_reach_quorum` exercises the binary-search path, while `review_hundred_twenty_eight_voters` verifies the acknowledgement bitmap across a 64-bit word boundary.
 
 == Volatile node state
 
@@ -180,13 +180,13 @@ Under rotating ownership the same procedures run with different inputs: `propose
 
 = Error Contract
 
-`Error` is one enum for the core, the log, and the learner, spelled in Ada_Case (`.Not_Leader`, `.Window_Full`, `.Configuration_Mismatch`). `explain_error(err)` returns a static string for every value: a banner title such as `-- WINDOW FULL ---`, a blank line, a plain-language explanation, and a line beginning `Hint:` that names the corrective action. The test `test_every_error_explains_problem_and_recovery` iterates the whole enum, so adding a value without an explanation fails the suite. No transition allocates or formats; the host calls `explain_error` at its own boundary.
+`Error` is one enum for the core, the log, and the learner, spelled in Ada_Case (`.Not_Leader`, `.Window_Full`, `.Configuration_Mismatch`). `explain_error(err)` returns a static string for every value: a banner title such as `"-- WINDOW FULL --"`, a blank line, a plain-language explanation, and a line beginning with `"Hint:"` that specifies the corrective action. The test `test_every_error_explains_problem_and_recovery` iterates the whole enum, so adding a value without an explanation fails the suite. No transition allocates or formats; the host calls `explain_error` at its own boundary.
 
 = Verification Strategy
 
 The evidence that exists in the repository today:
 
-1. *Unit tests.* 79 procedures marked `@(test)` across `tests/` (`grep -c "@(test)" tests/*.odin`), run in both `-debug` and `-o:speed` builds. They cover ballots and quorums, the bit set, chunked recovery and retry progress, batches, inherited-prefix gating, trim identities, restoration from a replayed ledger, learner windows, sealing, the five `ownership_*` scenarios, and the repairs listed in POD 0007 (the `review_*` tests). `tests/harness.odin` supplies the journal and packet idioms every test shares.
+1. *Unit tests.* 79 procedures marked `@(test)` across `tests/` (`grep -c "@(test)" tests/*.odin`), run in both `-debug` and `-o:speed` builds. They cover ballots and quorums, the bit set, chunked recovery and retry progress, batches, inherited-prefix gating, trim identities, restoration from a replayed ledger, learner windows, sealing, the five `ownership_*` scenarios, and the repairs listed in POD 0007 (the `review_*` tests). `tests/harness.odin` supplies the journal and packet fixtures shared across all tests.
 2. *Election matrix.* `election_matrix_preserves_chosen_values` enumerates every assignment of no vote / ballot 1 / ballot 2 to three voters, all six intersecting quorum pairs, and all six first-response orders, asserting exactly 972 cases and that any value chosen by an earlier write quorum survives.
 3. *Seeded simulator.* `sim/simulation.odin` drives one, three, or five nodes under drops, duplication, link cuts, crashes, and restarts from a replayed journal, in both the single-leader and the `--ownership` mode. Crashes land at `Before_Writes`, `Partial_Writes`, or `Partial_Messages` inside the host commit sequence, and pre-durable accepts leave early. Oracles run after every transition: agreement against a golden log, validity, promise regression, vote-below-promise, one value per ballot and slot, contiguous release, and after quiescence liveness (a fresh decision) and convergence. `tools/check.py` runs `--seeds` seeds (default 20) for each node count in each mode: 60 single-leader and 60 ownership runs, plus 120 focused small-window/chunk-3 runs covering majority and flexible quorums. The archived extended run used 100 seeds and completed 720 simulations (7.2 million steps).
 4. *Reconfiguration scenarios.* Four seeded scenarios in `tests/test_reconfiguration_sim.odin`, each over 16 seeds, check seal agreement, nothing released past the seal, replay keeps the seal, and the next configuration decides on the same slot line; the fourth runs under rotating ownership and requires decisions other owners reach above the stop sign to be abandoned.
@@ -197,8 +197,9 @@ This is finite executable evidence. No refinement proof or coverage percentage i
 
 = Current Implementation Review (2026-09-17)
 
-This committed specification describes the implemented core. "Pure" means that the
-core performs no I/O; transitions mutate the node and fill an effects buffer.
+This committed specification describes the implemented core. "Pure" indicates that the
+core performs no direct I/O; state transitions mutate the node's memory and append to
+caller-provided effects buffers.
 `recovery_index` checks the slot against the active range before subtracting
 `recover_base` and narrowing the result. Recovery scratch and each peer's seen
 bitmap have chunk capacity. `recovery_ready` freezes selection before phase two;

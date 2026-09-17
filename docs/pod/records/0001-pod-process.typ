@@ -110,11 +110,11 @@ The creed is enforced by `tools/check_style.py`, which `make vet`, `make check`,
 == 1. File boundary
 
 - *Maximum file length:* a single source file must not exceed 1,408 physical lines,
-  including comments and blank lines. The core protocol is therefore ten files, each
-  with one responsibility: `ballot.odin`, `bit_set.odin`, `membership.odin`,
-  `ledger.odin` (durable state), `messages.odin`, `effects.odin`, `node.odin`
-  (lifecycle and queries), `election.odin` (phase one), `consensus.odin` (phase two,
-  timers, dispatch), and `ownership.odin` (rotating slot ownership).
+  including comments and blank lines. The core protocol is therefore organized into
+  ten files, each with a single responsibility: `ballot.odin`, `bit_set.odin`,
+  `membership.odin`, `ledger.odin` (durable state), `messages.odin`, `effects.odin`,
+  `node.odin` (lifecycle and queries), `election.odin` (phase one), `consensus.odin`
+  (phase two, timers, dispatch), and `ownership.odin` (rotating slot ownership).
 
 == 2. Line width boundaries
 
@@ -132,9 +132,10 @@ The creed is enforced by `tools/check_style.py`, which `make vet`, `make check`,
 
 == 4. Elm-style error handling and diagnostics
 
-- *Actionable reporting:* an error never only states what failed; it explains why and
-  gives a path to resolution. In code this is the `Error` enum plus `explain_error`, a
-  data table with one entry per value, and a test that fails when a value has no entry.
+- *Actionable reporting:* an error does not merely state what failed; it explains why
+  and provides an actionable path to resolution. In code this is the `Error` enum plus
+  `explain_error`, a data table with one entry per value, and a test that fails when a
+  value has no entry.
 - *Diagnostic structure:* every error block or runtime diagnostic carries three parts:
   the *context* (the failing input or state), the *hint* (the assumption or constraint that
   was breached), and the *remediation* (how to fix it). The durability gate's
@@ -147,9 +148,9 @@ The creed is enforced by `tools/check_style.py`, which `make vet`, `make check`,
   (the `Ledger` columns and bitmaps, the inline `small_array` effect buffers),
   predictable transformations, and no redundant payload copies into effects. Values
   are copied into owned ledger storage; borrowed effect pointers have explicit lifetimes.
-- *Safety via visibility:* performance never buys unvetted cleverness. The library leans
-  on Odin's type checking, explicit bounds (`#assert`, `where` clauses), and the runtime
-  gate rather than on trust.
+- *Safety through visibility:* performance never justifies unvetted cleverness. The
+  library relies on Odin's type checking, explicit compile-time bounds (`#assert`,
+  `where` clauses), and the runtime durability gate rather than implicit trust.
 - *Long-term maintainability:* every engineering decision must pass the "mere mortal
   explainability test". An optimisation that cannot be explained simply to a teammate is
   refactored into a simpler, flatter structure.
@@ -166,7 +167,7 @@ Keep teaching material in `docs/book/`, design and process records in
 under `bench/`; their explanations belong in the book and their design evidence in
 POD records. JSON, CSV, patches, and profile archives remain machine-readable evidence
 under `bench/results/`. Temporary agent notes and scratch plans do not belong in the
-repository; keep them outside the project tree, for example under `/tmp`.
+repository; keep them outside the tracked workspace.
 
 == Book editorial guide
 
@@ -257,7 +258,7 @@ that every proposed feature ships. The registry and each record must agree.
   [0008], [Committed], [Paper safety argument over code; no machine-checked implementation proof.],
   [0009], [Committed], [Implemented layout and recovery storage; archived matched profiles and measurements.],
   [0010], [Committed], [Implemented ownership; bounded best-effort resubmission, not guaranteed delivery.],
-  [0011], [Committed], [Python SDK; C ABI, typed APIs, wheels and measured evidence all land. Optional capabilities refused by bit.],
+  [0011], [Committed], [Implemented Python SDK: C ABI, typed APIs, packaging wheels, and measured evidence. Optional capabilities rejected by capability bit.],
 )
 
 The September 17 review updates stale contracts in place, retains attributable
