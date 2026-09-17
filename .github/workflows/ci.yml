@@ -1,0 +1,67 @@
+name: ci
+
+# The repository had no CI before the Python SDK. This runs the gate that
+# CONTRIBUTING describes: the Odin verification first, then the Python one, then
+# a wheel built from an sdist outside the checkout.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+env:
+  ODIN_VERSION: dev-2026-09
+
+jobs:
+  odin:
+    name: odin verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Odin
+        uses: laytan/setup-odin@v2
+        with:
+          release: ${{ env.ODIN_VERSION }}
+      - run: odin version
+      - name: make check
+        run: make check
+
+  python:
+    name: python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Odin
+        uses: laytan/setup-odin@v2
+        with:
+          release: ${{ env.ODIN_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Style, lint, types and tests
+        run: make check-python
+        env:
+          UV_PYTHON: ${{ matrix.python }}
+      - name: API reference builds
+        run: make python-docs
+
+  wheel:
+    name: wheel from sdist
+    runs-on: ubuntu-latest
+    needs: [python]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Odin
+        uses: laytan/setup-odin@v2
+        with:
+          release: ${{ env.ODIN_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+      - name: Build outside the checkout and smoke-test on every claimed Python
+        run: make python-wheel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paxodin-sdist
+          path: python/paxodin/dist/*.tar.gz

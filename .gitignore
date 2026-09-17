@@ -17,3 +17,19 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Python subproject: the venv is local; uv.lock is committed.
+python/paxodin/.venv/
+python/paxodin/dist/
+# The sdist build hook stages the core here so a source distribution can build
+# outside the checkout. It is a build artifact: the repository keeps exactly one
+# copy of the algorithm, in src/.
+python/paxodin/native/core/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Rust/Cargo build outputs (matched benchmarks)
+target/
+

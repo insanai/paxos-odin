@@ -61,6 +61,19 @@ with tempfile.TemporaryDirectory(prefix='paxos-check-') as work:
                 runs += 1
     print(f'PASS {runs} simulations (single leader and rotating ownership), {runs * args.steps} fault steps, '
           f'{total_crashes} crashes inside the host commit sequence', flush=True)
+    # Small windows force packet lifetime and chunk-index reuse frequently.
+    for read, write in ((0, 0), (3, 1), (1, 3)):
+        run([ODIN, 'build', 'sim', '-debug', '-define:SIM_WINDOW=8', '-define:SIM_CHUNK=3',
+             f'-define:SIM_READ_QUORUM={read}', f'-define:SIM_WRITE_QUORUM={write}',
+             f'-out:{simulator}'])
+        for mode in ((), ('--ownership',)):
+            for seed in range(1, min(args.seeds, 20) + 1):
+                command = [str(simulator), '--nodes=3', f'--seed={seed}', f'--steps={args.steps}', *mode]
+                result = subprocess.run(command, capture_output=True, text=True, timeout=300)
+                if result.returncode:
+                    raise SystemExit(f'Chunk simulation failed (read={read}, write={write}): {command}\n'
+                                     f'{result.stdout}{result.stderr}')
+    print('PASS chunk=3/window=8 simulations, majority and both flexible-quorum extremes', flush=True)
     run([ODIN, 'run', 'examples/counter.odin', '-file', f'-out:{work / "counter"}'])
     benchmark = work / 'bench'
     run([ODIN, 'build', 'bench', '-o:speed', f'-out:{benchmark}'])

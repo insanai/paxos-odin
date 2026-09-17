@@ -10,11 +10,17 @@
 Exit status is non-zero when a hard limit is broken, so the build fails.
 """
 import argparse
+import ast
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# ruff enforces every other rule for Python; these two have no ruff equivalent
+# (PLR0915 counts statements, not lines, and pylint's too-many-lines has no port),
+# so one constant governs both languages from here.
+PYTHON_PATHS = ('python/paxodin/src', 'python/paxodin/tests', 'python/paxodin/examples',
+                'python/paxodin/hatch_build.py')
 MAX_FILE_LINES = 1408
 HARD_COLUMNS = 108
 SOFT_COLUMNS = 99
@@ -56,6 +62,50 @@ def check_procs(path, lines, problems):
         i += 1
 
 
+def python_logic_lines(lines, node):
+    body = node.body
+    # A docstring documents the rule a procedure protects; it is not logic.
+    if body and isinstance(body[0], ast.Expr) and isinstance(getattr(body[0], 'value', None), ast.Constant) \
+            and isinstance(body[0].value.value, str):
+        body = body[1:]
+    if not body:
+        return 0
+    first = body[0].lineno
+    last = max(getattr(statement, 'end_lineno', statement.lineno) for statement in body)
+    count = 0
+    for line in lines[first - 1:last]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+        count += 1
+    return count
+
+
+def check_python_procs(path, lines, problems):
+    """Apply the procedure-length limit to Python through the parser, not a regex."""
+    try:
+        tree = ast.parse('\n'.join(lines))
+    except SyntaxError as error:
+        problems.append(f'{path}:{error.lineno}: does not parse ({error.msg})')
+        return
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        count = python_logic_lines(lines, node)
+        if count > MAX_PROC_LOGIC_LINES:
+            problems.append(f'{path}:{node.lineno}: {node.name} has {count} lines of logic '
+                            f'(limit {MAX_PROC_LOGIC_LINES})')
+
+
+def python_sources(paths):
+    for base in paths:
+        target = ROOT / base
+        if target.is_file():
+            yield target
+        elif target.is_dir():
+            yield from sorted(p for p in target.glob('**/*.py') if '.venv' not in p.parts)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--soft', action='store_true', help='also report lines over the 99-column soft limit')
@@ -76,6 +126,13 @@ def main():
                 elif width > SOFT_COLUMNS:
                     soft.append(f'{rel}:{number}: {width} columns (soft limit {SOFT_COLUMNS})')
             check_procs(rel, lines, problems)
+
+    for path in python_sources(PYTHON_PATHS):
+        rel = path.relative_to(ROOT)
+        lines = path.read_text().splitlines()
+        if len(lines) > MAX_FILE_LINES:
+            problems.append(f'{rel}: {len(lines)} lines (limit {MAX_FILE_LINES})')
+        check_python_procs(rel, lines, problems)
 
     if args.soft and soft:
         print('Soft limit exceeded (wrap when convenient):\n  ' + '\n  '.join(soft))

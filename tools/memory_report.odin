@@ -21,6 +21,9 @@ main :: proc() {
 	report([128]u64, 3, 256, 64)
 	report(u64, 5, 256, 64)
 	report([128]u64, 5, 256, 64)
+	// Equal chunk/window is the no-reduction compatibility boundary.
+	report(u64, 3, 256, 256)
+	report([128]u64, 3, 256, 256)
 	report(u64, 3, 4096, 256)
 	report([128]u64, 3, 4096, 256)
 }
