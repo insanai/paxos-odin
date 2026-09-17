@@ -419,7 +419,7 @@ microarchitecture. Record Python, backend, Odin and source versions in artifacts
 Package versioning is independent of the core; ABI compatibility and bundled core
 revision are queryable. Publishing is a separate release action.
 
-= Implementation Plan and Acceptance Gates
+= Validation and Acceptance Gates
 
 == 1. Native boundary
 
@@ -547,13 +547,15 @@ builds that omit it. Asynchronous support shipped with the ownership and
 cancellation model described above; it is not a wrapper of blocking calls in
 tasks, which would have left two coroutines free to transition one node at once.
 
-= Alternatives and Open Questions
+= Alternatives Considered
 
 A direct CPython extension may reduce conversion overhead but adds interpreter ABI
 and reference-management work. CFFI supplies another FFI path but adds build or
 runtime dependencies. An out-of-process service isolates crashes but creates a
 network protocol and operational service. Begin with ctypes and a small stable
 boundary, then let matched profiles justify additional machinery.
+
+= Open Questions
 
 The open questions of the draft are now settled. The stock profile is seven
 members, a 256-slot window, a 64-slot recovery chunk and 1,024 payload bytes; the
