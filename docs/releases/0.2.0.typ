@@ -43,7 +43,7 @@ shape: one input, one `Effects` batch, persist then confirm then transmit then a
   that discharges it and the test or oracle that exercises it (POD 0008).
 - *Verification in both modes.* The simulator runs with one leader or with every
   node proposing; `make check` runs 120 seeded simulations. Five ownership tests
-  and a fourth reconfiguration scenario join the suite, which now holds 55
+  and a fourth reconfiguration scenario join the suite, which now holds 69
   tests; the compiler fixtures grow to nine.
 
 = What changed in the API
@@ -100,7 +100,7 @@ the call that received it.
 
 = Verification
 
-- 55 tests under `tests/`, run in `-debug` and `-o:speed` by `make check`; a
+- 69 tests under `tests/`, run in `-debug` and `-o:speed` by `make check`; a
   972-case election matrix; 21 review regressions; 5 ownership scenarios; 4
   reconfiguration scenarios under 16 seeds each; 128- and 1,024-voter quorums.
 - The simulator in both modes: 120 runs of 10,000 steps in `make check`, with
@@ -123,22 +123,22 @@ nanoseconds per committed value with an in-process transport were:
   columns: (auto, auto, auto, auto, auto),
   align: (left, right, right, right, right),
   [*workload*], [*paxos-odin*], [*paxos-zig*], [*OmniPaxos*], [*LibPaxos3*],
-  [3 voters, 8 B, one at a time], [165], [117], [997], [2,247],
-  [3 voters, 8 B, 8 in flight], [149], [117], [196], [–],
-  [3 voters, 8 B, 64 in flight], [149], [112], [78], [–],
-  [5 voters, 8 B, one at a time], [225], [210], [2,714], [–],
-  [5 voters, 8 B, 8 in flight], [197], [206], [445], [–],
-  [3 voters, 1 KiB, one at a time], [486], [2,700], [1,244], [–],
-  [3 voters, 1 KiB, 8 in flight], [521], [2,740], [419], [–],
-  [3 owners, 8 B, one at a time, rotating ownership], [169], [–], [–], [–],
-  [3 owners, 8 B, 8 in flight, rotating ownership], [161], [–], [–], [–],
+  [3 voters, 8 B, one at a time], [148], [113], [1,010], [2,280],
+  [3 voters, 8 B, 8 in flight], [144], [115], [198], [–],
+  [3 voters, 8 B, 64 in flight], [141], [113], [83], [–],
+  [5 voters, 8 B, one at a time], [191], [219], [2,721], [–],
+  [5 voters, 8 B, 8 in flight], [182], [210], [446], [–],
+  [3 voters, 1 KiB, one at a time], [505], [2,719], [1,244], [–],
+  [3 voters, 1 KiB, 8 in flight], [552], [2,707], [423], [–],
+  [3 owners, 8 B, one at a time, rotating ownership], [161], [–], [–], [–],
+  [3 owners, 8 B, 8 in flight, rotating ownership], [154], [–], [–], [–],
 )
 
 With a journal and one `fsync` per host commit round, this library costs
-27.99 ms per value one at a time and 3.82 ms with group commit over eight
-values; paxos-zig's equivalent modes cost 28.07 ms and 3.65 ms. The disk,
+27.49 ms per value one at a time and 3.71 ms with group commit over eight
+values; paxos-zig's equivalent modes cost 27.54 ms and 3.53 ms. The disk,
 not the protocol, is the bill. Host: AMD Ryzen 7 5800H with Radeon Graphics, Linux 7.0.0-28-generic; recorded
-2026-09-16T14:40:24Z.
+2026-09-16T23:53:16Z.
 
 = Known limits
 
