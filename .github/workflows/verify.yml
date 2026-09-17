@@ -14,14 +14,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup-odin
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.12.15"
+          python-version: "3.14"
       - name: Tests, contracts, style and fault simulation
         env:
           FULL: ${{ inputs.full }}
         run: |
           if [ "$FULL" = true ]; then
-            python3 tools/check.py
+            uv run --no-project python tools/check.py
           else
-            python3 tools/check.py --seeds=2 --steps=2000
+            uv run --no-project python tools/check.py --seeds=2 --steps=2000
           fi
   python:
     runs-on: ubuntu-22.04
