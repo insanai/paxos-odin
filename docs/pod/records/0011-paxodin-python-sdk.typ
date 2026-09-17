@@ -558,12 +558,14 @@ boundary, then let matched profiles justify additional machinery.
 The open questions of the draft are now settled. The stock profile is seven
 members, a 256-slot window, a 64-slot recovery chunk and 1,024 payload bytes; the
 measured cost is 417,304 bytes for one node and 41,840 for one effects batch, both
-reported through `paxodin_profile`. The release matrix qualifies Linux x86-64, Windows x86-64 and macOS Apple
-Silicon with native builds and installed-wheel tests. The journal format is a locked node directory holding a header that
-binds node identity, configuration, format version and profile fingerprint,
-followed by length-delimited CRC-32 records whose values travel inline, because
-replay dereferences each record's value. The Python distribution is named `paxodin`; the Odin package remains `paxos`.
-Tagged releases publish only after the verification and artifact jobs succeed.
+reported through `paxodin_profile`. The release matrix qualifies Linux x86-64,
+Windows x86-64, and macOS Apple Silicon with native builds and installed-wheel tests.
+The journal format is a locked node directory holding a header that binds node
+identity, configuration, format version, and profile fingerprint, followed by
+length-delimited CRC-32 records whose values travel inline, because replay
+dereferences each record's value. The Python distribution is named `paxodin`; the
+Odin package remains `paxos`. Tagged releases publish only after the verification
+and artifact jobs succeed.
 
 Two decisions changed during implementation, and the reasons are recorded rather
 than the outcomes alone. The build backend is hatchling with a sixty-line hook
