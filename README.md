@@ -232,7 +232,7 @@ window, durability ordering, rotating ownership, and stop signs each preserve
 the theorem. Every lemma names the procedure that discharges its premise and
 the test or oracle that exercises it (POD 0008).
 
-**Tests.** `make test` runs 69 tests in `tests/`. They include a 972-case
+**Tests.** `make test` runs 79 tests in `tests/`. They include a 972-case
 election matrix (every three-voter assignment of no vote / ballot 1 / ballot 2,
 every first-response order, every intersecting quorum pair; a value chosen by an
 earlier quorum must survive), 21 regression tests from the review recorded in
@@ -255,8 +255,7 @@ contiguous release. After the fault phase the harness heals every link,
 restarts every node, and requires a fresh proposal to be decided and every
 node to hold the whole golden log. A failure prints the replay command:
 `paxos-sim --seed=N --steps=N --nodes=N --verbose`. This harness, checking
-agreement at the vote level rather than at the commit level, is what found the
-one safety bug of the redesign: an owner's round-zero accept leaving before the
+agreement at the vote level rather than at the commit level, is what found a safety bug in the redesign: an owner's round-zero accept leaving before the
 storage barrier, so that a restarted owner reused its ballot for a new value.
 Round-zero accepts now wait for the barrier.
 
@@ -270,8 +269,9 @@ diagnostic carries a hint. It then builds four durability fixtures in both
 diagnostic and the two correct orderings to run.
 
 **`make check`.** Runs style (the Zen constraints from POD 0001, `-vet -strict-style`), the tests in
-`-debug` and `-o:speed`, the contract fixtures, 120 simulations of 10,000 steps
-(1, 3, and 5 nodes × 20 seeds × both modes; `--seeds` and `--steps` widen it), the counter
+`-debug` and `-o:speed`, the contract fixtures, 240 simulations of 10,000 steps
+(120 default-window runs plus 120 window-8/chunk-3 runs with majority and flexible
+quorums; `--seeds` and `--steps` widen the run), the counter
 example, the benchmark JSON schema, and a check that the CLI propagates a
 failing subprocess. Everything is built in a temporary directory so a stale
 binary cannot mask a failure.
@@ -280,6 +280,42 @@ There is no model-checked specification in this repository. The evidence is
 finite and executable, not exhaustive.
 
 ## Benchmarks
+
+The current matched run is recorded in
+[recovery-matched-20260917.json](bench/results/recovery-matched-20260917.json).
+Each implementation processes 4,096 values per epoch with matching voter counts,
+payloads, and outstanding-work limits. Every learner's ordered payloads are checked.
+The selected rows below report median **nanoseconds per completed value** over nine
+samples; lower is better. “Before” is the preserved Odin baseline.
+
+| Voters | Bytes | Depth | Odin before | Odin now | Zig | OmniPaxos | LibPaxos3 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 3 | 8 | 1 | 107.5 | 109.2 | 114.4 | 1,062.1 | 2,543.6 |
+| 3 | 8 | 64 | 108.1 | 111.0 | 118.3 | 88.1 | 2,555.0 |
+| 5 | 8 | 1 | 202.7 | 206.7 | 166.0 | 3,077.3 | 3,335.9 |
+| 5 | 8 | 64 | 204.5 | 209.5 | 177.5 | 153.2 | 3,431.9 |
+| 3 | 1024 | 1 | 357.1 | 300.0 | 1,725.8 | 3,251.8 | 3,388.0 |
+| 3 | 1024 | 64 | 469.9 | 349.3 | 1,938.0 | 2,450.5 | 3,815.1 |
+| 5 | 1024 | 64 | 893.8 | 935.2 | 3,350.4 | 3,170.2 | 5,923.4 |
+
+Three-node 1 KiB workloads improved by about 16–26% in paired comparisons against
+the Odin baseline. Some small-value rows were 1–3% slower. The five-node 1 KiB,
+depth-64 result is inconclusive: paired ratio 1.047, 95% interval 0.928–1.089.
+The defined 5% regression gate passed, which does not prove every slowdown is below
+5%. Zig and OmniPaxos still lead some categories.
+
+These are in-process CPU measurements, without disk, serialization, or network delay.
+Native batching and preexecution differ between libraries. See the
+[full report and profiles](docs/pod/records/0009-data-oriented-ledger.typ) and
+[reproduction instructions](docs/book/06_measurement_methods.typ) for all 18 workloads, build flags,
+source hashes, and memory measurements. Run `make bench-matched` or `make bench-profile`.
+
+### Historical CPU and durability results
+
+The following tables preserve the September 16 run with the earlier harness,
+including its journal replay mirror. They are not measurements of the current source
+and cannot be compared directly with the matched timings above.
+
 
 Four implementations ran the same workloads on this machine in one session,
 one after another: this library, [paxos-zig](https://github.com/insanai/paxos-zig)
@@ -315,21 +351,12 @@ round, on the same ZFS volume:
 | paxos-zig | fsync-each | 27.54 ms | – |
 | paxos-zig | group8 | 3.53 ms | – |
 
-Read these for what they are. On three voters with 8-byte values paxos-zig is
-between a fifth and thirty percent cheaper per value than this library; with
-five voters this library is about a tenth cheaper; with 1 KiB values this
-library is more than five times cheaper, because a value is never copied between proposal and commit: records
-and messages point at the one copy in the ledger. Rotating ownership costs
-within a tenth of a single leader per value on the same three nodes, and in
-exchange every node proposes with no round trip to a leader. OmniPaxos pays for
-allocation and locking in the one-at-a-time mode and wins in two rows, at 64
-values in flight and with 1 KiB values at eight in flight, where it coalesces
-many entries into few envelopes; this library and paxos-zig always send one
-envelope per value. LibPaxos3 runs a heavier
-twelve-envelope path with phase-one pre-execution. None of these numbers is a
-service latency, and the durable rows show that the disk, not the protocol, is
-the bill: both bounded libraries land within a few percent of each other once
-an `fsync` sits in the path.
+In this historical run, Zig led the three-voter small-value rows, while Odin led
+the five-voter and one-at-a-time 1 KiB rows. OmniPaxos led two pipelined rows.
+The durable results were dominated by storage barriers on the recording disk.
+Records and messages borrow ledger values inside Odin; the host still copies or
+serialises values for transport and storage. The tables alone do not isolate the
+cause of a timing difference.
 
 ```sh
 make bench                                   # this library, in-memory modes
@@ -344,7 +371,10 @@ make bench-compare                           # all four implementations, records
 index to `docs/build/pod-index.pdf`, and every registered POD record to
 `docs/build/pod-NNNN-<slug>.pdf`.
 
-The book has a preface, a chapter on how it teaches, and eight parts:
+The [editorial guide](docs/pod/records/0001-pod-process.typ) describes the book's approach to explanations,
+proofs, code excerpts, diagrams, and measurement claims.
+
+The book has a preface, a chapter on how it teaches, and nine parts:
 
 | part | chapter |
 |---|---|
@@ -354,9 +384,10 @@ The book has a preface, a chapter on how it teaches, and eight parts:
 | III. (continued) | The Safety Argument: axioms, lemmas, and the agreement theorem |
 | IV. The Odin library | Bounded Core State Machine; Advanced Replicated Log Features; Rotating Slot Ownership; Writing Reviewable Consensus Code |
 | V. Three worked systems | The replicated counter, a key-value host design, a multi-region deployment |
-| VI. Evidence | Validation, Testing, and Operations |
+| VI. Evidence | Validation, Testing, and Operations; Reproducing Measurements |
 | VII. Desk reference | Consensus Desk Reference |
 | VIII. Conformance | Lamport Conformance Appendix |
+| IX. Python integration | Paxodin: A Python Host for the Odin Core (proposed) |
 
 Paxos Odin Discussions (PODs) are the design records, one Typst file each under
 `docs/pod/records/`. `docs/pod/registry.typ` is the source of truth for the
@@ -374,9 +405,24 @@ list; at the time of writing it holds:
 | 0008 | Safety Argument: Axioms, Lemmas, and Proof Obligations | committed |
 | 0009 | The Data-Oriented Ledger | committed |
 | 0010 | Rotating Slot Ownership | committed |
+| 0011 | [Paxodin: A Python SDK over the Odin Core](docs/pod/records/0011-paxodin-python-sdk.typ) | committed |
 
 `./bin/paxos-cli pod list`, `pod new <slug>`, and `pod promote <slug>` manage
 the records.
+
+## Recovery memory and reproducible comparisons
+
+Recovery scratch scales with `CHUNK_SLOTS`, independently of the ledger window.
+For three voters and 1 KiB values, node plus effects uses 433,176 bytes at a
+256-slot window/64-slot chunk, down from 633,120 bytes. This is static storage,
+not total process memory; transport and application state remain host-owned.
+See [the memory report](docs/book/06_measurement_methods.typ) and [matched measurement instructions](docs/book/06_measurement_methods.typ).
+
+`make bench-matched` compares four pure state machines with matching command counts,
+payloads, and outstanding-work limits. `make bench-profile` uses Callgrind and
+Massif; it requires no `perf` access. These development tools add no storage,
+networking, threading, or runtime dependencies to the library. Historical benchmark
+rows above remain measurements of their recorded source revision and harness.
 
 ## Scope and operational contract
 
@@ -440,6 +486,52 @@ that instantiate it. Documentation other than the two READMEs and
 [`CONTRIBUTING.md`](CONTRIBUTING.md) is written in Typst; see
 `CONTRIBUTING.md` before opening a change.
 
+## Python
+
+`python/paxodin/` is a Python package over the same core. The Odin library keeps
+owning the disk, the network and the clock; the package owns the *order* of the
+durability contract and the lifetime of the bytes it returns. It ships no socket,
+no TLS policy and no retry loop — you supply a journal and a transport.
+
+```python
+from paxodin.testing import Cluster
+
+with Cluster(3) as cluster:                 # in-process, memory-backed
+    receipt = cluster.append(b"set counter 41")
+    print(receipt.slot, receipt.value)
+    for entry in cluster.session(1).entries():
+        print(entry.slot, entry.entry.body)
+```
+
+```python
+from paxodin.testing import AsyncCluster
+
+async with AsyncCluster(3) as cluster:      # no polling loop; asyncio drives it
+    receipt = await cluster.append(b"set counter 41")
+```
+
+Odin is the engine, Python is the product: messages are typed classes you
+`match` on, timers are seconds, errors render like the core's own (banner,
+cause, `Hint:`) and are also the builtin you'd expect (`CommitTimeout` is a
+`TimeoutError`), and reading the log is iteration.
+
+```sh
+make check-python    # ruff, mypy --strict, 153 tests against both native libraries
+make python-wheel    # wheel from an sdist built outside the repo, on 3.12-3.14
+make python-docs     # the API reference, generated from Google docstrings
+```
+
+Three events stay distinct throughout, because collapsing them is how a consensus
+API starts lying: **agreement** (a quorum chose it), **release** (this participant
+knows it, in order, durably) and **application** (your code acted on it). An
+`append` receipt reports the first two, at one participant.
+
+Not provided, deliberately: leases or linearizable local reads (the core has
+neither), automatic retry after a timeout, reconfiguration, rotating ownership and
+learners — the last three are refused by capability bit rather than half-supported.
+Design record: [POD 0011](docs/pod/records/0011-paxodin-python-sdk.typ) and Part IX
+of the book.
+
 ## Directory structure
 
 ```
@@ -448,7 +540,7 @@ paxos-odin/
 │   ├── paxos.odin           VERSION, defaults, proc groups, short spellings
 │   ├── ballot.odin          Node_Id, Slot, the packed Ballot, cell_of
 │   ├── bit_set.odin         Bit_Set(N): fixed bitmaps with word-wise scans
-│   ├── membership.odin      Membership with a sorted index and quorum sizes
+│   ├── membership.odin      Canonical sorted membership and quorum sizes
 │   ├── ledger.odin          Ledger: Lamport's variables in columns; the Write records
 │   ├── messages.odin        The nine messages, Envelope, Committed, host requests
 │   ├── effects.odin         Effects and the durability gate
@@ -460,7 +552,11 @@ paxos-odin/
 │   ├── learner.odin         Learner: contiguous release of certified decisions
 │   └── errors.odin          Error and explain_error
 ├── examples/counter.odin    Three-node replicated counter
-├── tests/                   69 tests (odin test tests) and the shared harness
+├── python/paxodin/          The Python package (paxodin); see POD 0011
+│   ├── native/              C ABI bridge over src/ (Odin, not a second Paxos)
+│   ├── src/paxodin/         Node, Session, codec, storage, protocols, testing
+│   └── tests/, examples/    Hazard, codec, storage and cluster suites
+├── tests/                   79 tests (odin test tests) and the shared harness
 ├── sim/                     Deterministic fault simulator (paxos-sim), both modes
 ├── bench/                   In-memory and durable benchmark (paxos-bench); results/
 ├── cli/                     paxos-cli: build, test, sim, bench, example, check, docs, pod

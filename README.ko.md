@@ -23,8 +23,8 @@ value)가 고정된 윈도우 위의 병렬 배열에 저장되며, 사용 중�
 절대 복사되지 않습니다: 레코드나 메시지는 장부(ledger) 안의 값을 가리키고,
 직렬화할 때 호스트가 그 값을 복사합니다.
 
-규칙은 하나입니다. **한 배치의 모든 write를 영속화한 뒤에야 같은 배치의 메시지를
-전송하고**, 그 다음 `confirm_writes_durable`를 호출합니다. 확인 전에 메시지를
+규칙은 하나입니다. **한 배치의 모든 write를 영속화하고
+`confirm_writes_durable`를 호출한 뒤에 같은 배치의 메시지를 전송합니다.** 확인 전에 메시지를
 읽거나, 확인되지 않은 write가 남아 있는 배치를 리셋하면, 위반 내용과 고치는 방법을
 적은 진단 메시지를 출력하고 프로세스가 정지합니다. 이 게이트는 기본으로 켜져
 있으며, 아래의 네 가지 규칙에 대해 감사(audit)를 마친 호스트만 끌 수 있습니다.
@@ -232,7 +232,7 @@ B1–B3로부터 합의(agreement)를 증명한 다음, 청크 단위 복구, �
 모든 보조정리는 자신의 전제를 충족시키는 프로시저와, 그것을 실행하는 테스트 또는
 오라클을 명시합니다(POD 0008).
 
-**테스트.** `make test`는 `tests/`의 69개 테스트를 실행합니다. 여기에는 972건의
+**테스트.** `make test`는 `tests/`의 79개 테스트를 실행합니다. 여기에는 972건의
 선출 매트릭스(세 투표자에 대한 무투표 / ballot 1 / ballot 2의 모든 배정, 모든
 첫 응답 순서, 교차하는 모든 정족수 쌍; 이전 정족수가 고른 값은 살아남아야 함),
 POD 0007에 기록된 리뷰에서 나온 21개의 회귀 테스트, 5개의 순환 슬롯 소유
@@ -266,8 +266,9 @@ round-zero accept는 배리어를 기다립니다.
 지정된 진단과 함께 중단되고 두 올바른 순서는 실행되는지 확인합니다.
 
 **`make check`.** 스타일(POD 0001의 Zen 제약, `-vet -strict-style`), `-debug`와
-`-o:speed`의 테스트, 계약 픽스처, 10,000 스텝짜리 시뮬레이션 120회(1, 3, 5 노드
-× 20 시드 × 두 모드; `--seeds`와 `--steps`로 확대), counter 예제, 벤치마크 JSON
+`-o:speed`의 테스트, 계약 픽스처, 10,000 스텝짜리 시뮬레이션 240회(기본 윈도 120회와
+윈도 8/청크 3에서 과반수 및 유연한 쿼럼을 사용하는 120회; `--seeds`와
+`--steps`로 확대), counter 예제, 벤치마크 JSON
 스키마, 그리고 CLI가 실패한 하위 프로세스를 전파하는지를 검사합니다. 모든 것은
 임시 디렉터리에서 빌드되므로 오래된 바이너리가 실패를 가릴 수 없습니다.
 
@@ -275,6 +276,39 @@ round-zero accept는 배리어를 기다립니다.
 전수 탐색이 아닙니다.
 
 ## 벤치마크
+
+최신 동일 조건 비교는
+[2026-09-17 측정 파일](bench/results/recovery-matched-20260917.json)에 기록되어 있습니다.
+각 구현은 같은 투표자 수, 값 크기, 동시 진행 한도로 에포크당 4,096개 값을
+처리하며 모든 learner의 값과 순서를 검증합니다. 아래는 각 행을 아홉 번 측정한
+**완료된 값 하나당 나노초의 중앙값**입니다. 낮을수록 빠릅니다.
+
+| 투표자 | 바이트 | 동시 진행 | Odin 변경 전 | Odin 현재 | Zig | OmniPaxos | LibPaxos3 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 3 | 8 | 1 | 107.5 | 109.2 | 114.4 | 1,062.1 | 2,543.6 |
+| 3 | 8 | 64 | 108.1 | 111.0 | 118.3 | 88.1 | 2,555.0 |
+| 5 | 8 | 1 | 202.7 | 206.7 | 166.0 | 3,077.3 | 3,335.9 |
+| 5 | 8 | 64 | 204.5 | 209.5 | 177.5 | 153.2 | 3,431.9 |
+| 3 | 1024 | 1 | 357.1 | 300.0 | 1,725.8 | 3,251.8 | 3,388.0 |
+| 3 | 1024 | 64 | 469.9 | 349.3 | 1,938.0 | 2,450.5 | 3,815.1 |
+| 5 | 1024 | 64 | 893.8 | 935.2 | 3,350.4 | 3,170.2 | 5,923.4 |
+
+3개 투표자와 1 KiB 값에서는 Odin 기준 버전 대비 약 16–26% 개선되었습니다.
+일부 작은 값 워크로드는 1–3% 느려졌습니다. 5개 투표자, 1 KiB, 동시 진행 64의
+대응 표본 비율은 1.047, 95% 구간은 0.928–1.089로 개선이나 회귀를 확정할 수
+없습니다. 정의된 5% 회귀 검사는 통과했지만 모든 지연 증가가 5% 미만임을
+증명하지는 않습니다. Zig와 OmniPaxos가 앞서는 워크로드도 있습니다.
+
+디스크, 직렬화, 네트워크 지연을 제외한 인프로세스 측정입니다. 각 구현의 배치와
+사전 실행 방식은 유지했습니다. 전체 18개 워크로드, 프로파일, 메모리 수치는
+[측정 보고서](docs/pod/records/0009-data-oriented-ledger.typ), 재현 방법은
+[실행 안내](docs/book/06_measurement_methods.typ)를 참고하세요.
+
+### 이전 CPU 및 내구성 측정
+
+아래 표는 9월 16일의 소스와 저널 재생 미러를 포함한 이전 하네스의 결과입니다.
+현재 소스의 결과가 아니며 위의 동일 조건 비교와 직접 비교할 수 없습니다.
+
 
 네 가지 구현이 이 머신에서 한 세션 동안, 하나씩 차례로 같은 워크로드를
 실행했습니다: 이 라이브러리, [paxos-zig](https://github.com/insanai/paxos-zig)
@@ -309,20 +343,11 @@ round-zero accept는 배리어를 기다립니다.
 | paxos-zig | fsync-each | 27.54 ms | – |
 | paxos-zig | group8 | 3.53 ms | – |
 
-있는 그대로 읽어야 합니다. 3 투표자, 8바이트 값에서는 paxos-zig가 값당 20%에서
-30% 더 저렴하고, 5 투표자에서는 이 라이브러리가 약 10% 더 저렴하며, 1 KiB
-값에서는 이 라이브러리가 값당 다섯 배 이상 더 저렴합니다. 값이 제안과 커밋 사이에 절대 복사되지 않기 때문입니다: 레코드와
-메시지는 장부(ledger) 안의 그 한 사본을 가리킵니다. 순환 슬롯 소유는 같은 세
-노드에서 단일 리더와 값당 비용 차이가 10분의 1 이내이며, 그 대가로 모든 노드가
-리더로의 왕복 없이 제안할 수 있습니다. OmniPaxos는 한 번에
-하나씩 처리하는 모드에서 할당과 잠금 비용을 치르며, 두 행에서만 앞섭니다:
-동시에 64개를 처리할 때와 1 KiB 값을 8개 동시에 처리할 때로, 이때 많은 항목을
-적은 수의 envelope으로 묶기 때문입니다. 이
-라이브러리와 paxos-zig는 항상 값마다 envelope 하나를 보냅니다. LibPaxos3는
-1단계 사전 실행이 포함된 더 무거운 12-envelope 경로를 실행합니다. 이 수치들 중
-어느 것도 서비스 지연 시간이 아니며, 내구성 행들은 비용이 프로토콜이 아니라
-디스크에서 나온다는 것을 보여줍니다: `fsync`가 경로에 들어가면 경계가 있는 두
-라이브러리는 서로 몇 퍼센트 차이로 수렴합니다.
+이 이전 측정에서는 Zig가 3개 투표자의 작은 값 워크로드에서, Odin이 5개 투표자
+및 1 KiB 값을 하나씩 처리하는 워크로드에서 앞섰습니다. OmniPaxos는 두 파이프라인
+행에서 앞섰습니다. 내구성 측정은 해당 디스크의 저장 장벽 비용이 지배했습니다.
+Odin 내부의 레코드와 메시지는 장부 값을 참조하지만, 호스트는 전송과 저장을 위해
+여전히 값을 복사하거나 직렬화합니다. 표만으로 시간 차이의 원인을 분리할 수는 없습니다.
 
 ```sh
 make bench                                   # 이 라이브러리, 인메모리 모드
@@ -337,7 +362,7 @@ make bench-compare                           # 네 구현 모두 실행, bench/r
 `docs/build/pod-index.pdf`로, 등록된 모든 POD 레코드를
 `docs/build/pod-NNNN-<slug>.pdf`로 컴파일합니다.
 
-책은 서문과 학습 방법 장, 그리고 여덟 개의 부(part)로 이루어집니다:
+책은 서문과 학습 방법 장, 그리고 아홉 개의 부(part)로 이루어집니다:
 
 | 부 | 장 |
 |---|---|
@@ -347,9 +372,10 @@ make bench-compare                           # 네 구현 모두 실행, bench/r
 | III. (continued) | The Safety Argument: axioms, lemmas, and the agreement theorem |
 | IV. The Odin library | Bounded Core State Machine; Advanced Replicated Log Features; Rotating Slot Ownership; Writing Reviewable Consensus Code |
 | V. Three worked systems | 복제 카운터, 키-값 호스트 설계, 다중 리전 배치 |
-| VI. Evidence | Validation, Testing, and Operations |
+| VI. Evidence | Validation, Testing, and Operations; Reproducing Measurements |
 | VII. Desk reference | Consensus Desk Reference |
 | VIII. Conformance | Lamport Conformance Appendix |
+| IX. Python integration | Paxodin: A Python Host for the Odin Core (proposed) |
 
 Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래에 Typst
 파일 하나씩 있습니다. 목록의 원본은 `docs/pod/registry.typ`이며, 이 글을 쓰는
@@ -367,6 +393,7 @@ Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래�
 | 0008 | Safety Argument: Axioms, Lemmas, and Proof Obligations | committed |
 | 0009 | The Data-Oriented Ledger | committed |
 | 0010 | Rotating Slot Ownership | committed |
+| 0011 | [Paxodin: A Python SDK over the Odin Core](docs/pod/records/0011-paxodin-python-sdk.typ) | committed |
 
 `./bin/paxos-cli pod list`, `pod new <slug>`, `pod promote <slug>`로 레코드를
 관리합니다.
@@ -430,6 +457,50 @@ Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래�
 검사됩니다. 두 README와 [`CONTRIBUTING.md`](CONTRIBUTING.md)를 제외한 문서는
 Typst로 작성합니다. 변경을 올리기 전에 `CONTRIBUTING.md`를 읽어 주세요.
 
+## 파이썬
+
+`python/paxodin/`은 동일한 코어 위에 올린 파이썬 패키지입니다. 디스크와 네트워크,
+시계는 여전히 Odin 라이브러리 바깥의 호스트가 소유하며, 패키지는 내구성 계약의
+*순서*와 반환한 바이트의 수명만 소유합니다. 소켓도, TLS 정책도, 재시도 루프도 함께
+제공하지 않습니다. 저널과 전송 계층은 사용자가 공급합니다.
+
+```python
+from paxodin.testing import Cluster
+
+with Cluster(3) as cluster:                 # 프로세스 내, 메모리 기반
+    receipt = cluster.append(b"set counter 41")
+    print(receipt.slot, receipt.value)
+    for entry in cluster.session(1).entries():
+        print(entry.slot, entry.entry.body)
+```
+
+```python
+from paxodin.testing import AsyncCluster
+
+async with AsyncCluster(3) as cluster:      # 폴링 루프 없이 asyncio가 구동
+    receipt = await cluster.append(b"set counter 41")
+```
+
+Odin은 엔진이고 파이썬이 제품입니다. 메시지는 `match`할 수 있는 타입이며, 타이머는
+초 단위이고, 오류는 코어와 같은 형식(배너, 원인, `Hint:`)으로 렌더링되면서 기대하는
+내장 예외이기도 합니다(`CommitTimeout`은 `TimeoutError`). 로그 읽기는 반복입니다.
+
+```sh
+make check-python    # ruff, mypy --strict, 두 네이티브 라이브러리 각각 153개 테스트
+make python-wheel    # 저장소 바깥에서 sdist로 빌드한 휠, 3.12-3.14
+make python-docs     # Google 스타일 독스트링에서 생성한 API 레퍼런스
+```
+
+세 가지 사건은 끝까지 구분됩니다. 이를 뭉개는 것이 합의 API가 거짓말을 시작하는
+방식이기 때문입니다. **합의**(정족수가 값을 선택함), **해제**(이 참여자가 순서대로,
+내구적으로 알게 됨), **적용**(응용 코드가 실제로 반영함). `append` 영수증은 한
+참여자에서의 앞의 두 가지만 보고합니다.
+
+의도적으로 제공하지 않는 것: 리스나 선형화 가능한 로컬 읽기(코어에 없습니다),
+타임아웃 후 자동 재시도, 재구성, 순환 소유권, 러너. 마지막 세 가지는 절반만
+지원하는 대신 capability 비트로 거부합니다. 설계 기록은
+[POD 0011](docs/pod/records/0011-paxodin-python-sdk.typ)과 책 9부입니다.
+
 ## 디렉터리 구조
 
 ```
@@ -438,7 +509,7 @@ paxos-odin/
 │   ├── paxos.odin           VERSION, 기본값, proc group, 짧은 이름
 │   ├── ballot.odin          Node_Id, Slot, packed Ballot, cell_of
 │   ├── bit_set.odin         Bit_Set(N): word 단위로 스캔하는 고정 비트맵
-│   ├── membership.odin      정렬된 인덱스와 정족수 크기를 가진 Membership
+│   ├── membership.odin      정렬된 멤버 목록과 정족수 크기를 가진 Membership
 │   ├── ledger.odin          Ledger: 열(column) 형태의 Lamport 변수; Write 레코드
 │   ├── messages.odin        아홉 개의 메시지, Envelope, Committed, 호스트 요청
 │   ├── effects.odin         Effects와 내구성 게이트
@@ -450,7 +521,11 @@ paxos-odin/
 │   ├── learner.odin         Learner: 인증된 결정의 연속 릴리스
 │   └── errors.odin          Error와 explain_error
 ├── examples/counter.odin    3노드 복제 카운터
-├── tests/                   69개 테스트(odin test tests)와 공유 하네스
+├── python/paxodin/          The Python package (paxodin); see POD 0011
+│   ├── native/              C ABI bridge over src/ (Odin, not a second Paxos)
+│   ├── src/paxodin/         Node, Session, codec, storage, protocols, testing
+│   └── tests/, examples/    Hazard, codec, storage and cluster suites
+├── tests/                   79개 테스트(odin test tests)와 공유 하네스
 ├── sim/                     결정론적 결함 시뮬레이터(paxos-sim), 두 모드 모두
 ├── bench/                   인메모리 및 durable 벤치마크(paxos-bench); results/
 ├── cli/                     paxos-cli: build, test, sim, bench, example, check, docs, pod
@@ -470,3 +545,17 @@ paxos-odin/
 ## 라이선스
 
 MIT. [LICENSE](LICENSE)를 참조하세요.
+
+## 복구 메모리와 재현 가능한 비교
+
+복구 임시 배열은 이제 전체 로그 윈도가 아니라 `CHUNK_SLOTS` 크기를 사용합니다.
+3개 투표 노드, 1 KiB 값, 256슬롯 윈도와 64슬롯 청크에서 노드와 effects의 정적
+메모리는 633,120바이트에서 433,176바이트로 줄었습니다. 전송 큐와 애플리케이션
+메모리는 이 수치에 포함되지 않습니다. 내부 `Node` 레이아웃이 바뀌므로 다시
+컴파일해야 하며, 공개 프로시저와 저널 및 메시지 형식은 유지됩니다.
+
+`make bench-matched`는 네 구현을 동일한 명령 수, 페이로드, 진행 중인 명령 수로
+비교합니다. `make bench-profile`은 컨테이너에서 Callgrind와 Massif를 사용합니다.
+이 개발 도구는 라이브러리에 저장소, 네트워크, 스레드 의존성을 추가하지 않습니다.
+[메모리 보고서](docs/book/06_measurement_methods.typ)와 [측정 절차](docs/book/06_measurement_methods.typ)를 참고하세요.
+기존 벤치마크 표는 기록 당시 소스와 하네스의 결과입니다.
