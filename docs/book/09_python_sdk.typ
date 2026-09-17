@@ -72,8 +72,8 @@ A Python `bytes` returned today remains valid after tomorrow's transitions.
 The rule that shapes the surface is that Odin is the engine and Python is the
 product. Messages are nine typed classes an adapter matches on, never a tag and
 a field to consult. Timers are seconds; the engine's ticks are converted away.
-Errors render exactly as the core's do -- a titled banner, the cause with its
-values, a `Hint:` -- and a test enumerates every exception class as the Odin
+Errors render exactly as the core's do - a titled banner, the cause with its
+values, a `Hint:` - and a test enumerates every exception class as the Odin
 suite enumerates its `Error` enum. Reading the log is iteration.
 
 `Session` is inspired by Requests in its context management, discoverable verbs,
@@ -175,7 +175,7 @@ against it, so an ordering mistake in the bridge stops a test run instead of
 reaching a release.
 
 The development tools are Ruff, strict mypy, pytest and Hypothesis. The first
-release matrix covers CPython 3.12–3.14 on Linux x86-64, Windows x86-64 and
+release matrix covers CPython 3.12-3.14 on Linux x86-64, Windows x86-64 and
 macOS Apple Silicon. Each tagged release checks the installed artifacts before publishing.
 The release has to verify resource loading, native dependencies, portable CPU
 instructions, ABI versions and the absence of source-tree path assumptions.
@@ -212,7 +212,7 @@ later transitions.
 
 Payload size moves the native and ABI rows by under five percent from eight bytes
 to 1,024, because values are stored inline at a fixed size and a larger one costs
-the engine no allocation -- the same property that makes the node's footprint
+the engine no allocation - the same property that makes the node's footprint
 knowable in advance. The Python rows move by up to twelve percent at 1,024 bytes,
 which is the copy into an owned `bytes`, paid once per released entry.
 
@@ -225,9 +225,9 @@ built, because the first question was where the time actually went.
 + Python fails to allocate an output buffer after a transition. Which object must
   still own the effects, and why is repeating the transition unsafe?
 + An append times out, then its value appears in local history. Which statement
-  would have been false: “the wait ended” or “the command was cancelled”?
+  would have been false: "the wait ended" or "the command was cancelled"?
 + The memory floor is 100 and the application cursor is 90. Where must commands
-  91–100 survive, and who is responsible for returning them after restart?
+  91-100 survive, and who is responsible for returning them after restart?
 
 The pending native batch answers the first question: retry the copy, not the
 transition. The wait ended in the second; cancellation was never established.

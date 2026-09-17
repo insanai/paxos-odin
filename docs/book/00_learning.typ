@@ -62,9 +62,9 @@ To ensure concepts are internalized and verifiable, instructional chapters follo
 #table(
   columns: (auto, 1fr, 1.1fr),
   table.header([*Focus*], [*Recommended Sequence*], [*Practical Verification*]),
-  [Protocol Engineer], [Parts I–III (Foundations, Single-Decree, Multi-Paxos, and Safety Argument), then Part VII (Reference), followed by Parts IV–VI.],
+  [Protocol Engineer], [Parts I-III (Foundations, Single-Decree, Multi-Paxos, and Safety Argument), then Part VII (Reference), followed by Parts IV-VI.],
     [Diagram quorum intersections from memory; complete the protocol exercises before inspecting solutions.],
-  [Systems Implementer], [This introduction, followed by Parts IV–VI (Library Architecture, Applications, and Evidence), returning to Parts I–III when protocol rationales are needed.],
+  [Systems Implementer], [This introduction, followed by Parts IV-VI (Library Architecture, Applications, and Evidence), returning to Parts I-III when protocol rationales are needed.],
     [Run `make check`; trace transitions in the replicated counter example; inspect simulation assertions under injected network and crash faults.],
 )
 

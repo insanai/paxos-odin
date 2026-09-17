@@ -126,7 +126,7 @@ round-zero accept is checked against the ownership rule:
 ])
 
 So in decree $s$ the only round-zero ballot any acceptor will ever vote at is
-`ownership_ballot(owner_of(s))`. Lamport's B1 (§2.2 of _The Part-Time
+`ownership_ballot(owner_of(s))`. Lamport's B1 (Section 2.2 of _The Part-Time
 Parliament_) asks that each ballot in a decree have a unique number, and it is
 stated per decree: two decrees may reuse the same number freely. Under
 ownership the ballot `(0, 0, 3)` appears in every slot member 3 owns, and in

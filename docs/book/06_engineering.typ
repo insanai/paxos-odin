@@ -31,7 +31,7 @@
 #table(
   columns: (auto, 1.25fr, 1.35fr),
   table.header([*Evidence*], [*Question it answers*], [*What it cannot answer*]),
-  [1. Safety argument (Parts I--III, the lemmas in the safety-argument chapter)],
+  [1. Safety argument (Parts I-III, the lemmas in the safety-argument chapter)],
     [Why every legal transition preserves agreement, and why each departure from the textbook keeps the theorem.],
     [Whether the Odin code and the host actually follow the argument.],
   [2. Deterministic unit tests (`tests/`)],
@@ -204,9 +204,9 @@ workloads; see `docs/book/06_measurement_methods.typ` for dependency paths and b
 )
 
 For three voters and 1 KiB values, the paired median cost decreased by about
-16–26% relative to the Odin baseline. Several small-payload workloads became about
-1–3% slower. At five voters, 1 KiB, and depth 64, the paired ratio is 1.047 with a
-95% bootstrap interval of 0.928–1.089. That interval includes both an improvement
+16-26% relative to the Odin baseline. Several small-payload workloads became about
+1-3% slower. At five voters, 1 KiB, and depth 64, the paired ratio is 1.047 with a
+95% bootstrap interval of 0.928-1.089. That interval includes both an improvement
 and a regression, so this row does not establish either.
 
 The regression gate rejects a workload when its entire paired 95% interval exceeds
@@ -273,7 +273,7 @@ scan wraps at most once and visits each used cell at most once per sweep.
 In the dedicated retransmission workload, Callgrind instructions fell from
 12,591,988 to 10,139,090 (19.5%). A first attempt that counted occupied cells before
 scanning used 17,833,184 instructions and was discarded. The retained change's paired
-native timing ratio was 0.877, with a 95% interval of 0.820–0.905. The steady-state
+native timing ratio was 0.877, with a 95% interval of 0.820-0.905. The steady-state
 matrix above checks the broader effect; the dedicated result is not a promised
 speedup for every workload.
 

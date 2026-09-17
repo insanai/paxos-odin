@@ -15,7 +15,7 @@
   circle((2.0, 0), radius: 1.55, fill: green_light, stroke: green)
   content((-0.7, 0), text(weight: "bold")[Quorum A])
   content((2.7, 0), text(weight: "bold")[Quorum B])
-  content((1.0, 0), text(size: 8pt, weight: "bold")[A ∩ B ≠ ∅])
+  content((1.0, 0), text(size: 8pt, weight: "bold")[$A inter B != emptyset$])
 })
 
 #let phase_flow() = diagram(
@@ -138,13 +138,13 @@
 #let fmt_ns(v) = {
   if v == none { [--] }
   else if v >= 1e6 { [#calc.round(v / 1e6, digits: 2) ms] }
-  else if v >= 1e4 { [#calc.round(v / 1e3, digits: 1) µs] }
+  else if v >= 1e4 { [#calc.round(v / 1e3, digits: 1) us] }
   else { [#calc.round(v, digits: 0) ns] }
 }
 
 #let bench_host = [
-  #bench.meta.cpu, #bench.meta.os · odin #bench.meta.odin, zig #bench.meta.zig,
-  #bench.meta.rustc · Odin build `#bench.meta.odin_build` · recorded #bench.meta.date
+  #bench.meta.cpu, #bench.meta.os - odin #bench.meta.odin, zig #bench.meta.zig,
+  #bench.meta.rustc - Odin build `#bench.meta.odin_build` - recorded #bench.meta.date
 ]
 
 #let bench_impls = (
@@ -246,7 +246,7 @@
     let (voters, payload, depth) = spec
     let maximum = calc.max(..matched_impls.map(i => matched_ns(i.at(0), voters, payload, depth)))
     block(above: 7pt, below: 7pt, breakable: false)[
-      #text(weight: "bold", size: 9pt)[#voters voters · #payload bytes · depth #depth]
+      #text(weight: "bold", size: 9pt)[#voters voters - #payload bytes - depth #depth]
       #v(3pt)
       #grid(columns: (23mm, 85mm, 22mm), row-gutter: 4pt, column-gutter: 3mm, align: left + horizon,
         ..matched_impls.map(i => {
@@ -280,7 +280,7 @@
     content((x + 0.5, -2.35), text(size: 8pt)[slot #slot])
   }
   content((1.85, -1.6), text(size: 8pt)[scratch index], anchor: "east")
-  content((4, -3), text(size: 8pt)[ledger: (slot − 1) & 7 #h(8mm) scratch: slot − 7])
+  content((4, -3), text(size: 8pt)[ledger: (slot - 1) & 7 #h(8mm) scratch: slot - 7])
 })
 
 #let recovery_selection_flow() = diagram(
@@ -334,8 +334,8 @@
     table.header([*Slot*], [1], [2], [3], [4], [5], [6]),
     [*Owner*], [A], [B], [C], [A], [B], [C],
     [*Value*], table.cell(fill: green_light)[X], table.cell(fill: amber_light)[hole],
-      table.cell(fill: green_light)[Z], [·], [·], [·],
-    [*Release*], [X →], [blocked], [waits], [·], [·], [·],
+      table.cell(fill: green_light)[Z], [-], [-], [-],
+    [*Release*], [X ->], [blocked], [waits], [-], [-], [-],
   )
   align(center, text(size: 8pt, fill: gray)[
     B skips slot 2, or a read quorum recovers it at a higher ballot.\
@@ -347,8 +347,8 @@
   table(columns: (35mm, ..range(5).map(_ => 18mm)), align: center,
     table.header([*Five voters*], [A], [B], [C], [D], [E]),
     [Write quorum: 2], table.cell(fill: green_light)[vote X],
-      table.cell(fill: green_light)[vote X], [·], [·], [·],
-    [Read quorum: 4], [·], table.cell(fill: blue_light)[report X],
+      table.cell(fill: green_light)[vote X], [-], [-], [-],
+    [Read quorum: 4], [-], table.cell(fill: blue_light)[report X],
       table.cell(fill: blue_light)[report], table.cell(fill: blue_light)[report],
       table.cell(fill: blue_light)[report],
   )

@@ -184,8 +184,8 @@ paired bootstrap medians with a 95% interval.
 Two rules govern reading the result. *Transition-only work and durable host work
 are separate measurements*: the `native`, `abi` and `node` paths touch no storage
 and no network, `session_memory` adds framing and an in-memory journal, and
-`session_durable` adds an `fsync` per batch. Comparing across that boundary --
-a Python `fsync` against a native in-memory transition -- measures nothing. And
+`session_durable` adds an `fsync` per batch. Comparing across that boundary -
+a Python `fsync` against a native in-memory transition - measures nothing. And
 *the counts matter more than the times*: each row reports boundary crossings,
 bytes copied across the ABI and sync calls per value, which is what tells you
 whether a batched binding or a compiled extension would address the cost at all.

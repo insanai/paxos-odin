@@ -8,7 +8,7 @@
 ]
 
 *Authorship and license.* The code is authored by Vikrant Rathore, with
-assistance from Ronak Rathore. Copyright © 2026 Vikrant Rathore and Ronak Rathore.
+assistance from Ronak Rathore. Copyright (c) 2026 Vikrant Rathore and Ronak Rathore.
 The library, Python SDK, CLI and documentation are released under the MIT License;
 the repository's `LICENSE` contains the complete terms.
 
@@ -48,7 +48,7 @@ construction described in Lamport, Malkhi, and Zhou's "Reconfiguring a State Mac
 
 #v(1fr)
 #align(center, text(size: 8.5pt, fill: gray)[
-  paxos-odin 0.2.0 · Odin dev-2026-09 · Typst 0.15
+  paxos-odin 0.2.0 - Odin dev-2026-09 - Typst 0.15
 ])
 
 #pagebreak()

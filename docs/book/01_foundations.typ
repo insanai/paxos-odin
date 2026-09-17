@@ -408,7 +408,7 @@ The single-decree chapter shows the exchange.
   Before proceeding to the single-decree protocol, verify your understanding of these core questions:
   1. Why does a four-member cluster tolerate no more crash failures than a three-member cluster under majority quorums?
   2. Which ballot invariant (B1, B2, or B3) does the error `.Non_Intersecting_Quorums` enforce?
-  3. If a read quorum reports three votes—`((3, 0, 1), apple)`, `((9, 0, 2), apple)`, and `((7, 0, 3), pear)`—which value must the new leader propose, and why?
+  3. If a read quorum reports three votes: `((3, 0, 1), apple)`, `((9, 0, 2), apple)`, and `((7, 0, 3), pear)` - which value must the new leader propose, and why?
   4. What safety violation occurs if the acceptor that reported `((9, 0, 2), apple)` held that vote in volatile RAM and rebooted before responding?
 ])
 

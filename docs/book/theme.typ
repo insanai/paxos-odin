@@ -35,7 +35,7 @@
         let chapter = if headings.len() > 0 { headings.last().body } else { [] }
         grid(
           columns: (1fr, 1fr),
-          box(width: 100%, clip: true)[The Part-Time Parliament · Paxos-Odin],
+          box(width: 100%, clip: true)[The Part-Time Parliament - Paxos-Odin],
           box(width: 100%, clip: true, align(right, emph(chapter))),
         )
         line(length: 100%, stroke: 0.4pt + rule)
@@ -176,7 +176,7 @@
 
     #v(4mm)
     #text(size: 15pt, fill: cover_ink)[
-      $ |Q_1| + |Q_2| > N quad => quad Q_1 ∩ Q_2 != ∅ $
+      $ |Q_1| + |Q_2| > N quad => quad Q_1 inter Q_2 != emptyset $
     ]
     #v(6mm)
     #line(length: 49mm, stroke: 0.55pt + cover_gold)
@@ -242,7 +242,7 @@
 )[
   #emph(body)
   #v(4pt)
-  #align(right, text(size: 9pt, fill: gray)[#text("— ")#attribution])
+  #align(right, text(size: 9pt, fill: gray)[#text("- ")#attribution])
 ]
 
 #let exercise(number, body, hint: none) = block(
