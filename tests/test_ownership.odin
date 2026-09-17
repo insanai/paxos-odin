@@ -11,6 +11,8 @@ Owned_Cluster :: struct {
 	queue: [dynamic]Packet(u64),
 	// Deliveries to a silenced node are dropped, as if it had crashed.
 	silent: Maybe(paxos.Node_Id),
+	// Messages from a muted node are dropped; it still hears everything.
+	mute:   Maybe(paxos.Node_Id),
 }
 
 owned_init :: proc(t: ^testing.T, c: ^Owned_Cluster) {
@@ -35,6 +37,7 @@ owned_drain :: proc(t: ^testing.T, c: ^Owned_Cluster) {
 		if silent, ok := c.silent.?; ok {
 			if packet.envelope.to == silent || packet.envelope.from == silent do continue
 		}
+		if mute, ok := c.mute.?; ok && packet.envelope.from == mute do continue
 		expect_ok(t, paxos.step(&c.nodes[packet.envelope.to - 1], packet_envelope(&packet), &e))
 		owned_commit(c, &e)
 	}

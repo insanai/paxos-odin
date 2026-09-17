@@ -439,11 +439,12 @@ review_thousand_voters_reach_quorum :: proc(t: ^testing.T) {
 	m := new(paxos.Membership(VOTERS))
 	defer free(m)
 	ids: [VOTERS]paxos.Node_Id
-	// Ids out of order so the sorted index does real work.
+	// Ids out of order: the membership sorts them, so an id's stable index is its rank.
 	for &id, i in ids do id = paxos.Node_Id((i * 7919) % VOTERS + 1)
 	expect_ok(t, paxos.init(m, ids[:], 1, VOTERS))
-	index, found := paxos.membership_index_of(m, ids[VOTERS - 1])
-	testing.expect(t, found && index == VOTERS - 1, "sorted lookup returns the stable index")
+	index, found := paxos.membership_index_of(m, 1000)
+	testing.expect(t, found && index == 999, "sorted lookup returns the id's rank")
+	testing.expect_value(t, paxos.membership_get(m, 0), paxos.Node_Id(1))
 	_, missing := paxos.membership_index_of(m, VOTERS + 1)
 	testing.expect(t, !missing)
 
