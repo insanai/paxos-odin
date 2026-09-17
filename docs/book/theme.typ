@@ -42,12 +42,20 @@
       }
     },
   )
-  set text(font: "Liberation Serif", size: 10.3pt, fill: ink, lang: "en")
+  set text(
+    font: "Liberation Serif",
+    size: 10.3pt,
+    fill: ink,
+    lang: "en",
+    hyphenate: true,
+    costs: (orphan: 100%, widow: 100%),
+  )
   set smartquote(enabled: false)
-  set par(justify: true, leading: 0.74em, spacing: 0.72em)
+  set par(justify: true, linebreaks: "optimized", leading: 0.74em, spacing: 0.72em)
   set heading(numbering: "1.1")
+  show heading: set par(justify: false)
   set raw(tab-size: 4)
-  show raw: set text(font: "Liberation Mono", size: 8.3pt)
+  show raw: set text(font: "Liberation Mono", size: 8.3pt, hyphenate: false)
   set table(stroke: 0.45pt + rule, inset: 6pt)
   show table: set par(justify: false)
   show link: set text(fill: blue)

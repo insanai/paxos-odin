@@ -79,7 +79,21 @@
     size: 10.5pt,
     fill: primary-color,
     lang: "en",
+    hyphenate: true,
+    costs: (orphan: 100%, widow: 100%),
   )
+
+  set smartquote(enabled: false)
+
+  set par(
+    justify: true,
+    linebreaks: "optimized",
+    leading: 0.72em,
+  )
+
+  show raw: set text(hyphenate: false)
+  show table: set par(justify: false)
+  show heading: set par(justify: false)
 
   // Document Header
   v(0.5cm)
