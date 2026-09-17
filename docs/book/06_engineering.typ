@@ -10,16 +10,20 @@
 = Validation, Testing, and Operations
 
 #objectives([
-  By the end of this chapter you should be able to say which kind of evidence supports
-  which claim about `paxos-odin`, run the complete verification suite and read its
-  output, replay a failing simulation from its seed, interpret the benchmark table
-  without over-reading it, and write an operating drill with an exit criterion.
+  After completing this chapter, you will be able to:
+  - Classify the specific guarantees provided by formal proofs, unit tests, deterministic chaos simulation, and benchmarks.
+  - Execute the full verification harness and interpret diagnostic outputs.
+  - Replay and debug failing distributed schedules using deterministic simulation seeds.
+  - Evaluate comparative benchmark results without conflating CPU throughput with end-to-end service latency.
+  - Design operational chaos drills with rigorous pass/fail criteria.
 ])
 
-#checkpoint([Vocabulary], [
-  You should be able to define *chosen*, *committed*, and *applied* without looking
-  them up, and to say why a leader's `Commit` message is dissemination of a fact,
-  not the fact itself. Both distinctions matter for the oracles below.
+#checkpoint([Vocabulary Check], [
+  Ensure precise command of these three distinct events:
+  - *Chosen:* A write quorum has durably accepted a value under a ballot.
+  - *Committed:* A node has received evidence that a value is chosen (or certified it locally).
+  - *Applied:* The host state machine has executed the command in sequence.
+  The simulator oracles below verify invariants across each of these boundaries.
 ])
 
 == Four kinds of confidence
@@ -340,7 +344,8 @@ once a host exists. A drill without an exit criterion is a demonstration, not a 
 ])
 
 #teach_back([
-  Explain to a colleague why "all tests pass" is a weaker statement than "one hundred
-  and twenty seeded simulations of ten thousand steps passed", and why both are weaker
-  than the safety argument in Part III. Use the words *schedule* and *oracle*.
+  Compare the complementary roles of testing and formal reasoning:
+  - Why a green unit test suite only verifies pre-selected execution traces.
+  - How pseudo-random fault injection explores vast schedule permutations against continuous invariant oracles.
+  - Why even extensive empirical simulation cannot substitute for the mathematical safety argument established in Part III.
 ])

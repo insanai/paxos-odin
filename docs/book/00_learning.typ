@@ -1,113 +1,100 @@
 #import "theme.typ": *
 
-#heading(level: 1, numbering: none)[How This Book Teaches]
+#heading(level: 1, numbering: none)[Pedagogical Approach and Structure]
 
-Paxos is hard for a predictable reason: the reader must hold crashes, lost and
-reordered messages, competing leaders, stable storage, and application state in mind
-at once. More prose does not help; more structure does. This book therefore reveals
-one layer at a time and keeps returning to a single question.
+Distributed consensus is notoriously difficult because one must simultaneously account for
+process crashes, network partitions, message loss, arbitrary delays, competing leaders, and
+non-volatile storage invariants. Verbose descriptions rarely help; rigorous structure and progressive
+disclosure do. This book builds understanding in deliberate layers, repeatedly anchored to one central
+question.
 
-#callout([The organising question], [
-  What fact prevents two different values from becoming chosen in the same slot?
+#callout([The Central Question], [
+  What fundamental invariant prevents two distinct values from ever being chosen in the same slot?
 ], kind: "idea")
 
-The editorial aim draws on four habits associated with Feynman, Lamport, Knuth,
-and Dijkstra. These are our working principles, not quotations or claims that the
-book reproduces any author's voice:
+Our editorial approach is guided by four core principles, directly reflecting the architectural
+values articulated in POD 0001:
 
-1. *Start with something the reader can picture.* Use three voters and one value
-   before introducing a general set of quorums. Explain the example in ordinary
-   language, then give its formal name.
-2. *Make the reasoning inspectable.* State assumptions, define “chosen”, and name
-   the invariant before presenting the transition that preserves it. Separate a
-   safety claim from a condition for progress.
-3. *Read the program as an explanation.* Place a small code excerpt beside the
-   reason it exists. Show an entire trace when local rules are hard to compose.
-4. *Spend complexity carefully.* Give each variable one meaning, distinguish an
-   index from a slot, and use a counterexample to test a tempting simplification.
+1. *Visualize concrete scenarios first.* We begin with three voters, one value, and a single slot
+   before introducing generalized quorums and multi-slot logs. We describe the physical situation
+   in clear language before introducing formal symbols.
+2. *Make the reasoning inspectable.* We state explicit assumptions, precisely define terms such as
+   "chosen", and formulate safety invariants before presenting the state transitions that preserve them.
+   Safety guarantees are kept strictly distinct from liveness conditions.
+3. *Treat code as executable specification.* We place Odin implementation excerpts directly beside
+   the mathematical proof obligations they satisfy. We trace entire message flows whenever distributed
+   interactions become subtle.
+4. *Exercise mechanical sympathy.* We assign each variable a single unambiguous meaning, cleanly
+   distinguish buffer indices from consensus slots, and use targeted counterexamples to demonstrate
+   why tempting shortcuts fail.
 
-A diagram should answer a question: who remembers the earlier vote, which event
-must precede a reply, or which storage may be reused? Labels carry that meaning;
-colour is a second cue. The text explains the diagram's conclusion and its limits.
+Diagrams are designed to perform explanatory work: clarifying which participant witnessed an earlier vote,
+which event must complete before sending a reply, and when storage may be safely reused. Labels convey
+essential semantic ordering, while colour serves as a reinforcing cue.
 
-== The three representations
+== The Three Levels of Understanding
 
-Read each major idea at three levels. Moving between them is a useful check on
-understanding.
+Every consensus mechanism in this book is examined at three distinct levels:
 
 #table(
   columns: (auto, 1.2fr, 1.4fr),
-  table.header([*Level*], [*Core question*], [*Evidence of understanding*]),
-  [1. Safety goal], [What must never happen?], [You can state the invariant in plain words.],
-  [2. State transition], [Which state changes keep it true?], [You can trace an event and show that no earlier commitment was broken.],
-  [3. Odin effect], [Which field, which durable record, which message?], [You can use `Node` and `Effects` while keeping the write-before-send order.],
+  table.header([*Level*], [*Core Question*], [*Evidence of Mastery*]),
+  [1. Safety Invariant], [What must never happen?], [You can articulate the invariant clearly in plain language.],
+  [2. State Transition], [Which state change preserves the invariant?], [You can trace protocol events and verify that no past commitments are violated.],
+  [3. Odin Implementation], [Which struct field, durable write, and message?], [You can navigate `Node` and `Effects` while maintaining the strict persist-before-send contract.],
 )
 
-Placing the Odin excerpt beside the invariant that requires it is deliberate: the code
-is the proof obligation made concrete, and the invariant is the reason the code has
-that shape.
+Placing Odin excerpts directly alongside theoretical invariants is intentional: the code is the proof
+obligation made concrete, and the invariant provides the exact rationale for why the code is structured as it is.
 
-== The learning loop
+== Chapter Structure
 
-The chapters use the following learning loop; reference sections can be consulted
-directly:
+To ensure concepts are internalized and verifiable, instructional chapters follow a structured progression:
 
-1. *Orient*: the learning contract and a checkpoint on prerequisites.
-2. *Predict*: write down what you think happens before the text shows it.
-3. *Worked case*: every message and state change with its justification.
-4. *Faded case*: an exercise with the middle missing.
-5. *Teach it back*: explain the mechanism in plain words.
-6. *Transfer*: change a quorum size, a delay, or a crash point and see what survives.
+1. *Objectives & Prerequisites:* Clear statements of concepts and skills introduced in the chapter.
+2. *Thought Experiment:* An initial prediction exercise that highlights subtle failure modes before presenting the solution.
+3. *Worked Derivation:* Step-by-step analysis of messages, state mutations, and underlying justifications.
+4. *Code Inspection:* Concrete Odin procedures and data structures implementing the mechanism.
+5. *Review & Exercises:* Structured questions and failure variations to test understanding.
 
-== Two routes through the book
+== Suggested Reading Pathways
 
 #table(
-  columns: (auto, 1fr, 1fr),
-  table.header([*Reader*], [*Sequence*], [*Do, not only read*]),
-  [Protocol learner], [Parts I--III including the safety argument, then VII (reference), then IV--VI.],
-    [Draw the quorum-intersection picture from memory; complete the protocol exercises before reading the answers.],
-  [Systems builder], [This chapter, then Parts IV--VI, returning to I--III when a rule needs its reason.],
-    [Run `make check`; read the effects of one transition in the counter example; run the simulator with a seed of your own and read its oracles.],
+  columns: (auto, 1fr, 1.1fr),
+  table.header([*Focus*], [*Recommended Sequence*], [*Practical Verification*]),
+  [Protocol Engineer], [Parts I–III (Foundations, Single-Decree, Multi-Paxos, and Safety Argument), then Part VII (Reference), followed by Parts IV–VI.],
+    [Diagram quorum intersections from memory; complete the protocol exercises before inspecting solutions.],
+  [Systems Implementer], [This introduction, followed by Parts IV–VI (Library Architecture, Applications, and Evidence), returning to Parts I–III when protocol rationales are needed.],
+    [Run `make check`; trace transitions in the replicated counter example; inspect simulation assertions under injected network and crash faults.],
 )
 
-== What this repository supplies
+== Repository Architecture
 
-The claims in this book are backed by artefacts you can run:
+The principles and claims in this book correspond directly to runnable software in the repository:
 
-- `src/`: the library. A pure, bounded Multi-Paxos `Node` whose durable state is a
-  `Ledger` laid out as columns; a caller-owned `Effects` batch; rotating slot
-  ownership as an option, so every member may propose; a `Replicated_Log_Node` with
-  stop-sign reconfiguration and configuration-checked envelopes; a non-voting
-  `Learner`; an `Error` enum in which every value has an explanation and a
-  corrective hint.
-- `examples/counter.odin`: a three-node replicated counter that shows the whole host
-  contract in one file of about a hundred and thirty lines.
-- `tests/`: 79 deterministic tests, including a 972-case election matrix, four
-  seeded reconfiguration scenarios, and five rotating-ownership scenarios.
-- `sim/`: a seeded fault simulator with agreement, validity, monotonicity,
-  contiguity, liveness, and convergence oracles, run with one leader and with every
-  node proposing in its own slots.
-- `bench/`: matched CPU drivers, recorded profiles, and a separate historical
-  harness with a journal-and-`fsync` variant.
-- `tools/check.py`: style, unit tests in both build modes, contract fixtures, fault
-  simulations, and smoke checks. Full timing and profiling runs are separate.
+- `src/`: The pure consensus engine. A bounded Multi-Paxos `Node` whose state resides in a columnar
+  `Ledger`; a caller-owned `Effects` batch; optional rotating slot ownership; a `Replicated_Log_Node`
+  supporting epoch isolation via stop-sign reconfiguration; a non-voting `Learner`; and an `Error` enum
+  with explanatory diagnostic hints for every condition.
+- `examples/counter.odin`: A standalone three-node replicated counter illustrating the complete host
+  integration loop in approximately 130 lines of code.
+- `tests/`: 79 deterministic test suites, including an exhaustive election test matrix, seeded reconfiguration
+  scenarios, and rotating slot ownership tests.
+- `sim/`: A deterministic fault simulator verifying safety invariants (agreement, validity, monotonic commitments,
+  contiguity, and liveness) across single-leader and multi-proposer rotating configurations.
+- `bench/`: Matched CPU benchmarks comparing Odin against Zig, Rust (OmniPaxos), and C (LibPaxos3), accompanied
+  by callgrind and memory profile datasets.
+- `tools/check.py`: Complete verification harness covering code style, multi-build compilation, durability contracts,
+  and extensive simulation runs.
 
-What the repository does not supply is listed just as plainly in Part VI, under the
-capability map. There is no transport, no journal format, no client protocol, no lease,
-and no model-checked specification here; each is either the host's job or a design
-proposal in the POD series.
+== Prerequisite Self-Assessment
 
-== Start with retrieval, not recognition
+Before proceeding to Part I, test your intuition against these four foundational questions:
 
-Before Part I, take a blank page and answer these four questions from whatever you
-already believe. Keep the page.
+1. Three nodes must agree on a single value in an asynchronous network. Why is a policy of "the first proposal to arrive wins" unsafe?
+2. What fundamental guarantee does a majority quorum provide, and under what conditions can asymmetric read and write quorums provide the same safety guarantee?
+3. What state must an acceptor persist to durable storage across crashes, and what failure occurs if this state is lost?
+4. What is the precise distinction between a value being *chosen* versus being *known to be chosen*?
 
-1. Three machines must agree on one value. Why is "the first message to arrive wins"
-   wrong?
-2. What does a majority guarantee, and could different read and write quorum sizes
-   provide the same guarantee?
-3. What must a machine remember across a crash, and why?
-4. When is a value *chosen*, as opposed to *known to be chosen*?
+Revisit your answers after completing Part III. The conceptual distance between the two marks the core contribution of this book.
 
-Answer them again after Part III and compare. The difference between the two pages
-is what this book is for.

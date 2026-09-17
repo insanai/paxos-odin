@@ -3,10 +3,11 @@
 = Writing Reviewable Consensus Code
 
 #objectives([
-  By the end of this chapter you should be able to recognise the Odin idioms the
-  library is built from, explain why each one was chosen for a consensus core,
-  tell an `Error` from an assertion from a process stop, and review a change to
-  `src/` in the order a proof would be read.
+  After completing this chapter, you will be able to:
+  - Identify the core Odin language patterns used throughout the consensus engine.
+  - Understand the rationale behind explicit context passing, compile-time assertions, and contiguous memory layouts.
+  - Distinguish between expected runtime `Error` returns, compile-time assertions, and unrecoverable process halts.
+  - Conduct thorough code reviews for consensus modifications structured like mathematical proofs.
 ])
 
 == The Zen of Odin for InsanAI
@@ -595,8 +596,10 @@ a change that cannot answer one is not ready.
   that order, without opening this book.
 
 #teach_back([
-  Choose `on_accept` or `ledger_apply`. Before reading it, write its proof
-  outline in the order of the checklist: precondition, state protected, durable
-  change, emitted evidence, behaviour on a duplicate, behaviour on a failure.
-  Then read the procedure and list every line your outline did not predict.
+  Code Review Exercise: Select `on_accept` or `ledger_apply` and outline its proof structure:
+  - Preconditions and parameter validation.
+  - Invariants and protected ledger state.
+  - Durable writes emitted to the caller's batch.
+  - Idempotency and behaviour on duplicated messages.
+  - Error diagnostics, hints, and remediation paths.
 ])

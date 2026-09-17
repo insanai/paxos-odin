@@ -4,14 +4,12 @@
 = Rotating Slot Ownership
 
 #objectives([
-  By the end of this chapter you should be able to say which member owns a
-  slot and why the answer needs no election, explain how round zero of the
-  ballot space lets an owner skip phase one without weakening B1, trace a skip,
-  a revocation, and a resubmission through the code, and state what rotating
-  ownership costs on an idle member and on a crashed one. Every mechanism is
-  named by its identifier in `src/ownership.odin`, `src/consensus.odin`, or
-  `src/election.odin`, and every claim is checked by `tests/test_ownership.odin`
-  or the simulator's `--ownership` mode.
+  After completing this chapter, you will be able to:
+  - Determine slot ownership deterministically without leader elections.
+  - Explain how reserving ballot round zero allows slot owners to propose without phase-one preparation while preserving invariant B1.
+  - Trace slot skip messages, revocation ballots, and suggestion resubmissions through the implementation.
+  - Evaluate the trade-offs of rotating ownership under idle versus crashed nodes.
+  - Identify the procedures in `src/ownership.odin`, `src/consensus.odin`, and `src/election.odin` that enforce rotating ownership safety.
 ])
 
 == One Leader Is a Bottleneck
@@ -637,11 +635,9 @@ an idle member must cost nothing.
 ])
 
 #teach_back([
-  Explain to a colleague why an owner may skip phase one and a candidate may
-  not, using only B1 and B3 and the words "round zero." Then explain, with
-  `highest_seen` on the whiteboard, what an idle owner does on each tick, what a
-  stalled member does on each tick, and the one slot bound that keeps a
-  revocation from stealing slots nobody has reached. Finish with the four
-  conditions under which a decision triggers a resubmission and the one reason
-  a round-zero accept may not leave before the barrier.
+  Analyze the rotating slot ownership protocol mechanics:
+  - Why a designated slot owner may propose at round zero without a phase-one read quorum, whereas an overriding candidate must run phase one.
+  - How idle nodes prevent head-of-line blocking by issuing skip entries.
+  - The mechanism by which stalled slots are revoked at higher ballot rounds.
+  - The four conditions required to trigger automatic resubmission of revoked suggestions.
 ])

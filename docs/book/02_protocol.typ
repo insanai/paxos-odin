@@ -10,16 +10,16 @@
 = The Single-Decree Protocol
 
 #objectives([
-  By the end of this chapter you should be able to run one ballot by hand through the
-  library's own handlers, distinguish *accepted*, *chosen*, *committed* and *applied*,
-  place every `Write` before the message that depends on it, explain what a Nack does
-  to a campaign, and say what a node replays after a crash at any step.
+  After completing this chapter, you will be able to:
+  - Trace a complete single-decree ballot through the library's protocol event handlers.
+  - Precisely distinguish between the four states of a value: *accepted*, *chosen*, *committed*, and *applied*.
+  - Order disk writes and network transmissions according to the persist-before-send contract.
+  - Explain how Nack responses trigger fast campaign termination without waiting for election timeouts.
+  - Reconstruct consistent node state from the replay of durable `Write` records after a crash at any execution point.
 ])
 
-#checkpoint([Foundation], [
-  State rule B3 from memory. If your sentence contains "majority" or "most recent
-  message", go back to Part I before you learn the message names, because the names
-  make the wrong rule sound plausible.
+#checkpoint([Foundational Invariant], [
+  Recall ballot invariant B3: A proposal at ballot $b$ must adopt the value of the highest-ballot vote reported by a phase-one read quorum, or may propose an arbitrary fresh value only if no votes were reported. Every phase-two proposal rule in this chapter derives directly from this invariant.
 ])
 
 == The four roles
@@ -522,16 +522,18 @@ re-establishes it and the next campaign starts above every round the journal hol
 ], hint: [Ask first how the leader at (4, 0, 2) finished phase one without seeing a
   vote for (3, 0, 1).])
 
-#checkpoint([Before the Multi-Paxos chapter], [
-  Name the write that precedes each of Promise, Accepted and Commit. Say at which
-  step of the trace tea became chosen and at which step N1 found out. Explain why a
-  Nack needs no write. State what `ledger_replay_fold` does with a promise record
-  lower than one it has already seen.
+#checkpoint([Protocol Summary], [
+  Before proceeding to Multi-Paxos, verify your grasp of the single-decree lifecycle:
+  1. Which durable write record must be flushed to disk before an acceptor emits a `Promise_Message`? Which before an `Accepted_Message`?
+  2. Why does generating a `Nack_Message` require no durable write?
+  3. At what exact transition does a proposed value become legally *chosen*, and at what transition does the leader or learner discover this fact?
+  4. What action does `ledger_replay_fold` take when encountering a promise record lower than the ledger's current promise level?
 ])
 
 #teach_back([
-  Explain one ballot from the acceptor's point of view. Use only the words "number",
-  "promise", "vote" and "ink" until the last sentence. Then map those four words to
-  `Ballot`, `Write_Promise`, `Write_Vote` and `confirm_writes_durable`, and say
-  which one the host, not the library, is responsible for.
+  Trace the execution of a ballot from the perspective of an acceptor:
+  - How an incoming `Prepare_Message` is evaluated against the local promised ballot.
+  - The exact sequencing of writing `Write_Promise`, waiting for disk durability via `confirm_writes_durable`, and returning `Promise_Message`.
+  - How an incoming `Accept_Message` is validated and recorded via `Write_Vote`.
+  - Which responsibilities are strictly enforced by the pure consensus engine versus which are required of the host runtime.
 ])

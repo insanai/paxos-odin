@@ -10,12 +10,13 @@
 = Bounded Core State Machine
 
 #objectives([
-  By the end of this chapter you should be able to declare a `Node` and its
-  matching `Effects`, read Lamport's acceptor variables off the `Ledger`, run
-  every public transition, consume one batch in the order the durability
-  contract requires, copy a value out of a batch before the pointer to it goes
-  stale, rebuild a node from replayed `Write` records, and say which conditions
-  return an `Error`, which fail compilation, and which stop the process.
+  After completing this chapter, you will be able to:
+  - Instantiate a statically sized `Node` and its matching `Effects` buffer without dynamic heap allocation.
+  - Inspect Lamport's acceptor variables directly from the columnar `Ledger` data structure.
+  - Execute consensus transitions and consume emitted effects according to the strict persist-before-send contract.
+  - Manage borrowed value pointer lifetimes safely before subsequent mutations invalidate ledger storage.
+  - Recover node state deterministically from replayed `Write` records following process restart.
+  - Distinguish between recoverable `Error` return values, compile-time assertions, and fatal invariant stops.
 ])
 
 == Design Philosophy: Consensus Without I/O
@@ -704,10 +705,9 @@ The counter example passes that string as the message of an `assert`; a host
 logs it and decides on retry or shutdown by the error's group.
 
 #teach_back([
-  Draw a vertical line labelled library and host. Place `Node`, `Ledger`,
-  `Effects`, the value a `Write_Vote` points at, journal bytes, socket bytes,
-  tick scheduling, application state, and the state image on the correct side.
-  Then mark the one arrow that is forbidden until a sync has completed, name
-  the library call that stops the process if the host draws it too early, and
-  say at which call every pointer in the batch becomes invalid.
+  Delineate the boundary between the consensus library and the host application:
+  - Assign data structures and obligations to their owner: `Node`, `Ledger`, `Effects`, network transport, disk journals, timers, and state machine application.
+  - Detail the exact ordering constraint that forbids dispatching outbound messages before disk sync completes.
+  - Explain how `confirm_writes_durable` enforces this barrier and what diagnostic triggers if violated.
+  - Specify the precise lifetime of borrowed value pointers emitted in an `Effects` batch.
 ])

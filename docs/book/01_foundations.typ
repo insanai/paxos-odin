@@ -9,18 +9,16 @@
 = Foundations of Consensus
 
 #objectives([
-  By the end of this chapter you should be able to separate safety from liveness,
-  compute the quorum sizes `membership_init` accepts and say why it rejects the
-  others, order `(round, priority, node)` ballots by hand, state invariants B1, B2
-  and B3 and point to the Odin that keeps each one, and explain why quorum
-  intersection is worthless unless acceptors remember in indelible ink.
+  After completing this chapter, you will be able to:
+  - Distinguish safety invariants from liveness conditions in asynchronous systems.
+  - Calculate valid read and write quorum configurations in `membership_init` and explain why invalid sizes are rejected.
+  - Order ballots structured as `(round, priority, node)` triples using lexicographical integer comparison.
+  - State Lamport's ballot invariants B1, B2, and B3, and identify the Odin procedures that enforce each rule.
+  - Explain why quorum intersection guarantees safety across crashes only when acceptors persist promises and votes to non-volatile storage.
 ])
 
-#checkpoint([What you need], [
-  Sets, integer division, and one physical fact: a process can stop between any two
-  instructions, and a message can spend an unbounded time in flight. If you already
-  know Paxos, try the teach-back at the end first, and come back here if your
-  explanation contained the phrase "the most common value".
+#checkpoint([Prerequisites], [
+  This chapter assumes familiarity with basic set theory, integer arithmetic, and the asynchronous network model (where messages may be delayed, duplicated, or dropped, and nodes may fail by stopping). If you already know Paxos, review the self-test exercises at the end of the chapter to verify that your mental model relies on highest-ballot selection rather than counting votes.
 ])
 
 == The empty ledger
@@ -328,18 +326,14 @@ sends one `Promise_Message` per used cell. And acceptor $a$ still remembered bot
 asked, which is where durable storage enters.
 
 #exercise([4.2], [
-  Fill in the blanks of the faded proof. Value $x$ was chosen at ballot 12 by write
-  quorum $W$. A leader at ballot 20 collects promises from read quorum $R$. Because
-  $R$ and $W$ share an acceptor, call it $a$, and because $a$ could not have promised
-  20 before accepting ballot 12 (otherwise it would have
-  #box(width: 4em, line(length: 100%, stroke: 0.5pt)) the accept), $a$ reports a vote
-  with ballot at least #box(width: 3em, line(length: 100%, stroke: 0.5pt)). Any
-  reported vote with ballot strictly between 12 and 20 carries value
-  #box(width: 3em, line(length: 100%, stroke: 0.5pt)) by the
-  #box(width: 8em, line(length: 100%, stroke: 0.5pt)). So the greatest reported vote
-  carries #box(width: 3em, line(length: 100%, stroke: 0.5pt)), and rule
-  #box(width: 2em, line(length: 100%, stroke: 0.5pt)) makes ballot 20 propose it.
-], hint: [The same value fills three of the blanks.])
+  Complete the reasoning for ballot succession:
+  Suppose value $x$ was chosen at ballot 12 by write quorum $W$. A subsequent leader at ballot 20 collects promises from read quorum $R$.
+
+  1. Because $R$ and $W$ intersect at acceptor $a$, and $a$ could not have promised ballot 20 before accepting ballot 12 (otherwise it would have rejected the proposal at ballot 12), what is the minimum ballot number $a$ will report in its promise?
+  2. By the inductive hypothesis, what value must any reported vote with a ballot strictly between 12 and 20 carry?
+  3. What value must the greatest-ballot reported vote carry?
+  4. Which ballot invariant (B1, B2, or B3) obligates the leader at ballot 20 to propose this value?
+], hint: [Review the induction step in the greatest-vote proof above.])
 
 == Why durable storage is mandatory
 
@@ -410,18 +404,18 @@ Prepare or an Accept below its promise answers *Nack* with the ballot it has
 promised. This lets the proposer react promptly instead of waiting for a timeout.
 The single-decree chapter shows the exchange.
 
-#checkpoint([Before the single-decree chapter], [
-  Answer without looking up. Why does a four-member cluster tolerate no more crashes
-  than a three-member one? Which of B1, B2, B3 does `.Non_Intersecting_Quorums`
-  protect? If a read quorum reports `((3, 0, 1), apple)`, `((9, 0, 2), apple)` and
-  `((7, 0, 3), pear)`, which value must the new leader propose, and what breaks if the
-  acceptor that reported `((9, 0, 2), apple)` kept that vote only in memory?
+#checkpoint([Synthesis Check], [
+  Before proceeding to the single-decree protocol, verify your understanding of these core questions:
+  1. Why does a four-member cluster tolerate no more crash failures than a three-member cluster under majority quorums?
+  2. Which ballot invariant (B1, B2, or B3) does the error `.Non_Intersecting_Quorums` enforce?
+  3. If a read quorum reports three votes—`((3, 0, 1), apple)`, `((9, 0, 2), apple)`, and `((7, 0, 3), pear)`—which value must the new leader propose, and why?
+  4. What safety violation occurs if the acceptor that reported `((9, 0, 2), apple)` held that vote in volatile RAM and rebooted before responding?
 ])
 
 #teach_back([
-  Without notes, explain to a new engineer why "ask a majority" is not enough. Your
-  explanation must contain a crash, a durable record, an intersecting acceptor, and
-  the rule for selecting one prior vote. Then check whether you said "greatest ballot"
-  and not "most common value", and whether you named `Write_Promise` and
-  `Write_Vote` as the two records that must be synced before a reply.
+  Explain why a simple majority agreement is insufficient to preserve consistency across crashes and leader transitions:
+  - How an acceptor crash can erase volatile state unless writes are committed to durable storage.
+  - How overlapping read and write quorums guarantee that at least one surviving acceptor witnessed prior votes.
+  - Why the new leader must adopt the value with the *highest ballot number* rather than the most frequently reported value.
+  - Why `Write_Promise` and `Write_Vote` must be synced to disk before acknowledging transitions.
 ])

@@ -4,13 +4,12 @@
 = The Safety Argument
 
 #objectives([
-  By the end of this chapter you should be able to state the model the library is
-  proved against as five axioms, define "chosen" without using the word "majority",
-  reproduce the proof of the Synod theorem for one decree from B1, B2 and B3, and show
-  for each of the library's departures from the textbook (chunked recovery, the memory
-  window and its fences, rotating ownership, the durability ordering and its one
-  exception, stop signs) which lemma keeps the theorem intact and which procedure
-  discharges that lemma's premise.
+  After completing this chapter, you will be able to:
+  - Formulate the asynchronous consensus model as five formal system axioms.
+  - Define "chosen" rigorously in terms of acceptor state and write quorums.
+  - Reproduce the inductive proof of the Synod agreement theorem from ballot invariants B1, B2, and B3.
+  - Trace how real-world engine adaptations (chunked recovery, sliding memory windows, rotating ownership, durability ordering, and reconfiguration stop signs) preserve mathematical safety.
+  - Map each formal safety lemma directly to the Odin procedure that discharges its premises.
 ])
 
 Parts I to III told the story: an empty ledger, a quorum, a ballot, three rules, and a
@@ -667,10 +666,9 @@ the implementation's correspondence to the argument, not a machine-checked proof
 ])
 
 #teach_back([
-  Explain Theorem 1 to a colleague using only the ledger of one acceptor $a$ that sits
-  in both quorums. Start from the moment $a$ voted, say why it must have voted before it
-  promised, say what it reported and why the report could not have been thrown away,
-  and finish with the line of `resolve_chunk` that turns the report into the next
-  Accept. Then say, in one sentence each, what Lemma 10's exception assumes about
-  $a$'s proposer and what Lemma 15 says about a value chosen above the seal.
+  Rehearse the core structure of Theorem 1 using a single witness acceptor $a in Q_1 inter Q_2$:
+  - Why the ordering of $a$'s vote relative to its subsequent promise prevents older values from being proposed.
+  - How `resolve_chunk` translates the witness's promise into the leader's phase-two proposal.
+  - The precise scope of Lemma 10 regarding the durability barrier and host obligations.
+  - How Lemma 15 enforces configuration isolation across reconfiguration stop signs.
 ])

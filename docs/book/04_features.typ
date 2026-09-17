@@ -4,15 +4,14 @@
 = Advanced Replicated Log Features
 
 #objectives([
-  By the end of this chapter you should be able to drive a node with logical
-  ticks and say what each timer does and does not guarantee, tell the term base
-  apart from a lease, choose flexible quorum sizes and check them against the
-  intersection rule, seal and hand over a configuration with a stop sign, bring
-  a lagging peer or a lagging leader back with `Learn_Message`, install a trim
-  anchor without losing a vote, run a non-voting learner, and name the second
-  way to lead that the next chapter develops. Every mechanism is named by its
-  identifier in `src/node.odin`, `src/consensus.odin`, `src/election.odin`,
-  `src/replicated_log.odin`, or `src/learner.odin`.
+  After completing this chapter, you will be able to:
+  - Drive consensus progression using logical ticks and explain the liveness guarantees of election and heartbeat timers.
+  - Distinguish election term bases from true leader leases and understand linearizable read requirements.
+  - Configure flexible asymmetric quorums and verify their compliance with the quorum intersection rule.
+  - Execute membership changes and epoch sealing using stop-sign reconfigurations.
+  - Catch up lagging followers and leaders using `Learn_Message` catch-up queries.
+  - Install trim anchors to compact log history without compromising uncommitted votes.
+  - Deploy non-voting `Learner` nodes for horizontal read-scaling.
 ])
 
 == Logical Time
@@ -589,10 +588,9 @@ procedure by procedure.
 ])
 
 #teach_back([
-  Explain to a colleague, without notes, the three things that can make a
-  follower send a `Learn_Message` and the one thing that makes a leader send
-  one. Then explain why `is_leader_caught_up` returning `true` is not enough to
-  serve a linearizable read from local state, and what the host would have to
-  add. Finish with the stop-sign invariant in one sentence and the two error
-  values that enforce it at the API.
+  Review advanced log maintenance and configuration mechanisms:
+  - Identify the conditions that trigger `Learn_Message` catch-up requests from followers versus leaders.
+  - Explain why `is_leader_caught_up` verifying prefix agreement is insufficient for local linearizable reads without clock or lease proofs.
+  - Formulate the stop-sign invariant for configuration transitions and name the error codes protecting sealed log epochs.
+  - Describe how trim anchors enable log compaction while safeguarding pending consensus slots.
 ])

@@ -10,20 +10,16 @@
 = Multi-Paxos Log Replication
 
 #objectives([
-  By the end of this chapter you should be able to explain why one phase one
-  can cover every slot after a starting point, describe how a candidate combines
-  chunked phase-one replies per slot even when the network reorders them, say
-  what the two fences forbid a new leader from re-proposing, recover a hole with
-  the host's no-op, and bound a pipelined leader with the window and the memory
-  floor, all in terms of the fields and procedures in `src/election.odin` and
-  `src/consensus.odin`.
+  After completing this chapter, you will be able to:
+  - Explain how a single phase-one preparation amortizes leader election across an unbounded sequence of future log slots.
+  - Describe how a candidate reconciles chunked, reordered phase-one promise manifests across multiple peers.
+  - Identify the boundary fences that prevent a newly elected leader from overwriting established decisions.
+  - Fill log holes safely during recovery using host-supplied no-op entries.
+  - Apply sliding-window bounds and memory floor advancement to pipeline proposals without unbounded memory growth.
 ])
 
-#checkpoint([Foundation], [
-  Before reading on, state the single-decree rule from Part II in one sentence:
-  a phase-two proposal must carry the value of the highest-ballot vote any
-  promise reported, or a fresh value only when no promise reported a vote. Every
-  rule in this chapter is that sentence applied to one slot at a time.
+#checkpoint([Multi-Slot Generalization], [
+  Recall the core single-decree principle: any phase-two proposal must adopt the value associated with the highest-ballot vote reported by a phase-one read quorum (or propose a fresh command if no prior votes exist). Multi-Paxos is the continuous application of this invariant across a sequence of indexed slots.
 ])
 
 == Why Multi-Paxos?
@@ -536,10 +532,9 @@ instances that acceptors may still hold votes for.
 ])
 
 #teach_back([
-  Draw three acceptors and one candidate. Send a `Prepare` for slots 10 and up,
-  write down each acceptor's `Promise_Message`s and manifest, and deliver them
-  in a deliberately bad order. Show when each `Election_Peer` becomes complete,
-  when the read quorum is met, where the fence lands, and which branch of
-  `resolve_chunk` each slot takes. Finish by explaining why a cell holding an
-  undecided vote can never be retagged, even when the window is full.
+  Reconstruct the phase-one recovery process for a newly elected leader:
+  - How `recover_base` and `recover_last` delineate the active recovery window.
+  - How individual `Promise_Message` entries and `Promise_Range_Message` manifests are combined into `Election_Peer` tracking structures.
+  - The precise condition under which a read quorum is satisfied and `resolve_chunk` freezes candidate proposals.
+  - Why a ledger cell holding an undecided vote can never be retagged or overwritten until it is decided and durable.
 ])

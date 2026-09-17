@@ -888,7 +888,11 @@ the witnesses; phase two records; slots put decisions in order. Everything in
 identity, and deterministic application is that rule made physical.
 
 #teach_back([
-  Close the book and explain the protocol in six sentences. Then reopen the
-  invariant list above, find the first fact you left out, and revise only that
-  sentence. The gap is the lesson.
+  Summary Reflection:
+  Synthesize the Paxos protocol in terms of its five core invariants:
+  1. Lexicographical ballot uniqueness (B1).
+  2. Overlapping phase-one and phase-two quorums (B2).
+  3. Preservation of the highest-ballot reported vote during candidate election (B3).
+  4. Write-ahead durability ordering on promises and votes.
+  5. Contiguous prefix delivery and safe memory window reuse.
 ])

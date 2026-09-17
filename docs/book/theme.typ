@@ -226,14 +226,13 @@
     fill: colors.at(1),
     stroke: (left: 2pt + colors.at(0)),
   )[
-    #text(weight: "bold", fill: colors.at(0))[#title]
-    #h(5pt)
+    #block(below: 6pt)[#text(weight: "bold", fill: colors.at(0))[#title]]
     #body
   ]
 }
 
-#let definition(term, body) = callout(term, body, kind: "idea")
-#let warning(title, body) = callout(title, body, kind: "warning")
+#let definition(term, body) = callout([Definition: #term], body, kind: "idea")
+#let warning(title, body) = callout([Warning: #title], body, kind: "warning")
 
 #let book_quote(body, attribution) = block(
   width: 88%,
@@ -242,8 +241,8 @@
   stroke: (left: 1.2pt + blue),
 )[
   #emph(body)
-  #linebreak()
-  #align(right, text(size: 9pt, fill: gray)[#text("- ")#attribution])
+  #v(4pt)
+  #align(right, text(size: 9pt, fill: gray)[#text("— ")#attribution])
 ]
 
 #let exercise(number, body, hint: none) = block(
@@ -254,12 +253,11 @@
   fill: amber_light,
   stroke: 0.6pt + amber,
 )[
-  #text(weight: "bold", fill: amber)[Exercise #number.]
-  #h(4pt)
+  #block(below: 5pt)[#text(weight: "bold", fill: amber)[Exercise #number]]
   #body
   #if hint != none [
-    #linebreak()
-    #text(size: 9pt, fill: gray)[Hint: #hint]
+    #v(4pt)
+    #text(size: 9pt, fill: gray)[*Hint:* #hint]
   ]
 ]
 
@@ -272,9 +270,9 @@
   ..rows,
 )
 
-#let objectives(body) = callout([Learning contract], body, kind: "idea")
+#let objectives(body) = callout([Learning Objectives], body, kind: "idea")
 #let checkpoint(title, body) = callout([Checkpoint: #title], body)
-#let predict(body) = callout([Predict before reading on], body, kind: "warning")
+#let predict(body) = callout([Prediction Exercise], body, kind: "warning")
 
 #let teach_back(body) = block(
   width: 100%,
@@ -284,8 +282,7 @@
   fill: blue_light,
   stroke: 0.6pt + blue,
 )[
-  #text(weight: "bold", fill: blue)[Teach it back.]
-  #h(4pt)
+  #block(below: 5pt)[#text(weight: "bold", fill: blue)[Review & Discussion]]
   #body
 ]
 

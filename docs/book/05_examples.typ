@@ -16,11 +16,11 @@
 = Three Worked Systems
 
 #objectives([
-  By the end of this chapter you should be able to trace the runnable counter's
-  host loop and explain its output, add durable request deduplication and an
-  explicit read discipline to a key-value host, say when a host would turn on
-  rotating ownership, and write the pass and fail observations for a regional
-  partition drill without claiming anything the library does not provide.
+  After completing this chapter, you will be able to:
+  - Trace the event-driven host loop and output of the runnable replicated counter.
+  - Implement durable client request deduplication and read-consistency disciplines in a key-value store.
+  - Evaluate architectural conditions that justify enabling rotating slot ownership.
+  - Formulate precise pass/fail criteria and operational procedures for regional partition drills.
 ])
 
 == Small Example: The Replicated Counter
@@ -586,9 +586,8 @@ The drill passes on observations, not on the absence of alarms.
 ])
 
 #teach_back([
-  Explain the regional design to an operator in three columns: guaranteed by the
-  library, required from the host, and merely a service policy. Place write
-  ordering, request deduplication, stale reads, the durability order, snapshot
-  transfer, value copying at the transport, and leader placement in the correct
-  column.
+  Classify system responsibilities for a multi-region deployment across three domains:
+  - Core Guarantees: Monotonic consensus order, epoch isolation, and durability verification.
+  - Host Obligations: Disk synchronization, network transport, payload copying, and snapshot transfer.
+  - Operational Policies: Leader locality, client routing, and request deduplication windows.
 ])

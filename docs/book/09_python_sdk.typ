@@ -9,6 +9,15 @@
 
 = Paxodin: A Python Host for the Odin Core
 
+#objectives([
+  After completing this chapter, you will be able to:
+  - Integrate Python applications with the Odin consensus core across a stable, versioned C ABI boundary.
+  - Implement durable file-backed journals and histories adhering to the strict persist-before-send contract.
+  - Track command lifecycles across the agreement, release, and application boundaries.
+  - Build asynchronous consensus workflows using `AsyncSession` and standard Python `asyncio`.
+  - Manage buffer memory lifetimes and wire codecs safely without introducing memory safety hazards.
+])
+
 *Status.* The package exists at `python/paxodin/` and is described by POD 0011.
 Its C ABI, typed `Node`, durable `Session`, asyncio `AsyncSession`, typed
 message classes, reference journal and history, wire codec and in-process
