@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "API design decisions for the 0.1.0 and 0.2.0 surfaces: names, options, effects, proc groups, and pointer payloads"
 #let pod-labels = ("api", "odin", "naming", "design")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Design Record"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"

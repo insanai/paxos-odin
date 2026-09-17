@@ -16,7 +16,9 @@ import struct
 import sys
 import zlib
 
-if sys.platform != "win32":
+if sys.platform == "win32":
+    import msvcrt
+else:
     import fcntl
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -184,8 +186,7 @@ class FileJournal:
         try:
             self._open(node_id, configuration_id)
         except BaseException:
-            os.close(self._lock_fd)
-            self._lock_fd = -1
+            self._release()
             raise
 
     def _live(self) -> io.BufferedRandom:
@@ -208,10 +209,13 @@ class FileJournal:
             StorageError: If another process already holds it.
         """
         descriptor = os.open(path, os.O_CREAT | os.O_RDWR, 0o644)
-        if sys.platform == "win32":  # pragma: no cover - no flock there
-            return descriptor
         try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if sys.platform == "win32":
+                # Windows byte-range locks also cover bytes beyond end of file.
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            else:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as exc:
             os.close(descriptor)
             message = (
@@ -356,11 +360,16 @@ class FileJournal:
         try:
             self.sync()
         finally:
+            self._release()
+
+    def _release(self) -> None:
+        """Release resources even when header validation failed during open."""
+        if self._file is not None:
             self._file.close()
             self._file = None
-            if self._lock_fd >= 0:
-                os.close(self._lock_fd)
-                self._lock_fd = -1
+        if self._lock_fd >= 0:
+            os.close(self._lock_fd)
+            self._lock_fd = -1
 
 
 class MemoryHistory:

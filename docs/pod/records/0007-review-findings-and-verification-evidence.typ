@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "The six-pass library review: correctness repairs, design choices, verification evidence, parity with paxos-zig, and the data-oriented redesign"
 #let pod-labels = ("review", "verification", "correctness", "benchmark")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Review Record"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"

@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "Why the 0.2.0 core stores Lamport's variables in columns and passes values by pointer"
 #let pod-labels = ("design", "performance", "memory", "odin")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Design Record"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"

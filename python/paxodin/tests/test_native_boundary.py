@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+from importlib.metadata import version
 
 import pytest
 
@@ -21,7 +22,7 @@ def test_abi_version_matches_the_loaded_library():
 
 def test_core_version_is_reported_separately_from_the_package_version():
     assert paxodin.core_version() == "0.2.0"
-    assert paxodin.__version__ != paxodin.core_version()
+    assert paxodin.__version__ == version("paxodin")
 
 
 def test_profile_reports_the_compiled_capacities():

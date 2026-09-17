@@ -59,7 +59,8 @@ def _note_fork() -> None:
     _FORK_GENERATION += 1
 
 
-os.register_at_fork(after_in_child=_note_fork)
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_note_fork)
 
 
 class AbandonedWritesWarning(UserWarning):

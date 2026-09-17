@@ -1,4 +1,5 @@
 site_name: paxodin
+site_url: https://insanai.github.io/paxos-odin/api/
 site_description: Idiomatic Python bindings for the paxos-odin consensus core
 repo_url: https://github.com/insanai/paxos-odin
 # The API reference is generated from Google-style docstrings, so it cannot

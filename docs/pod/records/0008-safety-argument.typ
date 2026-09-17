@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "The mathematical foundation the implementation is checked against"
 #let pod-labels = ("mathematics", "safety", "protocol")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Design Record"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"

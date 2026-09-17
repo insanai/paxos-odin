@@ -15,7 +15,7 @@
 #let book(body) = {
   set document(
     title: "The Part-Time Parliament: Paxos-Odin",
-    author: "Vikrant Varma & Paxos-Odin Contributors",
+    author: "Vikrant Rathore, with assistance from Ronak Rathore",
     keywords: ("Paxos", "consensus", "Odin", "distributed systems", "Multi-Paxos"),
   )
   set page(

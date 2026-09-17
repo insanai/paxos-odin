@@ -1,5 +1,5 @@
 // Paxos Odin Discussions (POD) Registry
-// Automatically updated by `paxos-cli pod promote <slug>`
+// Automatically updated by `paxodin pod promote <slug>`
 
 #let pod-documents = (
   (

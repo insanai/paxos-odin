@@ -34,7 +34,7 @@ these lines, and every review comment on this repository can cite one.
 ], [The Zen of Odin for InsanAI, POD 0001])
 
 The creed has teeth. `tools/check_style.py` enforces the structural constraints on every
-Odin file, and `make vet`, `make check`, and `paxos-cli check` run it first:
+Odin file, and `make vet`, `make check`, and `paxodin check` run it first:
 
 #table(
   columns: (auto, 1fr, 1.2fr),

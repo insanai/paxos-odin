@@ -4,18 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paxodin"
-version = "0.1.0.dev0"
+version = "0.2.0"
 description = "Idiomatic Python bindings for the paxos-odin consensus core"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Paxos Odin Contributors", email = "team@insan.ai" }]
+authors = [{ name = "Vikrant Rathore" }]
+maintainers = [{ name = "Vikrant Rathore" }, { name = "Ronak Rathore" }]
 keywords = ["paxos", "consensus", "replication", "distributed-systems"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -26,7 +26,7 @@ dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/insanai/paxos-odin"
-Documentation = "https://github.com/insanai/paxos-odin/tree/master/docs"
+Documentation = "https://insanai.github.io/paxos-odin/"
 Source = "https://github.com/insanai/paxos-odin"
 
 [dependency-groups]

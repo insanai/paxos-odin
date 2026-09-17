@@ -125,12 +125,13 @@ class Session:
 
     Example:
         >>> from paxodin import Session
-        >>> from paxodin.storage import FileJournal
+        >>> from paxodin.storage import FileHistory, FileJournal
         >>> with Session(  # doctest: +SKIP
         ...     node_id=1,
         ...     members=[1, 2, 3],
         ...     configuration_id=1,
-        ...     journal=FileJournal("state/node-1", node_id=1, configuration_id=1),
+        ...     journal=FileJournal("state/node-1"),
+        ...     history=FileHistory("state/node-1"),
         ...     transport=transport,
         ... ) as session:
         ...     receipt = session.append(b"set counter 41", timeout=5.0)

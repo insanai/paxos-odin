@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "Formal contract for host persistence barriers, journal copies, replay, and window trimming"
 #let pod-labels = ("durability", "storage", "protocol")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Protocol Specification"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"

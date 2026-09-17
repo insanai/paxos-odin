@@ -1,0 +1,11 @@
+name: Install pinned Odin
+description: Download the release compiler, without a source build.
+runs:
+  using: composite
+  steps:
+    - uses: laytan/setup-odin@v2.12.2
+      with:
+        release: dev-2026-09
+        token: ${{ github.token }}
+    - shell: bash
+      run: odin version

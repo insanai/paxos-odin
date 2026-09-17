@@ -1,5 +1,12 @@
 # paxos-odin
 
+[Website](https://insanai.github.io/paxos-odin/) · [Book](https://insanai.github.io/paxos-odin/book/) · [PODs](https://insanai.github.io/paxos-odin/pods/) · [Releases](https://github.com/insanai/paxos-odin/releases) · [Python package](https://pypi.org/project/paxodin/)
+
+The toolchain CLI is **paxodin**; the Odin package remains **paxos**.
+CLI releases cover Linux x86-64, Windows x86-64 and macOS Apple Silicon.
+Authored by **Vikrant Rathore**, with assistance from **Ronak Rathore**.
+Copyright © 2026 Vikrant Rathore and Ronak Rathore, under the MIT License.
+
 A Paxos library that does no I/O, written in Odin.
 
 English · [한국어](README.ko.md)
@@ -387,7 +394,7 @@ The book has a preface, a chapter on how it teaches, and nine parts:
 | VI. Evidence | Validation, Testing, and Operations; Reproducing Measurements |
 | VII. Desk reference | Consensus Desk Reference |
 | VIII. Conformance | Lamport Conformance Appendix |
-| IX. Python integration | Paxodin: A Python Host for the Odin Core (proposed) |
+| IX. Python integration | Paxodin: A Python Host for the Odin Core |
 
 Paxos Odin Discussions (PODs) are the design records, one Typst file each under
 `docs/pod/records/`. `docs/pod/registry.typ` is the source of truth for the
@@ -407,7 +414,7 @@ list; at the time of writing it holds:
 | 0010 | Rotating Slot Ownership | committed |
 | 0011 | [Paxodin: A Python SDK over the Odin Core](docs/pod/records/0011-paxodin-python-sdk.typ) | committed |
 
-`./bin/paxos-cli pod list`, `pod new <slug>`, and `pod promote <slug>` manage
+`./bin/paxodin pod list`, `pod new <slug>`, and `pod promote <slug>` manage
 the records.
 
 ## Recovery memory and reproducible comparisons
@@ -462,7 +469,7 @@ rows above remain measurements of their recorded source revision and harness.
 
 | command | what it does |
 |---|---|
-| `make build` | Build `bin/paxos.o`, `bin/paxos-sim`, `bin/paxos-bench`, and `bin/paxos-cli` |
+| `make build` | Build `bin/paxos.o`, `bin/paxos-sim`, `bin/paxos-bench`, and `bin/paxodin` |
 | `make test` | `odin test tests` |
 | `make vet` | `odin check` every package with `-vet -strict-style` |
 | `make check` | The full verification run in `tools/check.py` |
@@ -473,7 +480,7 @@ rows above remain measurements of their recorded source revision and harness.
 | `make docs` | Compile the book and the POD records to PDF |
 | `make clean` | Remove `bin/` and `docs/build/` |
 
-`./build.sh` bootstraps `bin/paxos-cli`. Its commands are `build
+`./build.sh` bootstraps `bin/paxodin`. Its commands are `build
 [all|lib|test|sim|bench|cli]`, `test`, `sim [--seed=N] [--steps=N] [--nodes=N]
 [--verbose]`, `bench [--iterations=N] [--json] [--durable] [--journal-dir=PATH]`,
 `example`, `docs [all|book|index|pod|pod-NNNN|releases|html]`, `check`, and
@@ -559,7 +566,7 @@ paxos-odin/
 ├── tests/                   79 tests (odin test tests) and the shared harness
 ├── sim/                     Deterministic fault simulator (paxos-sim), both modes
 ├── bench/                   In-memory and durable benchmark (paxos-bench); results/
-├── cli/                     paxos-cli: build, test, sim, bench, example, check, docs, pod
+├── cli/                     paxodin: build, test, sim, bench, example, check, docs, pod
 ├── tools/                   check.py, check_style.py, check_contracts.py, bench_compare.py
 ├── docs/
 │   ├── book.typ, book/      The book (Typst)

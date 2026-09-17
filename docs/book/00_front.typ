@@ -7,6 +7,15 @@
   #text(size: 15pt, weight: "bold")[About this book]
 ]
 
+*Authorship and license.* The code is authored by Vikrant Rathore, with
+assistance from Ronak Rathore. Copyright © 2026 Vikrant Rathore and Ronak Rathore.
+The library, Python SDK, CLI and documentation are released under the MIT License;
+the repository's `LICENSE` contains the complete terms.
+
+The public monorepo is #link("https://github.com/insanai/paxos-odin")[insanai/paxos-odin].
+The #link("https://insanai.github.io/paxos-odin/")[project website] provides this book
+and the PODs as HTML, their PDFs, and the generated Python API reference.
+
 This book explains one fundamental algorithm: Leslie Lamport's Paxos consensus
 protocol. It also explains one concrete, bounded implementation of that
 algorithm written in the *Odin* programming language: `paxos-odin`.

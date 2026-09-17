@@ -7,6 +7,8 @@ import "core:c/libc"
 import "core:time"
 import "core:strconv"
 
+VERSION :: "0.2.0"
+
 RECORDS_DIR   :: "docs/pod/records"
 REGISTRY_PATH :: "docs/pod/registry.typ"
 BUNDLE_PATH   :: "docs/pod/bundle.typ"
@@ -32,8 +34,8 @@ run_system_cmd :: proc(cmd: string) -> int {
 }
 
 print_usage :: proc() {
-	fmt.println("Paxos-Odin Toolchain CLI")
-	fmt.println("Usage: paxos-cli <command> [arguments]")
+	fmt.println("paxodin — Paxos-Odin Toolchain CLI")
+	fmt.println("Usage: paxodin <command> [arguments]")
 	fmt.println("")
 	fmt.println("Commands:")
 	fmt.println("  build [all|lib|test|sim|bench|cli]  Build library, binaries, or test runner")
@@ -46,6 +48,7 @@ print_usage :: proc() {
 	fmt.println("  pod list                            List registered POD records and active drafts")
 	fmt.println("  pod new <slug>                      Create docs/pod/records/XXXXX-<slug>.typ")
 	fmt.println("  pod promote <slug>                  Assign the next number and register the POD")
+	fmt.println("  version                             Print CLI and core version")
 	fmt.println("  help                                Display this help text")
 }
 
@@ -83,16 +86,16 @@ cmd_build :: proc(args: []string) {
 		if res == 0 do fmt.println("Built bin/paxos-bench successfully.")
 
 	case "cli":
-		fmt.println("Building CLI (bin/paxos-cli)...")
-		res := run_system_cmd("odin build cli -out:bin/paxos-cli")
-		if res == 0 do fmt.println("Built bin/paxos-cli successfully.")
+		fmt.println("Building CLI (bin/paxodin)...")
+		res := run_system_cmd("odin build cli -out:bin/paxodin")
+		if res == 0 do fmt.println("Built bin/paxodin successfully.")
 
 	case "all":
 		fmt.println("Building all targets into bin/...")
 		_ = run_system_cmd("odin build src -build-mode:obj -out:bin/paxos.o")
 		_ = run_system_cmd("odin build sim -out:bin/paxos-sim")
 		_ = run_system_cmd(BENCH_BUILD)
-		_ = run_system_cmd("odin build cli -out:bin/paxos-cli")
+		_ = run_system_cmd("odin build cli -out:bin/paxodin")
 		fmt.println("All targets built in bin/")
 
 	case:
@@ -297,7 +300,7 @@ compile_matching_pod :: proc(root_dir, pattern: string) {
 
 cmd_pod :: proc(args: []string) {
 	if len(args) == 0 {
-		fmt.println("Usage: paxos-cli pod [list|new <slug>|promote <slug>]")
+		fmt.println("Usage: paxodin pod [list|new <slug>|promote <slug>]")
 		return
 	}
 
@@ -307,19 +310,19 @@ cmd_pod :: proc(args: []string) {
 		pod_list()
 	case "new":
 		if len(args) < 2 {
-			fmt.println("Error: slug required (e.g. paxos-cli pod new leader-leases)")
+			fmt.println("Error: slug required (e.g. paxodin pod new leader-leases)")
 			return
 		}
 		pod_new(args[1])
 	case "promote":
 		if len(args) < 2 {
-			fmt.println("Error: slug required (e.g. paxos-cli pod promote leader-leases)")
+			fmt.println("Error: slug required (e.g. paxodin pod promote leader-leases)")
 			return
 		}
 		pod_promote(args[1])
 	case:
 		fmt.printf("Unknown pod subcommand: %s\n", sub)
-		fmt.println("Usage: paxos-cli pod [list|new <slug>|promote <slug>]")
+		fmt.println("Usage: paxodin pod [list|new <slug>|promote <slug>]")
 	}
 }
 
@@ -395,7 +398,7 @@ pod_new :: proc(slug: string) {
 	fmt.println("================================================================================")
 	fmt.printf("Created new placeholder draft: %s\n", target_path)
 	fmt.println("Edit the draft's title, summary, and design details.")
-	fmt.printf("When ready for discussion, promote it with: paxos-cli pod promote %s\n", slug)
+	fmt.printf("When ready for discussion, promote it with: paxodin pod promote %s\n", slug)
 	fmt.println("================================================================================")
 }
 
@@ -451,7 +454,7 @@ pod_promote :: proc(slug: string) {
 	fmt.println("================================================================================")
 	fmt.printf("Promoted %s -> %s\n", draft_name, new_filename)
 	fmt.printf("Registered POD %s in %s and %s\n", num_str, REGISTRY_PATH, BUNDLE_PATH)
-	fmt.printf("Compile PDF with: paxos-cli docs pod-%s\n", num_str)
+	fmt.printf("Compile PDF with: paxodin docs pod-%s\n", num_str)
 	fmt.println("================================================================================")
 }
 
@@ -599,10 +602,12 @@ main :: proc() {
 		cmd_docs(args)
 	case "pod":
 		cmd_pod(args)
+	case "version", "--version", "-V":
+		fmt.printf("paxodin %s\n", VERSION)
 	case "help", "--help", "-h":
 		print_usage()
 	case:
-		fmt.printf("Unknown command: %s\n\n", cmd)
-		print_usage()
+		fmt.eprintf("Unknown command: %s\nHint: run paxodin help for available commands.\n", cmd)
+		os.exit(2)
 	}
 }

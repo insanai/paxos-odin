@@ -33,3 +33,7 @@ python/paxodin/native/core/
 # Rust/Cargo build outputs (matched benchmarks)
 target/
 
+
+# Release and website staging
+_site/
+release-dist/

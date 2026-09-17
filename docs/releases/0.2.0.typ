@@ -175,3 +175,18 @@ ordered payloads at every learner. CPU and memory profiles use Callgrind and
 Massif, with no additional library runtime services or dependencies. The recorded
 measurement contract distinguishes static storage, heap capacity, RSS, and native
 elapsed time; historical results remain attributable to their original harness.
+
+= Public Monorepo Launch
+
+The project launches at `insanai/paxos-odin`. The executable formerly named
+`paxos-cli` is now `paxodin`; the Odin package remains `paxos`. Release archives
+cover Linux x86-64, Windows x86-64 and macOS Apple Silicon. The Python SDK ships
+as `paxodin` with platform wheels and a standalone source distribution, alongside
+its synchronous and asynchronous sessions and typed low-level node API.
+
+Tag-driven releases check version parity, the full Odin gate, both Python
+durability gates and the installed native artifacts before publishing. The website
+provides an HTML book, POD index, generated API reference and downloadable PDFs.
+
+Authored by Vikrant Rathore, with assistance from Ronak Rathore. Copyright © 2026
+Vikrant Rathore and Ronak Rathore. All project distributions use the MIT License.

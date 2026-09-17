@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "The POD process, the Zen of Odin for InsanAI, and its enforced structural constraints"
 #let pod-labels = ("process", "documentation", "cli")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Process Memo"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"
@@ -49,19 +49,19 @@ A POD document progresses through five standardized states:
 
 To prevent Git merge conflicts on sequence numbers across branches, new proposals begin with the placeholder `XXXXX`.
 
-The `paxos-cli` automation manages the entire lifecycle:
+The `paxodin` automation manages the entire lifecycle:
 ```sh
 # 1. Create a new draft
-./bin/paxos-cli pod new leader-leases
+./bin/paxodin pod new leader-leases
 
 # 2. List all active records and draft placeholders
-./bin/paxos-cli pod list
+./bin/paxodin pod list
 
 # 3. Promote the draft to the next permanent 4-digit number
-./bin/paxos-cli pod promote leader-leases
+./bin/paxodin pod promote leader-leases
 
 # 4. Compile PDFs via Typst
-./bin/paxos-cli docs pod
+./bin/paxodin docs pod
 ```
 
 = Registry and Compilation
@@ -105,7 +105,7 @@ It is quoted in full so that a reviewer can point at the line a change violates.
 = Structural Constraints
 
 The creed is enforced by `tools/check_style.py`, which `make vet`, `make check`, and the
-`paxos-cli check` command run before anything else. A hard limit fails the build.
+`paxodin check` command run before anything else. A hard limit fails the build.
 
 == 1. File boundary
 

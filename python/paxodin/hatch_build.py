@@ -12,6 +12,7 @@ into `native/core/src/` so that an installed sdist never reaches outside itself.
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -28,7 +29,8 @@ STAGED_CORE = Path("native") / "core"
 # The wheel's CPU floor. `x86-64-v2` is Odin's own default; it is passed
 # explicitly so the floor is recorded in the build log rather than inherited.
 # Never `native` -- that is for bench/, and would produce an unshippable wheel.
-MICROARCH = os.environ.get("PAXODIN_MICROARCH", "x86-64-v2")
+CPU_DEFAULT = "generic" if platform.machine().lower() in {"arm64", "aarch64"} else "x86-64-v2"
+MICROARCH = os.environ.get("PAXODIN_MICROARCH", CPU_DEFAULT)
 
 LIB_STEM = "_paxodin"
 ENFORCED_STEM = "_paxodin_enforced"
@@ -43,6 +45,8 @@ def _library_suffix() -> str:
 
 
 def _platform_tag() -> str:
+    if sys.platform == "darwin":
+        return "macosx_12_0_arm64" if platform.machine() == "arm64" else "macosx_12_0_x86_64"
     return sysconfig.get_platform().replace("-", "_").replace(".", "_")
 
 
@@ -92,6 +96,8 @@ class OdinBuildHook(BuildHookInterface):
             f"-microarch:{MICROARCH}",
             f"-out:{out}",
         ]
+        if sys.platform == "darwin":
+            command.append("-minimum-os-version:12.0")
         if enforced:
             command.append("-define:PAXODIN_GATE_ENFORCED=true")
         self.app.display_info(f"paxodin: {' '.join(command)}")

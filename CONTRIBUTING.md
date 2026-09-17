@@ -3,8 +3,8 @@
 ## Build and run
 
 ```sh
-./build.sh          # bootstrap bin/paxos-cli
-make build          # bin/paxos.o, bin/paxos-sim, bin/paxos-bench, bin/paxos-cli
+./build.sh          # bootstrap bin/paxodin
+make build          # bin/paxos.o, bin/paxos-sim, bin/paxos-bench, bin/paxodin
 make test           # odin test tests
 make example        # odin run examples/counter.odin -file
 make sim            # one seeded simulation
@@ -104,7 +104,7 @@ SDK still belongs in POD 0011 and Part IX of the book.
 - The book is `docs/book.typ` with one chapter per file in `docs/book/`. The
   API reference is Part VII.
 - Release notes live in `docs/releases/<version>.typ` and compile with
-  `./bin/paxos-cli docs releases` (or `typst compile --root .
+  `./bin/paxodin docs releases` (or `typst compile --root .
   docs/releases/<version>.typ docs/build/release-<version>.pdf`).
 - Matched benchmark numbers come from the archived JSON under `bench/results/`,
   recorded by `make bench-matched`; historical CPU/durability rows retain
@@ -123,11 +123,11 @@ numbers.
 ## Adding a POD
 
 ```sh
-./bin/paxos-cli pod new <slug>        # docs/pod/records/XXXXX-<slug>.typ from the template
+./bin/paxodin pod new <slug>        # docs/pod/records/XXXXX-<slug>.typ from the template
 # edit the draft: title, summary, design, alternatives, evidence
-./bin/paxos-cli pod promote <slug>    # assigns the next 4-digit number, registers it
-./bin/paxos-cli docs pod-NNNN         # compile just that record
-./bin/paxos-cli pod list              # registry and drafts
+./bin/paxodin pod promote <slug>    # assigns the next 4-digit number, registers it
+./bin/paxodin docs pod-NNNN         # compile just that record
+./bin/paxodin pod list              # registry and drafts
 ```
 
 `docs/pod/registry.typ` is the source of truth for the list; `promote` appends
@@ -139,3 +139,24 @@ simulation that demonstrates the change.
 
 One change per commit, with a message that states what the change protects or
 enables. Reference the POD number when a design record exists.
+
+## Tagged releases and website
+
+The release version must agree in `src/paxos.odin`, `cli/main.odin`, the Python
+project metadata, and `paxodin.__version__`. Update `uv.lock`, the book and Typst
+release notes, then run `python3 tools/release.py version`. Push a `vX.Y.Z` tag
+only on the revision intended for publication. The release workflow runs the full
+verification gate and builds the CLI and standalone Python wheel on Linux x86-64,
+Windows x86-64 and macOS Apple Silicon. Every wheel is installed and exercised on
+Python 3.12–3.14 before the publication job uses `PYPI_API_KEY`.
+
+Routine CI uses a short fault matrix; tags, weekly runs and manual dispatch run
+the full matrix. Tests run in parallel with artifact builds on tags, but publishing
+waits for all checks. Documentation-only changes skip library CI. New commits
+cancel obsolete branch checks; release jobs are never cancelled by a newer tag.
+
+`make docs && make python-docs && python3 tools/build_site.py` assembles `_site/`.
+The landing page and shared reading styles live in `docs/site/`; Typst remains the
+source for book and POD content. Pages deploys from `main` through GitHub Actions.
+The organization must allow this repository to access its `PYPI_API_KEY` secret.
+Never print, copy into source, or pass that secret to a build job.

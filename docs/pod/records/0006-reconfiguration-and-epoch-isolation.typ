@@ -4,7 +4,7 @@
 #let pod-created = "2026-09-16"
 #let pod-discussion = "Stop signs, sealing, handover, and configuration-stamped envelopes in the replicated log"
 #let pod-labels = ("reconfiguration", "protocol", "replicated-log", "safety")
-#let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
+#let pod-authors = ("Vikrant Rathore <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Protocol Specification"
 #let pod-status = "Committed"
 #let pod-last-updated = "2026-09-17"

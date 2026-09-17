@@ -1,7 +1,7 @@
 .PHONY: all build test check vet sim bench bench-durable bench-compare docs example clean help
 
 ODIN ?= odin
-CLI = bin/paxos-cli
+CLI = bin/paxodin
 
 all: build
 

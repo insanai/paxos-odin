@@ -27,7 +27,7 @@ present compact, Requests-inspired entry points for applications; a lower-level
 `Node` lets experienced hosts drive the effect machine themselves.
 
 The project lives at `python/paxodin/` and is managed with uv. The package name is
-not reserved on PyPI; publishing remains a separate release action.
+published by the tag-driven release workflow after artifact qualification.
 
 = Status and Implementation Boundary
 
@@ -157,10 +157,10 @@ class Transport(Protocol):
 ```
 
 The public entry point is a local participant, not an HTTP client or a complete
-cluster. Its proposed use is:
+cluster. Its public use is:
 
 ```python
-from paxodin import FileJournal, Session
+from paxodin import FileHistory, FileJournal, Session
 
 # transport is an application-supplied authenticated Transport.
 with Session(
@@ -168,6 +168,7 @@ with Session(
     members=[1, 2, 3],
     configuration_id=1,
     journal=FileJournal("state/node-1"),
+    history=FileHistory("state/node-1"),
     transport=transport,
 ) as session:
     receipt = session.append(b"set counter 41", timeout=5.0)
@@ -226,7 +227,7 @@ No Python exception crosses the ABI. Expected failures return status plus detail
 invariant failures make the handle unusable instead of pretending recovery succeeded.
 
 The initial compiled profile proposes at most seven members, a 256-slot window,
-64-slot recovery chunk and 1,024 application bytes per value. These are proposed
+64-slot recovery chunk and 1,024 application bytes per value. These are fixed
 packaging choices, not runtime-generic Odin instantiations. The native value is a
 comparable fixed-size record with a kind, a length and a zero-initialized payload
 array. Kind distinguishes an empty command from an internal no-op; canonical
@@ -557,13 +558,12 @@ boundary, then let matched profiles justify additional machinery.
 The open questions of the draft are now settled. The stock profile is seven
 members, a 256-slot window, a 64-slot recovery chunk and 1,024 payload bytes; the
 measured cost is 417,304 bytes for one node and 41,840 for one effects batch, both
-reported through `paxodin_profile`. Linux x86-64 is the first and only qualified
-platform. The journal format is a locked node directory holding a header that
+reported through `paxodin_profile`. The release matrix qualifies Linux x86-64, Windows x86-64 and macOS Apple
+Silicon with native builds and installed-wheel tests. The journal format is a locked node directory holding a header that
 binds node identity, configuration, format version and profile fingerprint,
 followed by length-delimited CRC-32 records whose values travel inline, because
-replay dereferences each record's value. Neither `paxodin` nor `paxos-odin` is
-registered on PyPI as of 2026-09-17; the name is still unreserved and publishing
-is a separate action.
+replay dereferences each record's value. The Python distribution is named `paxodin`; the Odin package remains `paxos`.
+Tagged releases publish only after the verification and artifact jobs succeed.
 
 Two decisions changed during implementation, and the reasons are recorded rather
 than the outcomes alone. The build backend is hatchling with a sixty-line hook

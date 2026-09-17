@@ -1,0 +1,46 @@
+name: Verification
+on:
+  workflow_call:
+    inputs:
+      full:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  odin:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-odin
+      - name: Tests, contracts, style and fault simulation
+        env:
+          FULL: ${{ inputs.full }}
+        run: |
+          if [ "$FULL" = true ]; then
+            python3 tools/check.py
+          else
+            python3 tools/check.py --seeds=2 --steps=2000
+          fi
+  python:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-odin
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.12.15"
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: python/paxodin/uv.lock
+      - name: Locked environment, lint, types and both durability gates
+        working-directory: python/paxodin
+        run: |
+          uv sync --locked
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
+          uv run --no-sync mypy
+          uv run --no-sync pytest -q --doctest-modules src/paxodin tests
+          PAXODIN_LIB=enforced uv run --no-sync pytest -q

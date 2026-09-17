@@ -1,7 +1,5 @@
 """The reference journal: durability, locking, torn tails and corruption."""
 
-import os
-
 import pytest
 
 from paxodin import errors
@@ -106,7 +104,6 @@ def test_opening_with_another_configuration_is_refused(tmp_path):
         opened(tmp_path, node_id=1, configuration_id=2)
 
 
-@pytest.mark.skipif(not hasattr(os, "fork"), reason="flock is POSIX only")
 def test_two_journals_cannot_hold_one_directory(tmp_path):
     first = opened(tmp_path, node_id=1, configuration_id=1)
     try:
@@ -128,4 +125,13 @@ def test_an_empty_append_is_a_no_op(tmp_path):
     journal.append([])
     journal.sync()
     assert list(journal.replay()) == []
+    journal.close()
+
+
+def test_failed_open_releases_file_and_lock(tmp_path):
+    opened(tmp_path, node_id=1, configuration_id=1).close()
+    journal = FileJournal(tmp_path)
+    with pytest.raises(errors.InvalidArgument):
+        journal.open(node_id=2, configuration_id=1)
+    journal.open(node_id=1, configuration_id=1)
     journal.close()

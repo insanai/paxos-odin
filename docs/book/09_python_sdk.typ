@@ -2,7 +2,7 @@
 #import "figures.typ": python_sdk_layers, python_sdk_batch
 
 #part_page("IX", [Python integration], [
-  A proposed Python SDK: a small interface over a precise durability contract.
+  A Python SDK: a small interface over a precise durability contract.
   Follow one command across the language boundary, then examine what a timeout,
   a crash and a released buffer mean.
 ])
@@ -16,7 +16,7 @@ clusters are implemented and covered by `make check-python`.
 A wheel builds from a source distribution outside the checkout and passes a
 three-node smoke test on CPython 3.12, 3.13 and 3.14 with no Odin compiler
 present. Reconfiguration, rotating ownership, learners and leases are refused by
-capability bit rather than half-supported. Nothing is published to PyPI.
+capability bit rather than half-supported. Tagged releases publish the tested wheels and source distribution to PyPI as `paxodin`.
 
 == Start with one command
 
@@ -33,7 +33,7 @@ Keeping that distinction visible makes the API easier to reason about after a
 crash.
 
 ```python
-from paxodin import FileJournal, Session
+from paxodin import FileHistory, FileJournal, Session
 
 # Supply an authenticated transport connecting this member to its peers.
 with Session(
@@ -41,6 +41,7 @@ with Session(
     members=[1, 2, 3],
     configuration_id=1,
     journal=FileJournal("state/node-1"),
+    history=FileHistory("state/node-1"),
     transport=transport,
 ) as session:
     receipt = session.append(b"set counter 41", timeout=5.0)
@@ -54,7 +55,7 @@ with a hint when available, leaving request routing explicit.
 
 == A small Python surface
 
-The proposal uses Python 3.12+ features directly. Results are frozen dataclasses
+The SDK uses Python 3.12+ features directly. Results are frozen dataclasses
 with slots; options are keyword-only; alternatives use union annotations; storage
 and transport adapters satisfy typed protocols. Public objects own their data.
 A Python `bytes` returned today remains valid after tomorrow's transitions.
@@ -75,10 +76,10 @@ come from the log. A third API, `Node`, exposes individual transitions and
 pending batches for hosts that need control over scheduling or
 storage. Both APIs invoke the same Odin core.
 
-#book_figure([The proposed layers. Python owns returned data; the bridge hides native representation.], python_sdk_layers())
+#book_figure([The SDK layers. Python owns returned data; the bridge hides native representation.], python_sdk_layers())
 
 The initial wheel contains a fixed capacity profile. Python cannot instantiate
-an arbitrary Odin generic at runtime. The proposed first profile supports seven
+an arbitrary Odin generic at runtime. The stock profile supports seven
 members, a 256-slot window, a 64-slot recovery chunk and commands up to 1,024 bytes.
 These limits are queryable and checked before mutation. Larger profiles need
 compatible artifacts on every participant.
@@ -90,7 +91,7 @@ constructing a Python list, but Python raises `MemoryError`. If that list were t
 only record of the pending writes, the next call could accidentally acknowledge
 a vote that never reached disk.
 
-The proposed bridge therefore retains the native effects batch behind a generation
+The bridge therefore retains the native effects batch behind a generation
 token. Python can ask for buffer sizes and retry copies without rerunning the
 transition. No new transition is permitted until that batch has been dealt with.
 
@@ -128,7 +129,7 @@ still needs a durable command-id policy when its clients retry.
 == A memory floor transfers responsibility
 
 A finite native window eventually fills. Freeing a cell is safe only after the
-host has durably taken responsibility for the released entry. In the proposal,
+host has durably taken responsibility for the released entry. In the implementation,
 Session writes released entries to retained history before moving the native
 memory floor. The application's durable cursor is separate: it records what the
 application has applied, not what Session has merely stored.
@@ -165,8 +166,8 @@ against it, so an ordering mistake in the bridge stops a test run instead of
 reaching a release.
 
 The development tools are Ruff, strict mypy, pytest and Hypothesis. The first
-qualification matrix covers CPython 3.12–3.14, beginning on Linux x86-64. Other
-platforms become supported only after their wheel and durability checks pass.
+release matrix covers CPython 3.12–3.14 on Linux x86-64, Windows x86-64 and
+macOS Apple Silicon. Each tagged release checks the installed artifacts before publishing.
 The release has to verify resource loading, native dependencies, portable CPU
 instructions, ABI versions and the absence of source-tree path assumptions.
 POD 0011 links the upstream tooling documentation and specifies the build gates.
@@ -224,3 +225,27 @@ transition. The wait ended in the second; cancellation was never established.
 For the third, the host's durable history must retain the commands independently
 of the native window and serve them until application and retention obligations
 have both been met.
+
+== Install and release
+
+Install the Python SDK with `uv add paxodin` or `python -m pip install paxodin`.
+The wheel contains the native engine; a wheel user needs no Odin compiler.
+Source builds use the Odin compiler and the core bundled in the source distribution.
+The separate `paxodin` CLI comes from GitHub releases and works inside a repository
+checkout. Its build and test commands need Odin; documentation also needs Typst.
+The Odin import name remains `paxos`.
+
+Tag names are `vMAJOR.MINOR.PATCH`. The release gate checks agreement among the
+tag, core, CLI and Python versions. Three native jobs build CLI archives and
+wheels, rebuild wheels from standalone source distributions, and test wheel installs
+on CPython 3.12, 3.13 and 3.14 without Odin on PATH. macOS releases target only
+Apple Silicon, with macOS 12 as the minimum. Linux wheel tags encode their glibc
+requirement. Windows releases target x86-64. Checksums accompany GitHub assets.
+
+Routine CI runs both Odin test profiles, contracts and a short seeded fault matrix,
+plus Python lint, types and both durability gates. Full fault simulations run on
+tags, weekly and on manual dispatch. New pushes cancel obsolete branch checks.
+Build jobs have no publication credentials; only the final publish job receives
+the organization's `PYPI_API_KEY`. GitHub Pages deploys the built static site with
+its own narrowly scoped permissions. Performance benchmarks remain reproducible
+manual experiments rather than noisy shared-runner timing gates.

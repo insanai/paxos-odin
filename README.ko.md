@@ -1,5 +1,12 @@
 # paxos-odin
 
+[Website](https://insanai.github.io/paxos-odin/) · [Book](https://insanai.github.io/paxos-odin/book/) · [PODs](https://insanai.github.io/paxos-odin/pods/) · [Releases](https://github.com/insanai/paxos-odin/releases) · [Python package](https://pypi.org/project/paxodin/)
+
+The toolchain CLI is **paxodin**; the Odin package remains **paxos**.
+CLI releases cover Linux x86-64, Windows x86-64 and macOS Apple Silicon.
+Authored by **Vikrant Rathore**, with assistance from **Ronak Rathore**.
+Copyright © 2026 Vikrant Rathore and Ronak Rathore, under the MIT License.
+
 I/O를 전혀 하지 않는 Paxos 라이브러리. Odin으로 작성되었습니다.
 
 [English](README.md) · 한국어
@@ -375,7 +382,7 @@ make bench-compare                           # 네 구현 모두 실행, bench/r
 | VI. Evidence | Validation, Testing, and Operations; Reproducing Measurements |
 | VII. Desk reference | Consensus Desk Reference |
 | VIII. Conformance | Lamport Conformance Appendix |
-| IX. Python integration | Paxodin: A Python Host for the Odin Core (proposed) |
+| IX. Python integration | Paxodin: A Python Host for the Odin Core |
 
 Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래에 Typst
 파일 하나씩 있습니다. 목록의 원본은 `docs/pod/registry.typ`이며, 이 글을 쓰는
@@ -395,7 +402,7 @@ Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래�
 | 0010 | Rotating Slot Ownership | committed |
 | 0011 | [Paxodin: A Python SDK over the Odin Core](docs/pod/records/0011-paxodin-python-sdk.typ) | committed |
 
-`./bin/paxos-cli pod list`, `pod new <slug>`, `pod promote <slug>`로 레코드를
+`./bin/paxodin pod list`, `pod new <slug>`, `pod promote <slug>`로 레코드를
 관리합니다.
 
 ## 범위와 운영 계약
@@ -434,7 +441,7 @@ Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래�
 
 | 명령 | 하는 일 |
 |---|---|
-| `make build` | `bin/paxos.o`, `bin/paxos-sim`, `bin/paxos-bench`, `bin/paxos-cli` 빌드 |
+| `make build` | `bin/paxos.o`, `bin/paxos-sim`, `bin/paxos-bench`, `bin/paxodin` 빌드 |
 | `make test` | `odin test tests` |
 | `make vet` | 모든 패키지를 `-vet -strict-style`로 `odin check` |
 | `make check` | `tools/check.py`의 전체 검증 실행 |
@@ -445,7 +452,7 @@ Paxos Odin Discussions(POD)는 설계 기록으로, `docs/pod/records/` 아래�
 | `make docs` | 책과 POD 레코드를 PDF로 컴파일 |
 | `make clean` | `bin/`과 `docs/build/` 제거 |
 
-`./build.sh`는 `bin/paxos-cli`를 부트스트랩합니다. 명령은 `build
+`./build.sh`는 `bin/paxodin`를 부트스트랩합니다. 명령은 `build
 [all|lib|test|sim|bench|cli]`, `test`, `sim [--seed=N] [--steps=N] [--nodes=N]
 [--verbose]`, `bench [--iterations=N] [--json] [--durable] [--journal-dir=PATH]`,
 `example`, `docs [all|book|index|pod|pod-NNNN|releases|html]`, `check`,
@@ -528,7 +535,7 @@ paxos-odin/
 ├── tests/                   79개 테스트(odin test tests)와 공유 하네스
 ├── sim/                     결정론적 결함 시뮬레이터(paxos-sim), 두 모드 모두
 ├── bench/                   인메모리 및 durable 벤치마크(paxos-bench); results/
-├── cli/                     paxos-cli: build, test, sim, bench, example, check, docs, pod
+├── cli/                     paxodin: build, test, sim, bench, example, check, docs, pod
 ├── tools/                   check.py, check_style.py, check_contracts.py, bench_compare.py
 ├── docs/
 │   ├── book.typ, book/      책(Typst)
