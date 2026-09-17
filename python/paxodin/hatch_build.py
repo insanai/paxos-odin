@@ -101,7 +101,15 @@ class OdinBuildHook(BuildHookInterface):
         if enforced:
             command.append("-define:PAXODIN_GATE_ENFORCED=true")
         self.app.display_info(f"paxodin: {' '.join(command)}")
-        subprocess.run(command, check=True)
+        env = dict(os.environ)
+        if sys.platform != "win32":
+            clang = shutil.which(env.get("ODIN_CLANG_PATH", "clang"))
+            if clang is None:
+                message = "clang is missing. Hint: install the platform C linker toolchain."
+                raise RuntimeError(message)
+            env["PAXODIN_REAL_CLANG"] = clang
+            env["ODIN_CLANG_PATH"] = str(Path(self.root) / "clang_compat.py")
+        subprocess.run(command, check=True, env=env)
 
     def _stage_core(self) -> None:
         """Copy the exact core revision into the sdist.
