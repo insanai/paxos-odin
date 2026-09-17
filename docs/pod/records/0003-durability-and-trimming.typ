@@ -29,6 +29,19 @@
 
 This specification states the durability obligations a host of `paxos-odin` `0.2.0` must meet, the runtime gate that catches the most common violation, the five durable records and the copy obligation that follows from their pointer payloads, the pre-durable rule and its round-zero exception, the memory floor that lets a bounded window be reused, the trim anchors that let an acceptor answer for a prefix it no longer holds, and the journal replay contract. Every rule below is enforced or documented in `src/ledger.odin`, `src/effects.odin`, `src/node.odin`, and `src/consensus.odin`.
 
+= Status and Implementation Boundary
+
+The durability contract is implemented. Recovery selection is now frozen before
+phase two and retained across backpressure retries (POD 0009). This does not extend
+an effect pointer's lifetime: a host must copy queued payloads before the next
+transition, including independently owned copies of duplicated simulator packets.
+
+An error does not generally imply an empty effects batch or an unchanged node.
+The host must inspect and finish the batch before deciding how to handle the error.
+Ownership batch admission is a specific stronger contract: its read-only
+`own_slot_probe` preflight rejects an unavailable batch without writing a vote or
+moving the frontier. The Python bridge implemented in POD 0011 preserves both rules.
+
 = The Core Durability Contract
 
 Paxos survives crashes only if a promise or a vote that a peer may have observed is never forgotten (obligation D1, "indelible ink", in `src/paxos.odin`).
@@ -173,28 +186,14 @@ The simulator's `sim_restart_node`, `journal_replay` in `tests/harness.odin`, an
 
 Hosts that write one journal per process lifetime use `ledger_apply`; hosts that append across restarts use `ledger_replay_fold`. Neither procedure allocates.
 
-= Verification
+= Validation and Acceptance Gates
 
 - `test_effects_power_loss_barrier_flag`, `test_pre_durable_messages_iterator`, `test_host_managed_gate`, and `test_zero_value_effects_are_ready` in `tests/test_durability.odin`.
 - The four durability fixtures in `tools/check_contracts.py`, each built in both profiles.
 - `test_node_restore_and_recovery`, `review_replay_reuses_certified_trimmed_vote`, `review_snapshot_preserves_votes_above_anchor`, and `review_live_trim_rejects_conflicting_identity`.
 - The seeded simulator persists every write through an oracle that rejects promise regression and votes below the promise, records a decision as soon as a durable write quorum exists (before any leader announces it), crashes at `Before_Writes`, `Partial_Writes`, and `Partial_Messages`, advances the memory floor only half of the time so full-window paths are exercised, serves evicted history from the host image, and runs in both the single-leader and the ownership mode.
 
-= Review and Boundary Tests (2026-09-17)
-
-The durability contract is implemented. Recovery selection is now frozen before
-phase two and retained across backpressure retries (POD 0009). This does not extend
-an effect pointer's lifetime: a host must copy queued payloads before the next
-transition, including independently owned copies of duplicated simulator packets.
-
-An error does not generally imply an empty effects batch or an unchanged node.
-The host must inspect and finish the batch before deciding how to handle the error.
-Ownership batch admission is a specific stronger contract: its read-only
-`own_slot_probe` preflight rejects an unavailable batch without writing a vote or
-moving the frontier. The Python bridge proposed in POD 0011 must preserve both rules.
-
-
-= The Python Bridge as an Audited Host (2026-09-17)
+= The Python Bridge as an Audited Host
 
 POD 0011's bridge compiles the core with `.Host_Managed` and enforces the four
 obligations itself. The reason is specific: `host_order_violation` calls

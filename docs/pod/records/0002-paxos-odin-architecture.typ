@@ -31,6 +31,23 @@ This document specifies the architecture of `paxos-odin` version `0.2.0` (`VERSI
 
 Version `0.2.0` is a ground-up redesign of the core. The acceptor's state is a `Ledger` whose columns are Lamport's variables (`maxBal`, `maxVBal`, `maxVal`, and the decision) laid out as struct-of-arrays over a power-of-two window; a `Ballot` is one packed 64-bit integer; values are referenced by pointer in every message, record, and released entry instead of being copied; and the node can run with rotating slot ownership (POD 0010) as an alternative to a single elected leader. This document describes the type surface, the data layout, the ten core files, the replicated log and learner layers, the error contract, and the verification that exists today. POD 0009 records the reasoning behind the layout; POD 0008 gives the safety argument.
 
+= Status and Implementation Boundary
+
+This committed specification describes the implemented core. "Pure" indicates that the
+core performs no direct I/O; state transitions mutate the node's memory and append to
+caller-provided effects buffers.
+`recovery_index` checks the slot against the active range before subtracting
+`recover_base` and narrowing the result. Recovery scratch and each peer's seen
+bitmap have chunk capacity. `recovery_ready` freezes selection before phase two;
+backpressure retries cannot let a late report change a proposal at the same ballot.
+`resend_to` wraps at most once and does not repeat a used cell in one scan.
+
+`start_campaign` records its own `Write_Promise` before broadcasting Prepare.
+`start_revocation` first runs `promise_bounded` locally. Both facts are needed for
+ballot uniqueness after a crash, including when pre-durable accepts are enabled.
+Ownership exposes `resubmits_dropped` on nodes and replicated logs: a bounded
+resubmission queue supplies best-effort delivery, not an at-least-once guarantee.
+
 = Architecture Overview
 
 `paxos-odin` separates the algorithm from every runtime concern:
@@ -182,7 +199,7 @@ Under rotating ownership the same procedures run with different inputs: `propose
 
 `Error` is one enum for the core, the log, and the learner, spelled in Ada_Case (`.Not_Leader`, `.Window_Full`, `.Configuration_Mismatch`). `explain_error(err)` returns a static string for every value: a banner title such as `"-- WINDOW FULL --"`, a blank line, a plain-language explanation, and a line beginning with `"Hint:"` that specifies the corrective action. The test `test_every_error_explains_problem_and_recovery` iterates the whole enum, so adding a value without an explanation fails the suite. No transition allocates or formats; the host calls `explain_error` at its own boundary.
 
-= Verification Strategy
+= Validation and Acceptance Gates
 
 The evidence that exists in the repository today:
 
@@ -194,23 +211,6 @@ The evidence that exists in the repository today:
 6. *One entry point.* `tools/check.py` runs `tools/check_style.py` (the Zen constraints of POD 0001), `odin check -vet -strict-style` on every package and the example, both test profiles, the contracts, the simulations, the counter example, the benchmark JSON schema (eleven result rows), and CLI failure propagation in a temporary directory so a stale binary cannot mask a failure.
 
 This is finite executable evidence. No refinement proof or coverage percentage is claimed; POD 0008 states the safety argument as axioms, lemmas, and proof obligations discharged by procedures.
-
-= Current Implementation Review (2026-09-17)
-
-This committed specification describes the implemented core. "Pure" indicates that the
-core performs no direct I/O; state transitions mutate the node's memory and append to
-caller-provided effects buffers.
-`recovery_index` checks the slot against the active range before subtracting
-`recover_base` and narrowing the result. Recovery scratch and each peer's seen
-bitmap have chunk capacity. `recovery_ready` freezes selection before phase two;
-backpressure retries cannot let a late report change a proposal at the same ballot.
-`resend_to` wraps at most once and does not repeat a used cell in one scan.
-
-`start_campaign` records its own `Write_Promise` before broadcasting Prepare.
-`start_revocation` first runs `promise_bounded` locally. Both facts are needed for
-ballot uniqueness after a crash, including when pre-durable accepts are enabled.
-Ownership exposes `resubmits_dropped` on nodes and replicated logs: a bounded
-resubmission queue supplies best-effort delivery, not an at-least-once guarantee.
 
 = References
 

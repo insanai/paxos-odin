@@ -29,6 +29,34 @@
 
 This document defines the *Paxos Odin Discussions (POD)* RFC process, metadata schema, authoring lifecycle, and CLI tooling for `paxos-odin`. Modeled directly after the Zen Discussion Series (ZDS) from `zenfmt`, POD records serve as versioned architectural specifications, protocol derivations, and process memos for consensus engineering.
 
+= Status and Implementation Boundary
+
+Committed records may be corrected with a dated update; published records are
+frozen under the lifecycle defined below. Status describes a design decision, not
+a claim that every proposed feature ships. The registry and each record must agree.
+
+#table(
+  columns: (auto, auto, 1fr), inset: 5pt,
+  [*POD*], [*State*], [*Implementation or evidence boundary*],
+  [0001], [Committed], [Active process and Typst editorial policy.],
+  [0002], [Committed], [Implemented core; chunk recovery and canonical membership reviewed.],
+  [0003], [Committed], [Implemented durability gates; host persistence remains an obligation.],
+  [0004], [Discussion], [Leases unimplemented; timing, quorum and restart proof obligations remain open.],
+  [0005], [Committed], [Implemented Odin API; earlier version tables are historical.],
+  [0006], [Committed], [Implemented epoch and release fences; state transfer is host-owned.],
+  [0007], [Committed], [Dated review evidence; historical counts kept separate from latest runs.],
+  [0008], [Committed], [Paper safety argument over code; no machine-checked implementation proof.],
+  [0009], [Committed], [Implemented layout and recovery storage; archived matched profiles and measurements.],
+  [0010], [Committed], [Implemented ownership; bounded best-effort resubmission, not guaranteed delivery.],
+  [0011], [Committed], [Implemented Python SDK: C ABI, typed APIs, packaging wheels, and measured evidence. Optional capabilities rejected by capability bit.],
+)
+
+The active specification suite updates contracts in place, retains attributable
+historical measurements, and links references across records. New proposals must
+distinguish current behavior, proposed behavior, validation gates, and open questions
+using the RFC template (`docs/pod/template/rfc-template.typ`). A diagram should explain
+a boundary or invariant; it need not appear in a process record solely for decoration.
+
 = Introduction
 
 Distributed consensus libraries require uncompromising precision. Subtle design choices - such as write-ahead ordering, sliding-window recycling, and quorum intersections - cannot be captured solely in inline source comments or transient issue tracker threads.
@@ -155,7 +183,7 @@ The creed is enforced by `tools/check_style.py`, which `make vet`, `make check`,
   explainability test". An optimisation that cannot be explained simply to a teammate is
   refactored into a simpler, flatter structure.
 
-= Documentation policy and editorial guidance (2026-09-17)
+= Documentation Policy and Editorial Guidance
 
 Typst is the canonical format for project documentation. Markdown is reserved for
 GitHub-facing entry pages, currently `README.md`, `README.ko.md`, and
@@ -238,34 +266,6 @@ pages containing changed figures and tables; successful compilation alone does n
 establish legibility. The HTML exporter can warn about unsupported page styling;
 confirm diagrams survive as SVG frames. Documentation-only edits do not require
 rerunning the performance experiment, but must not change or relabel its raw evidence.
-
-= Record Status Review (2026-09-17)
-
-Committed records may be corrected with a dated update; published records are
-frozen under the lifecycle above. Status describes a design decision, not a claim
-that every proposed feature ships. The registry and each record must agree.
-
-#table(
-  columns: (auto, auto, 1fr), inset: 5pt,
-  [*POD*], [*State*], [*Implementation or evidence boundary*],
-  [0001], [Committed], [Active process and Typst editorial policy.],
-  [0002], [Committed], [Implemented core; chunk recovery and canonical membership reviewed.],
-  [0003], [Committed], [Implemented durability gates; host persistence remains an obligation.],
-  [0004], [Discussion], [Leases unimplemented; timing, quorum and restart proof obligations remain open.],
-  [0005], [Committed], [Implemented Odin API; earlier version tables are historical.],
-  [0006], [Committed], [Implemented epoch and release fences; state transfer is host-owned.],
-  [0007], [Committed], [Dated review evidence; historical counts kept separate from latest runs.],
-  [0008], [Committed], [Paper safety argument over code; no machine-checked implementation proof.],
-  [0009], [Committed], [Implemented layout and recovery storage; archived matched profiles and measurements.],
-  [0010], [Committed], [Implemented ownership; bounded best-effort resubmission, not guaranteed delivery.],
-  [0011], [Committed], [Implemented Python SDK: C ABI, typed APIs, packaging wheels, and measured evidence. Optional capabilities rejected by capability bit.],
-)
-
-The September 17 review updates stale contracts in place, retains attributable
-historical measurements, and moves references behind dated follow-ups. New records
-should distinguish current behaviour, proposed behaviour, validation and open
-questions using the template. A diagram should explain a boundary or invariant;
-it need not appear in a process record solely for decoration.
 
 = References
 
