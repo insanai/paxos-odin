@@ -6,7 +6,7 @@
 #align(center)[
   #text(20pt, weight: "bold")[paxos-odin 0.1.0 release notes]
   #v(0.4em)
-  #text(11pt)[Released 2026-09-16 · `VERSION :: "0.1.0"` in `src/paxos.odin`]
+  #text(11pt)[Released 2026-09-16 - `VERSION :: "0.1.0"` in `src/paxos.odin`]
 ]
 #v(1em)
 
@@ -118,12 +118,12 @@ transport were:
   align: (left, right, right, right, right),
   [*workload*], [*paxos-odin*], [*paxos-zig*], [*OmniPaxos*], [*LibPaxos3*],
   [3 voters, 8 B, one at a time], [145], [114], [1,121], [2,265],
-  [3 voters, 8 B, 8 in flight], [144], [116], [220], [–],
-  [3 voters, 8 B, 64 in flight], [143], [115], [86], [–],
-  [5 voters, 8 B, one at a time], [185], [208], [2,928], [–],
-  [5 voters, 8 B, 8 in flight], [179], [207], [482], [–],
-  [3 voters, 1 KiB, one at a time], [1,091], [2,744], [1,328], [–],
-  [3 voters, 1 KiB, 8 in flight], [1,081], [2,735], [444], [–],
+  [3 voters, 8 B, 8 in flight], [144], [116], [220], [-],
+  [3 voters, 8 B, 64 in flight], [143], [115], [86], [-],
+  [5 voters, 8 B, one at a time], [185], [208], [2,928], [-],
+  [5 voters, 8 B, 8 in flight], [179], [207], [482], [-],
+  [3 voters, 1 KiB, one at a time], [1,091], [2,744], [1,328], [-],
+  [3 voters, 1 KiB, 8 in flight], [1,081], [2,735], [444], [-],
 )
 
 With a journal and one `fsync` per host commit round, this library costs

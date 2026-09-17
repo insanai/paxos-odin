@@ -6,7 +6,7 @@
 #align(center)[
   #text(20pt, weight: "bold")[paxos-odin 0.2.0 release notes]
   #v(0.4em)
-  #text(11pt)[Released 2026-09-16 · `VERSION :: "0.2.0"` in `src/paxos.odin`]
+  #text(11pt)[Released 2026-09-16 - `VERSION :: "0.2.0"` in `src/paxos.odin`]
 ]
 #v(1em)
 
@@ -124,14 +124,14 @@ nanoseconds per committed value with an in-process transport were:
   align: (left, right, right, right, right),
   [*workload*], [*paxos-odin*], [*paxos-zig*], [*OmniPaxos*], [*LibPaxos3*],
   [3 voters, 8 B, one at a time], [148], [113], [1,010], [2,280],
-  [3 voters, 8 B, 8 in flight], [144], [115], [198], [–],
-  [3 voters, 8 B, 64 in flight], [141], [113], [83], [–],
-  [5 voters, 8 B, one at a time], [191], [219], [2,721], [–],
-  [5 voters, 8 B, 8 in flight], [182], [210], [446], [–],
-  [3 voters, 1 KiB, one at a time], [505], [2,719], [1,244], [–],
-  [3 voters, 1 KiB, 8 in flight], [552], [2,707], [423], [–],
-  [3 owners, 8 B, one at a time, rotating ownership], [161], [–], [–], [–],
-  [3 owners, 8 B, 8 in flight, rotating ownership], [154], [–], [–], [–],
+  [3 voters, 8 B, 8 in flight], [144], [115], [198], [-],
+  [3 voters, 8 B, 64 in flight], [141], [113], [83], [-],
+  [5 voters, 8 B, one at a time], [191], [219], [2,721], [-],
+  [5 voters, 8 B, 8 in flight], [182], [210], [446], [-],
+  [3 voters, 1 KiB, one at a time], [505], [2,719], [1,244], [-],
+  [3 voters, 1 KiB, 8 in flight], [552], [2,707], [423], [-],
+  [3 owners, 8 B, one at a time, rotating ownership], [161], [-], [-], [-],
+  [3 owners, 8 B, 8 in flight, rotating ownership], [154], [-], [-], [-],
 )
 
 With a journal and one `fsync` per host commit round, this library costs
@@ -188,5 +188,5 @@ Tag-driven releases check version parity, the full Odin gate, both Python
 durability gates and the installed native artifacts before publishing. The website
 provides an HTML book, POD index, generated API reference and downloadable PDFs.
 
-Authored by Vikrant Rathore, with assistance from Ronak Rathore. Copyright © 2026
+Authored by Vikrant Rathore, with assistance from Ronak Rathore. Copyright (c) 2026
 Vikrant Rathore and Ronak Rathore. All project distributions use the MIT License.
