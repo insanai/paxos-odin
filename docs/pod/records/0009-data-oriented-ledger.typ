@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Design Record"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -69,7 +69,7 @@ A cell's index is `cell_of(slot, WINDOW) = (slot - 1) & (WINDOW - 1)`. `ledger_o
 
 == Volatile columns
 
-`Node` keeps its phase-one evidence (`recovered_slot`, `recovered_ballot`, `recovered_state`, `recovered_value`) and its phase-two bookkeeping (`lead_slot`, `lead_ballot`, `acknowledgements`, `acknowledged`) as columns indexed by the same cell. The proposal a leader is driving is its own vote in the ledger; there is no second copy of the value.
+`Node` keeps its phase-one evidence (`recovered_slot`, `recovered_ballot`, `recovered_state`, `recovered_value`) and its phase-two bookkeeping (`lead_slot`, `lead_ballot`, `acknowledgements`, `acknowledged`) as columns in separate index domains: phase one is relative to `recover_base` within one chunk; phase two uses the ledger window cell. The proposal a leader is driving is its own vote in the ledger; there is no second copy of the value.
 
 = The Pointer Contract
 
@@ -99,19 +99,19 @@ A ledger cell costs three 8-byte columns (`slot`, `promised_at`, `vote_ballot`),
   [`Ledger([128]u64, 256)` (1 KiB values)], [1,049 + 1/4], [268,632],
 )
 
-`Node` adds, per cell, `recovered_slot` (8), `recovered_ballot` (8), `recovered_state` (1), `recovered_value` (`size_of(Value)`), `lead_slot` (8), `lead_ballot` (8), `acknowledged` (4), and `acknowledgements` (one 8-byte word per 64 members), plus `promise_seen` at `MAX_MEMBERS * WINDOW / 8` bytes. `size_of(Node(u64, 7, 256, 64))` is 23,600 bytes.
+`Node` adds phase-two columns per window cell: `lead_slot` (8 bytes), `lead_ballot` (8), `acknowledged` (4), and `acknowledgements` (8 bytes per 64 members, rounded up). Recovery adds `CHUNK_SLOTS * (17 + size_of(Value))` bytes of slot, ballot, state and value columns, plus `MAX_MEMBERS * ceil(CHUNK_SLOTS / 64) * 8` bytes for `promise_seen`. Alignment and scalar fields add overhead; use `tools/memory_report.odin` and the archived before/after CSVs for exact target-specific sizes.
 
 == Per message and record
 
 `Message(Value)` is 64 bytes and `Envelope(Value)` 72 bytes for every `Value` (the largest variant is `Promise_Range_Message`); `Write(Value)` is 32 bytes; `Committed(Value)` is 16 bytes. `Effects` capacities are therefore independent of the payload type: `size_of(Effects(u64, 7, 256, 64))` is 41,840 bytes, and the benchmark's `Effects(u64, 3, 4096, 256)` is 137,904 bytes.
 
-= What Got Faster, and What Did Not
+= Historical Measurement: 2026-09-16
 
 The in-memory benchmark (`bench/main.odin`, recorded by `make bench-compare` into `bench/results/latest.json`) measures the cost per committed value for three and five voters, 8-byte and 1 KiB values, synchronous, pipelined, and batched proposals, and the ownership mode.
 
 - *1 KiB values.* The workload that copied the value at every hop now copies it once per acceptor (into the ledger) and once per in-process hop (into the packet). The benchmark measures the change; the recorded results file is the source of the figures, and POD 0007 quotes them once it is recorded.
 - *Three voters, 8-byte values.* No change worth reporting is expected or claimed. With an 8-byte value the copy was already the size of the pointer that replaced it, and the per-value cost is dominated by the transition logic and the in-process queue, not by the layout. The benchmark measures this too; see the results file.
-- *Scans.* Phase-one answers, catch-up answers, and retransmission now walk a bitmap and read ballot columns rather than whole cells. No separate micro-benchmark exists for them; the effect is visible only through the workloads above.
+- *Scans.* Phase-one answers, catch-up answers, and retransmission now walk a bitmap and read ballot columns rather than whole cells. This initial run did not isolate them. The September 17 follow-up below adds recovery and retransmission profiles.
 
 No benchmark number is typed into this record. The book and the README read their tables from the recorded file.
 
@@ -132,8 +132,8 @@ The Odin features the layout does lean on are the ones the profile shows paying 
 = Constraints the Layout Imposes
 
 - *Power-of-two window.* `cell_of` is a mask, so `WINDOW_SLOTS` must be a power of two; `node_init` rejects anything else at compile time (`window_not_power_of_two` fixture). `0.1.0` accepted any positive window with a modulo.
-- *Comparable, fixed-size values.* `Value` must satisfy `intrinsics.type_is_comparable` (the ledger compares values with `==` to detect `.Conflicting_Value` and `.Conflicting_Commit`) and is stored inline in `[WINDOW]Value`, so a variable-size payload must be a fixed-size type such as `[128]u64` or a struct with bounded fields. A value that borrows host storage (a string, a slice) must stay valid and immutable while the ledger references it.
-- *16-bit node ids.* `Node_Id :: u16` so the node field fits the packed ballot; `MAX_SUPPORTED_MEMBERS` is 65,535 and the `Membership.by_id` index carries a `u16` position.
+- *Comparable, fixed-size values.* `Value` must satisfy `intrinsics.type_is_comparable` (the ledger compares values with `==` to detect `.Conflicting_Value` and `.Conflicting_Commit`) and is stored inline in `[WINDOW]Value`, so a variable-size payload must be a fixed-size type such as `[128]u64` or a struct with bounded fields. A comparable value that borrows host storage, such as a string, must keep that storage valid and immutable while the ledger references it. Slices do not satisfy this comparability requirement.
+- *16-bit node ids.* `Node_Id :: u16` so the node field fits the packed ballot; `MAX_SUPPORTED_MEMBERS` is 65,535 and member positions use `u16`. Membership stores ids in ascending order and binary-searches that array; the former `by_id` array has been removed.
 - *One transition between produce and consume.* The pointer contract holds only while the host runs one transition at a time per node and consumes or copies the batch before the next. This is the same discipline the durability rule already required.
 
 = Alternatives Rejected
@@ -142,6 +142,98 @@ The Odin features the layout does lean on are the ones the profile shows paying 
 - *A `Log_Effects` wrapper.* A separate effects type for `Replicated_Log_Node` that unwrapped `Entry` values into commands and stop signs for the host was considered again during the redesign, for the same reason as in POD 0005: a friendlier committed entry. It was rejected again because it would need a second copy of every released entry (the wrapper cannot point into the core's `Entry` and present a `Value`), which is the copy this record removes. The host reads `committed.value^` as an `Entry` and switches on it.
 - *Inline values with a small-value fast path.* Keeping values inline in messages for small `Value` types and switching to pointers above a threshold would have made `Message(Value)` and the host's transport code depend on `size_of(Value)`. One representation, with the copy made explicit at the transport and the journal, was chosen so that the same `Packet` idiom serves every payload.
 - *Array-of-structs with a `Maybe` per field.* The `0.1.0` `Durable_Cell` with `accepted: Maybe(Accepted(Value))` and `committed: Maybe(Value)` stored two values per cell and paid for both on every scan. Columns with one `state` byte store the value once and let a scan skip the value column entirely.
+
+= Follow-up: bounded recovery scratch (2026-09-17)
+
+Recovery now reserves one chunk of values and metadata, rather than one complete
+ledger window. Its indexes are relative to the active recovery base; per-peer
+report bitmaps use the same offsets. On chunk rollover metadata is reset while
+payload bytes remain uninitialised until a valid report stores them. A read-quorum
+selection is frozen before phase two starts, including when the window forces a
+retry. See the chunk-local recovery argument in the proof chapter.
+
+The public procedures and durable/wire formats are unchanged. The size and layout
+of `Node` change; consumers recompile, and code inspecting its recovery arrays must
+use chunk-relative indexes. Raw node images are not a supported journal format.
+
+The matched benchmark and Valgrind drivers live outside the library. They introduce
+no runtime dependencies, storage adapters, threads, clocks, or network services into
+the core. Measurements distinguish static capacity, allocated heap, resident memory,
+and elapsed time. Callgrind instruction counts guide investigation; they are not
+substitutes for uninstrumented performance measurements.
+
+= Recovery storage and matched measurements — 2026-09-17
+
+== Implementation and correctness
+
+All recovery values, metadata, and per-peer report bitmaps now scale with the recovery chunk. Ledger and phase-two state remain window-sized. Chunk-relative indexing checks bounds before subtraction; chunk rollover resets metadata without clearing payload bytes. Read-quorum selection is frozen before issuing phase-two votes, including across window-limited retries. Public procedures and durable/wire formats are unchanged.
+
+The new tests cover absolute-slot selection, chunk sizes 1/3/8, ring crossings, duplicate and stale reports, delayed manifests, blocked recovery, large values, sparse retransmission, and late higher votes after a partial drive. The expanded simulator exposed two harness defects (duplicate-packet borrowing and premature quiescence) and the partial-drive selection defect; all were fixed.
+
+Validation: 79 tests in debug and optimized builds; 600 default-capacity simulations (6 million steps), plus 120 small-window/chunk-3 simulations (1.2 million steps) with majority and both flexible-quorum extremes. Contract fixtures, style, vet, the example, and benchmark smoke checks pass. The book and ledger design record compile.
+
+== Static memory
+
+For three members, 1 KiB values, window 256/chunk 64, node plus one effects buffer decreased from *633,120 to 433,176 bytes (31.6%)*. At window 4,096/chunk 256 it decreased from *9,080,448 to 5,081,568 bytes (44.0%)*. Chunk equal to window retains the original node size. See the before/after CSV files. These figures exclude queues, application state and runtime overhead.
+
+== Matched timings
+
+The JSON contains 90 rows: four libraries plus the preserved Odin baseline, 18 workloads, nine samples per row. Every row validates all 4,096 ordered payloads per epoch at every learner. The paired 5% regression gate passed; this does not mean every workload became faster.
+
+Nanoseconds per completed value (median), finite in-process workload:
+
+#import "../../book/figures.typ": matched_comparison_table
+#matched_comparison_table()
+
+The paired median ratios show 15.8–26.3% lower cost for the three-node 1 KiB workloads. Several small-payload rows are approximately 1–3% slower; the five-node 1 KiB/depth-64 paired ratio is 1.047 with a 95% interval of 0.928–1.089. That row is not an established improvement. Zig and OmniPaxos still lead some workload categories.
+
+These numbers are not directly interchangeable with the historical README table: the common drivers remove the journal replay mirror, use equal command counts and payloads, retain complete finite logs, and time completion. LibPaxos retains its native preexecution work; OmniPaxos retains native coalescing. No language-wide or production-service superiority is established.
+
+== Profile-guided decision
+
+The first retry-scan experiment counted occupied cells before scanning. Callgrind instructions increased from 12,591,988 to 17,833,184 in the dedicated retransmission workload, so that implementation was discarded.
+
+The retained one-wrap scan reduces those instructions to 10,139,090 (19.5% fewer). A paired native timing experiment reported a median ratio of 0.877, with a 95% interval of 0.820–0.905. The sparse-retry regression test verifies that a single used slot produces one retry, not repeated duplicates. The aggregate matched gate additionally checks unchanged steady-state paths.
+
+No speculative wire batching, protocol mode, storage adapter, networking, or threading was added. Further candidates were not implemented without measured benefit.
+
+== Final memory profiles
+
+Sampled post-exec peak resident bytes, portable profiling builds (eight epochs):
+
+#table(
+  columns: 5,
+  table.header([*Workload*], [*Odin*], [*Zig*], [*OmniPaxos*], [*LibPaxos*]),
+  [3 voters, 8 B, depth 1], [3,067,904], [2,400,256], [2,109,440], [2,584,576],
+  [5 voters, 8 B, depth 1], [3,657,728], [3,592,192], [2,162,688], [3,555,328],
+  [3 voters, 1024 B, depth 64], [25,354,240], [52,789,248], [32,935,936], [27,901,952],
+)
+
+Odin is not the minimum-RSS implementation in every row. For the large-payload row,
+its static node is 4,943,664 bytes versus Zig's 17,173,488 bytes; effects are 137,904
+versus 5,606,920 bytes. Both use the same configured window/chunk and fixed payload.
+The driver capacities and native algorithm differences remain part of the comparison.
+
+Massif separately reports allocated capacity: it excludes static/BSS storage and
+can exceed RSS where allocated pages remain untouched. The JSON retains both metrics;
+they must not be summed or used interchangeably. The compressed archive includes
+annotated Callgrind traces, Massif snapshots, logs, and the accepted/rejected retry
+experiments. Profiling elapsed times are not used as performance measurements.
+
+== Reproduction and limits
+
+The following evidence files are under `bench/results/`:
+
+- `recovery-matched-20260917.json`: raw samples, commands, configurations, toolchains, source/binary hashes, and paired intervals.
+- `recovery-baseline.json` and `recovery-baseline.patch`: reconstructible pre-refactor source.
+- `recovery-memory-before.csv` and `recovery-memory-after.csv`: static memory measurements.
+- `recovery-profiles-20260917.json` and `.tar.gz`: final CPU/memory summaries and raw profiles.
+
+The book chapter "Reproducing Measurements"
+(`docs/book/06_measurement_methods.typ`) gives the workload contract and
+Callgrind/Massif commands.
+
+The paper argument and these tests establish reviewable evidence, not machine-checked implementation correctness. Memory comparisons must distinguish inline storage, heap allocations, and RSS. Timing measurements are host-specific and finite-horizon; they do not include storage, serialization, network delay, or application work.
 
 = References
 

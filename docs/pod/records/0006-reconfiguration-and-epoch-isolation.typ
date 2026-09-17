@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Protocol Specification"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -49,20 +49,20 @@ In scope: everything `src/replicated_log.odin` does with stop signs, seals, and 
 
 `Replicated_Log_Node` keeps `configuration_id`, `stop_sign: Maybe(Stop_Sign)`, `stop_slot`, and `stop_pending`. `replicated_log_is_sealed` returns `stop_pending || stop_sign != nil`, and `replicated_log_propose`, `replicated_log_propose_batch`, and `replicated_log_propose_stop_sign` all return `.Log_Sealed` when it is true.
 
-- *Pending.* `replicated_log_pending_stop_sign` walks the ledger's `used` bitmap (`bit_set_next`) for a voted or chosen stop sign whose id exceeds the node's own. A leader's proposal is its own vote in the ledger, so one walk covers both an acceptor's vote and a proposer's undecided proposal. `replicated_log_recalculate_stop_pending` runs after every transition that can release an entry (`replicated_log_observe_effects`) and after restore (`replicated_log_observe_durable`, which walks `chosen`). A follower that merely voted for a stop sign, or a leader that proposed one, is sealed from that moment, so a command can never be proposed above an undecided stop sign (`review_out_of_order_chosen_stop_blocks_proposals`).
+- *Pending.* `replicated_log_pending_stop_sign` walks the ledger's `used` bitmap (`bit_set_next`) for a voted or chosen stop sign whose id exceeds the node's own. A leader's proposal is its own vote in the ledger, so one walk covers both an acceptor's vote and a proposer's undecided proposal. `replicated_log_recalculate_stop_pending` runs after every transition that can release an entry (`replicated_log_observe_effects`) and after restore (`replicated_log_observe_durable`, which walks `chosen`). A follower that merely voted for a stop sign, or a leader that proposed one, is sealed from that moment, so this node refuses new commands while it observes the pending stop sign (`review_out_of_order_chosen_stop_blocks_proposals`).
 - *Decided.* `replicated_log_observe_stop` records the earliest committed stop sign as `stop_sign` and its slot as `stop_slot`. `replicated_log_stop_sign` (alias `replicated_log_is_reconfigured`) and `replicated_log_stop_slot` expose them. The seal survives restart: `replicated_log_restore` and `replicated_log_restore_learner` call `replicated_log_observe_durable` (`review_stop_seal_restore_and_completed_history`).
 
 A pending stop sign alone does not authorise a handover. The `.Log_Sealed` hint says so: the host must finish deciding and delivering the stop sign, then install the agreed state in its next configuration.
 
 = Crash Repair
 
-If the host crashes between proposing a stop sign and starting the next configuration, it restores with `replicated_log_restore` and asks `replicated_log_pending_stop_sign(node)`. A decided stop sign is returned first; otherwise the durable accepted stop sign or the volatile leader proposal is returned. The host can then wait for the decision, or campaign again so that phase one re-proposes the highest-ballot vote (which may be the stop sign), and it never has to guess whether a handover was under way (`review_log_pending_stop_replaced_during_replay`).
+If the host crashes between proposing a stop sign and starting the next configuration, it restores with `replicated_log_restore` and asks `replicated_log_pending_stop_sign(node)`. A decided stop sign is returned first; otherwise the accepted stop sign restored from the journal is returned; a leader proposal survives a crash only through its durable local vote. The host can then wait for the decision, or campaign again so that phase one re-proposes the highest-ballot vote (which may be the stop sign), and it never has to guess whether a handover was under way (`review_log_pending_stop_replaced_during_replay`).
 
 = Continuing in the Next Configuration
 
-`replicated_log_init_from_stop(node, id, stop, stop_slot, anchor, options)` builds a `Membership` from the stop sign's members, checks that the stop sign's id is non-zero, and calls `replicated_log_continue_at(node, id, stop.configuration_id, membership, stop_slot, anchor, options)`. That in turn calls `node_continue_at`, which starts an empty window with `memory_floor = delivered_through = stop_slot`, `next_slot = stop_slot + 1`, and `ledger.anchor = anchor` (rejecting `anchor.chosen_trim_slot > stop_slot` with `.Trim_Regression`). A node whose id is not among the new members gets `.Not_Member` from `membership_init` through `node_init`; the handover scenarios check that a removed voter is refused.
+`replicated_log_init_from_stop(node, id, stop, stop_slot, anchor, options)` builds a `Membership` from the stop sign's members, checks that the stop sign's id is non-zero, and calls `replicated_log_continue_at(node, id, stop.configuration_id, membership, stop_slot, anchor, options)`. That in turn calls `node_continue_at`, which starts an empty window with `memory_floor = delivered_through = stop_slot`, `next_slot = stop_slot + 1`, and `ledger.anchor = anchor` (rejecting `anchor.chosen_trim_slot > stop_slot` with `.Trim_Regression`). A node whose id is not among the new members gets `.Not_Member` from the local-id check in `node_init`; the handover scenarios check that a removed voter is refused.
 
-Slot numbers are therefore global across configurations: the first command of configuration 2 lands in `stop_slot + 1`. The inherited trim anchor certifies the prefix at or below `stop_slot`, so a new leader's phase one starts above it and never reopens sealed history.
+Slot numbers are therefore global across configurations: the first command of configuration 2 lands in `stop_slot + 1`. The host-certified continuation floor is `stop_slot`, so phase one starts above sealed history. An inherited trim anchor may certify a shorter prefix; it does not substitute for the required state handover.
 
 Configuration ids increase strictly. `replicated_log_propose_stop_sign` returns `.Configuration_Id_Regression` when `next_configuration_id <= node.configuration_id`, and `replicated_log_next_stop` ignores any stop sign whose id is not greater than the node's own, so a replayed older stop sign cannot reseal a newer configuration.
 
@@ -105,6 +105,13 @@ Every scenario checks the same four oracles: `seal_expect_agreement` (every memb
 2. *Trimming across handovers.* The next configuration inherits one `Trim_Anchor` whose `chosen_trim_slot` is the stop slot. Whether the old configuration's later trim ids may be reused, and how a host that restores already trimmed stop history recovers its configuration metadata, is left to the host (POD 0007 notes the second limit). A future record should fix the relationship between `trim_id` sequences and configuration ids.
 3. *Learner handover.* `replicated_log_init_learner` follows one configuration id. A learner that observes a decided stop sign (`review_log_learner_observes_stop_and_catchup`) still needs the host to re-initialise it for the next configuration.
 4. *Traffic after the seal under rotating ownership.* A sealed node still ticks: it keeps skipping and retransmitting in its own slots above the seal until the host retires it, and those decisions are abandoned. Holding skips back once a node observes the seal would save messages during the handover; it is not needed for safety.
+
+= Current Contract Review (2026-09-17)
+
+This protocol is implemented. A pending seal can disappear when recovery replaces
+an unchosen stop-sign vote. A decided seal persists. Under ownership, peers may
+already have chosen values above a stop; the wrapper prevents their application
+release in the old configuration, rather than preventing all core choices.
 
 = References
 

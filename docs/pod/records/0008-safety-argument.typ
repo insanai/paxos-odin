@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Design Record"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -40,7 +40,7 @@ This record fixes the model `paxos-odin` is argued against, the definitions the 
 = Definitions
 
 - *D1 Ballot.* `Ballot :: distinct u64`, built by `ballot_make(round, priority, node)` as `round << 24 | priority << 16 | node`. The fields occupy disjoint bit ranges, so integer order is lexicographic order on $("round", "priority", "node")$ and distinct triples are distinct ballots. The proposer of $b$ is `ballot_node(b)`. A *campaign ballot* has round at least one; the *round-zero ballot* of member $n$ is `ownership_ballot(n)`.
-- *D2 Vote.* Acceptor $a$ votes $(b, v)$ in decree $s$ when it records `Write_Vote{ballot = b, slot = s, value = v}`; the cell then holds `vote_ballot = b`, `value = v`, state `.Voted` (or `.Chosen`, which keeps the vote).
+- *D2 Vote.* Acceptor $a$ votes $(b, v)$ in decree $s$ when it durably records `Write_Vote{ballot = b, slot = s, value = v}`; the cell then holds `vote_ballot = b`, `value = v`, state `.Voted` (or `.Chosen`, which keeps the vote).
 - *D3 Promise.* `promised` is the global promise (Lamport's $"maxBal"$; `Write_Promise`), `promised_at[c]` the per-decree promise (`Write_Promise_At`, or implied by a vote). The effective promise is $p_a (s) = max("promised"_a, "promised_at"_a [s])$, that is `ledger_promise_for`.
 - *D4 Chosen.* $v$ is chosen in $s$ at $b$ when some $Q_2$ exists all of whose members voted $(b, v)$ in $s$.
 - *D5 Decided.* A node decided $s$ when `record_commit` recorded `Write_Chosen{slot = s, value = v}`; the cell is `.Chosen`.
@@ -57,7 +57,7 @@ Fix one decree $s$ unless stated otherwise. Full proofs are in the book chapter;
 - *Lemma 3 (one value per ballot).* At most one value is ever carried by an Accept for $(b, s)$. Campaign ballots: `ballot_node` identifies the proposer, `start_campaign` and `start_revocation` take `greatest + 1` over `ledger_highest_ballot`, `send_accept` refuses a second value at a driven cell's ballot, `become_leader` puts `next_slot` above every used slot. Round-zero ballots: `on_accept` accepts round zero only from `owner_of(slot)` under `node.ownership`; the owner proposes once per own slot. Acceptors: `on_accept` and `ledger_apply` answer a second value at one ballot with `.Conflicting_Value`.
 - *Lemma 4 (B3).* An Accept at a campaign ballot is issued only after a read quorum of complete reports (`maybe_resolve_chunk`, `on_promise_range`, `on_promise`), each member having promised the ballot before reporting every used cell in the chunk (`on_prepare`, `promise_bounded`); `resolve_chunk` proposes the greatest reported vote, records a reported decision, or proposes the no-op for a hole. Fresh values from `node_propose` sit above every slot any member of the final chunk's quorum reported (Lemma 6).
 - *Theorem 1 (Agreement).* If $v$ is chosen at $b$ and $w$ at $b'$ in $s$, then $v = w$. Let $b_0$ be the least ballot at which anything is chosen and $v_0$ its value. Every Accept in $s$ at a ballot above $b_0$ carries $v_0$, by induction along the happens-before order of Accepts: the read quorum of the Accept's ballot meets the write quorum of $b_0$ (Lemma 1) in an acceptor $a$; $a$ voted $(b_0, v_0)$ before it promised (Lemma 2), so it reported a vote at a ballot at least $b_0$ (its cell is never overwritten downward, and cleared only when the slot is fenced, Lemma 8); the greatest reported vote is at $b_0$ (then $v_0$ by Lemma 3) or above it (then produced by an earlier Accept, which carried $v_0$ by hypothesis); Lemma 4 makes the new Accept carry it. The induction runs along time rather than ballots because a vote raises only `promised_at`, so a `.Global` prepare can collect a vote at a ballot above the candidate's; that is still safe.
-- *Corollary 1 (decided implies chosen).* `record_commit` runs from `on_accepted` only at `membership_write_quorum` distinct acknowledgements of the driven ballot (`bit_set_insert` on `acknowledgements[cell]`) with the node's own vote still present (`.Missing_Proposed_Value` otherwise); from `send_accept` only when the write quorum is one; from `on_commit`, `node_learn_chosen` and `resolve_chunk` for a value another node had decided (induction on nodes).
+- *Corollary 1 (decided implies chosen).* `record_commit` runs from `on_accepted` only at `membership_write_quorum` distinct acknowledgements of the driven ballot (`bit_set_insert` on `acknowledgements[cell]`) with the node's own vote still present (`.Missing_Proposed_Value` otherwise); from `send_accept` only when the write quorum is one; from `on_commit`, `node_learn_chosen` and `resolve_chunk` for a value another node had decided (induction over prior decision events, with host-certified learning covered by the host axioms). The implication applies after the required writes are durable: a quorum-one local decision produced within a transition is not externally released before its local vote is persisted.
 
 == The multi-decree log
 
@@ -73,10 +73,10 @@ Fix one decree $s$ unless stated otherwise. Full proofs are in the book chapter;
 
 == Rotating ownership
 
-- *Lemma 11 (ballot partition).* `owner_of` is a function of the slot and the membership; `on_accept` accepts round zero only from that owner; campaign and revocation rounds are at least one and occupy the top 40 bits, so the owner's ballot is the least in the decree and B1 holds per decree.
+- *Lemma 11 (ballot partition).* `owner_of` is a function of the slot and the membership sorted by ascending id; `on_accept` accepts round zero only from that owner; campaign and revocation rounds are at least one and occupy the top 40 bits, so the owner's ballot is the least in the decree and B1 holds per decree.
 - *Lemma 12 (a revocation is a phase one).* `start_revocation` sends a `.Bounded` prepare; `promise_bounded` records `Write_Promise_At` for every slot of the range or answers nothing at all; `resolve_chunk` runs with `drive_all`, re-proposing recovered round-zero votes (B3) and filling holes; the owner is fenced by `promised_at` in `on_accept` and `next_usable_own_slot`; `become_leader` returns the revoker to `.Follower`.
 - *Lemma 13 (skips).* `skip_idle_slots` calls `propose_owned` with the no-op, at most `min(C, SKIP_BURST)` per tick.
-- *Lemma 14 (resubmission).* `on_accept` (when a higher ballot overwrites the cell's own round-zero vote) and `record_commit` (when the decided value differs from it) queue the owner's losing suggestion, keyed on the vote's ballot alone so a revocation the owner itself started cannot hide it; `drain_resubmits` proposes it in a later own slot through `propose_owned`. At-least-once: the queue holds one chunk, and a suggestion re-proposed by the revoker may decide twice.
+- *Lemma 14 (resubmission).* `on_accept` (when a higher ballot overwrites the cell's own round-zero vote with a different value) and `record_commit` (when the decided value differs from it) queue the owner's losing suggestion, keyed on the vote's ballot alone so a revocation the owner itself started cannot hide it; `drain_resubmits` proposes it in a later own slot through `propose_owned`. Best effort: the queue holds one chunk; overflow increments `resubmits_dropped` and requires host retry. A suggestion re-proposed by the revoker may decide twice, so commands need application-level deduplication.
 - *Liveness (informal).* `tick_ownership` counts `stall_ticks` while `delivered_through < highest_seen`, asks the stuck owner every `heartbeat_interval_ticks`, and revokes at `election_timeout_ticks`; a timed-out revoker revokes again higher. Not proved.
 
 == Stop signs and contiguity
@@ -135,6 +135,20 @@ Fix one decree $s$ unless stated otherwise. Full proofs are in the book chapter;
 - *The pre-durable exception (Lemma 10).* The exception is sound only because the restarted proposer's ledger holds a record at the round of the in-flight ballot, and the library discharges that itself: `start_campaign` and `start_revocation` promise their own ballot in the batch that carries the `Prepare`. An earlier draft of this record left it to the host to deliver a candidate's self-addressed `Prepare` before any peer's reply; that rule is no longer needed, and a host must not rely on message order for safety.
 - *Chosen above the seal (Lemma 15).* The core can still choose a value above the stop slot in the sealed configuration: `resolve_chunk` re-drives a reported vote with no seal check, and under rotating ownership an owner that has not learned of the seal can have a suggestion decided in its own slot (`reconfiguration_sim_ownership_abandons_decisions_above_the_seal`). The log abandons such a decision: it is never released and `replicated_log_read`, `replicated_log_read_decided` and `replicated_log_decided_through` hide it. Nothing is proved about an abandoned decision beyond that. A client value abandoned this way is not reported to the host and must be proposed again in the next configuration, and a host that inspects the core ledger through `replicated_log_ledger` sees the decision and must not act on it.
 - *Learners.* `node_learn_chosen` and `learner_learn_chosen` trust the host's certification that a value is chosen for the named configuration; the argument covers voting members.
+
+= Review of the Implementation Boundary (2026-09-17)
+
+This is a committed paper argument over the implementation, not a machine-checked
+proof. The agreement argument concerns durable votes and decisions released only
+after their required writes are confirmed. Its induction is over decision events,
+including repeated events at one node, rather than over the set of nodes.
+
+For B3, a complete read quorum is necessary before selection. Additional valid
+reports may contribute to the selected value. `recovery_ready` then freezes that
+selection before any phase-two proposal; retries reuse it. A later losing vote
+cannot contradict a known decision, whereas two reported decisions with different
+values are an error. Chunk-relative indexing must preserve this evidence until
+resolution finishes; POD 0009 records the boundary and retry tests.
 
 = References
 

@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Process Memo"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -27,7 +27,7 @@
 
 = Abstract
 
-This document defines the *Paxos Odin Discussions (POD)* RFC process, metadata schema, authoring lifecycle, and CLI tooling for `paxos-odin`. Modeled directly after the Zen Discussion Series (ZDS) from `zenfmt`, POD records serve as immutable architectural specifications, protocol derivations, and process memos for consensus engineering.
+This document defines the *Paxos Odin Discussions (POD)* RFC process, metadata schema, authoring lifecycle, and CLI tooling for `paxos-odin`. Modeled directly after the Zen Discussion Series (ZDS) from `zenfmt`, POD records serve as versioned architectural specifications, protocol derivations, and process memos for consensus engineering.
 
 = Introduction
 
@@ -145,13 +145,126 @@ The creed is enforced by `tools/check_style.py`, which `make vet`, `make check`,
 
 - *Resource-optimum design:* memory layouts favour mechanical sympathy: contiguous arrays
   (the `Ledger` columns and bitmaps, the inline `small_array` effect buffers),
-  predictable transformations, no value copies and no pointer chasing in a transition.
+  predictable transformations, and no redundant payload copies into effects. Values
+  are copied into owned ledger storage; borrowed effect pointers have explicit lifetimes.
 - *Safety via visibility:* performance never buys unvetted cleverness. The library leans
   on Odin's type checking, explicit bounds (`#assert`, `where` clauses), and the runtime
   gate rather than on trust.
 - *Long-term maintainability:* every engineering decision must pass the "mere mortal
   explainability test". An optimisation that cannot be explained simply to a teammate is
   refactored into a simpler, flatter structure.
+
+= Documentation policy and editorial guidance (2026-09-17)
+
+Typst is the canonical format for project documentation. Markdown is reserved for
+GitHub-facing entry pages, currently `README.md`, `README.ko.md`, and
+`CONTRIBUTING.md`. New Markdown documents require a specific GitHub-facing purpose;
+convenient rendering alone is not a reason to create a second documentation tree.
+
+Keep teaching material in `docs/book/`, design and process records in
+`docs/pod/records/`, and release notes in `docs/releases/`. Benchmark drivers belong
+under `bench/`; their explanations belong in the book and their design evidence in
+POD records. JSON, CSV, patches, and profile archives remain machine-readable evidence
+under `bench/results/`. Temporary agent notes and scratch plans do not belong in the
+repository; keep them outside the project tree, for example under `/tmp`.
+
+== Book editorial guide
+
+The book takes inspiration from Feynman's concrete explanations, Lamport's explicit
+reasoning, Knuth's integration of programs and exposition, and Dijkstra's economy
+and precision. These are editorial aims, not quotations, endorsements, or an attempt
+to imitate an author's voice.
+
+=== Build understanding in layers
+
+1. Start with a small situation the reader can draw: three voters, one slot, one
+   delayed message. State the question before naming the mechanism.
+2. Ask the reader to predict an outcome. Work through the relevant events and say
+   why each is legal. Include a failure case that tests the tempting shortcut.
+3. Define the invariant and its assumptions. Separate safety from progress, a
+   protocol fact from a node's knowledge, and the core's duties from the host's.
+4. Show a short implementation excerpt next to the obligation it satisfies. Label
+   sketches as sketches. Keep quoted identifiers, field sizes, and indexing current.
+5. Ask a transfer question: change a quorum, a crash point, or a storage boundary.
+   Give enough information to reason about it without guessing hidden assumptions.
+
+Reference sections can be direct. Do not force every section into a lesson template
+or claim that every chapter contains an exercise pattern it does not actually use.
+
+=== Write precise, readable prose
+
+Use one main claim per paragraph. Prefer concrete subjects and active verbs. Define
+terms before relying on them; use the same term for the same state throughout.
+“Chosen”, “known to be chosen”, “released”, and “applied” are distinct events.
+
+Avoid claims such as “obvious”, “inevitable”, “production-grade”, “zero cost”, or
+“always fastest” unless the text supplies the necessary evidence and scope. A
+counterexample is more useful than a slogan. A paper argument over inspected code
+is not machine-checked implementation correctness.
+
+Name chapters by subject or use a generated reference; handwritten chapter numbers
+drift. Keep default validation commands distinct from larger recorded runs. Historical
+design records and measurements should retain their dates and original context.
+
+=== Make diagrams do explanatory work
+
+Use native vector diagrams in `docs/book/figures.typ` for protocol and storage reasoning.
+Each figure needs a question, explicit labels, and a caption explaining its conclusion
+and assumptions. Colour supplements words; it must not be the only indication of
+state. Label the direction of time and distinguish data flow from required ordering.
+
+Keep related diagrams near the explanation. Check rendered pages for overlap,
+clipping, tiny text, misleading arrows, and page breaks. Align quantitative bars at
+zero. Print units and values; state when panels use different scales. Use HTML frames
+for diagrams whose layout would otherwise disappear in Typst's experimental HTML
+export, while keeping the surrounding explanation and tables as text.
+
+=== Keep measurements attributable
+
+Generate book timing tables and charts from the archived matched JSON and memory
+charts from the recorded CSVs. State the workload, timing boundary, sample count,
+compiler policy, and where raw results can be found. Explain uncertainty: passing a
+regression gate is not proof of no regression.
+
+Distinguish inline storage, allocated heap/stack, and resident process memory. Never
+sum overlapping metrics. Preserve the historical durability harness separately from
+the matched CPU suite. Update both READMEs when the leading measurement changes.
+
+=== Review and build
+
+Run `make docs` to build the book, design records, releases, and HTML. Review the PDF
+pages containing changed figures and tables; successful compilation alone does not
+establish legibility. The HTML exporter can warn about unsupported page styling;
+confirm diagrams survive as SVG frames. Documentation-only edits do not require
+rerunning the performance experiment, but must not change or relabel its raw evidence.
+
+= Record Status Review (2026-09-17)
+
+Committed records may be corrected with a dated update; published records are
+frozen under the lifecycle above. Status describes a design decision, not a claim
+that every proposed feature ships. The registry and each record must agree.
+
+#table(
+  columns: (auto, auto, 1fr), inset: 5pt,
+  [*POD*], [*State*], [*Implementation or evidence boundary*],
+  [0001], [Committed], [Active process and Typst editorial policy.],
+  [0002], [Committed], [Implemented core; chunk recovery and canonical membership reviewed.],
+  [0003], [Committed], [Implemented durability gates; host persistence remains an obligation.],
+  [0004], [Discussion], [Leases unimplemented; timing, quorum and restart proof obligations remain open.],
+  [0005], [Committed], [Implemented Odin API; earlier version tables are historical.],
+  [0006], [Committed], [Implemented epoch and release fences; state transfer is host-owned.],
+  [0007], [Committed], [Dated review evidence; historical counts kept separate from latest runs.],
+  [0008], [Committed], [Paper safety argument over code; no machine-checked implementation proof.],
+  [0009], [Committed], [Implemented layout and recovery storage; archived matched profiles and measurements.],
+  [0010], [Committed], [Implemented ownership; bounded best-effort resubmission, not guaranteed delivery.],
+  [0011], [Committed], [Python SDK; C ABI, typed APIs, wheels and measured evidence all land. Optional capabilities refused by bit.],
+)
+
+The September 17 review updates stale contracts in place, retains attributable
+historical measurements, and moves references behind dated follow-ups. New records
+should distinguish current behaviour, proposed behaviour, validation and open
+questions using the template. A diagram should explain a boundary or invariant;
+it need not appear in a process record solely for decoration.
 
 = References
 

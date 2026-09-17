@@ -35,3 +35,6 @@
 
 #pagebreak()
 #include "records/0010-rotating-slot-ownership.typ"
+
+#pagebreak()
+#include "records/0011-paxodin-python-sdk.typ"

@@ -2,12 +2,12 @@
 #let pod-title = "Review Findings and Verification Evidence"
 #let pod-state = "committed"
 #let pod-created = "2026-09-16"
-#let pod-discussion = "The three-pass library review: correctness repairs, design choices, verification evidence, parity with paxos-zig, and the data-oriented redesign"
+#let pod-discussion = "The six-pass library review: correctness repairs, design choices, verification evidence, parity with paxos-zig, and the data-oriented redesign"
 #let pod-labels = ("review", "verification", "correctness", "benchmark")
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Review Record"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -29,7 +29,17 @@
 
 = Abstract
 
-This record preserves the three review passes of 2026-09-16. The first pass audited the original Odin sources for correctness, repaired the findings, and established the executable verification. The second pass compared the library feature by feature with `paxos-zig` 0.7.0, reworked the API surface for idiomatic use, and brought every document into agreement with the code; together they produced `0.1.0`. The third pass rebuilt the core around a data-oriented ledger and added rotating slot ownership, producing `0.2.0`; its section at the end records the motivation, the safety bug the simulator caught on the way, and the verification as it stands. The review used `paxos-zig` to identify observable behaviours and verification scenarios, not as a source to translate mechanically. It would be inaccurate to claim universal superiority, a formal proof, or complete branch coverage.
+This record preserves five review passes from September 16 and a recovery-storage
+follow-up from September 17. The first two passes repaired correctness defects
+and revised the public API. The third introduced the data-oriented ledger and
+rotating ownership; the fourth and fifth examined window boundaries, admission
+and recovery reports. The sixth records bounded recovery storage and matched
+performance evidence. Counts and timings remain attached to the run that produced
+them; the latest evidence does not retroactively change an earlier result.
+
+The review used `paxos-zig` to identify observable behaviours and verification
+scenarios, not as source code to translate. These records claim neither universal
+superiority nor machine-checked correctness or complete branch coverage.
 
 = First Pass: Correctness Findings and Repairs
 
@@ -213,30 +223,6 @@ This pass compared the library against `paxos-zig` 0.7.0 feature by feature (opt
 
 The book was rewritten chapter by chapter against the final sources (foundations with the invariants and the greatest-vote proof, the single-decree trace with crash points, Multi-Paxos with chunked recovery, the library and its host contract, features, style, three worked systems, evidence with the real test inventory and the measured benchmark, a desk reference with the full error list and exercise answers, and a paper-to-code conformance appendix). POD 0002 and 0003 were corrected, POD 0004 stays a proposal, and POD 0005 (the API surface) and POD 0006 (reconfiguration and epoch isolation) were added. `README.md`, `README.ko.md`, and the Typst release notes describe the current API only; the API reference is Part VII of the book. This record replaces the former `docs/REVIEW.md`.
 
-= Fourth Pass: Adversarial Review of the Window and Ownership
-
-An independent read of the 0.2.0 sources with throwaway tests found eight defects, all fixed in the library with a regression test each (`tests/test_window_review.odin`):
-
-- *The live window was unbounded above.* `claim_live` tagged a free cell with any slot, so a lagging follower could hold slot $s + W$ in the cell of a live slot $s$; the pass-through in `record_commit` could then release two decisions through one shared value in a single transition (the record and the entry of the first carried the second's value). Fix: `claim_live` admits only $(#[`memory_floor`], #[`memory_floor`] + W]$, and the pass-through runs at most once per transition. This also removed two ways an owner could be wedged (`.Window_Overrun` forever from a far-ahead cell; `own_next` below the floor after commits and a floor advance) and the case where a revoker's own bounded promise could fail after it had already changed role.
-- *A revoked suggestion was lost when the owner itself voted the revoker's accept.* `on_accept` overwrote the owner's round-zero vote before `record_commit` could see it, and a revocation the owner started had cleared `lead_slot`. Fix: `on_accept` queues the resubmission at the overwrite, keyed on the vote's ballot alone.
-- *An ownership tick could overflow `Effects.messages`* when resubmits, skips, and retransmissions to every peer landed in one batch. Fix: one chunk of proposals per tick; retransmission only on a quiet tick.
-- *A stale duplicate `Accepted` returned `.Missing_Proposed_Value`* (an incident error) after its cell had been reused. Fix: stale acknowledgements are ignored.
-- *A leader fenced by a peer that then died never re-ran phase one.* Fix: a leader whose inherited gap stalls for `election_timeout_ticks` campaigns again; a deposed leader waits a full timeout before campaigning; a candidate that loses a decree to a higher ballot in `resolve_chunk` steps down instead of surfacing `.Not_Leader` from `tick`.
-- Minor: `ledger_replay_fold` rejects a `Write_Promise_At` for slot zero; `send_accept` reports `.Not_Leader` rather than silently returning a slot it did not propose; `propose_owned` steps over an own slot a revoker's promise reached first.
-
-The two safety items (the double pass-through and the lost suggestion) were reachable only through schedules the seeded simulator had not produced in its first hundred runs: a partition longer than the window, and an owner that hears the revoker's accept before its commit.
-
-= Fifth Pass: Batches, Quorum Combinations, and Recovery Reports
-
-A third independent review reproduced four defects with an isolated program; each is fixed with a regression test in `tests/test_batch_review.odin`:
-
-- *An ownership tick could overrun the writes buffer* with read quorum three, write quorum one, and chunk two: each skip decided at once (two writes), and the stall timeout started a revocation (one promise per slot) in the same transition. A revocation now gets a transition of its own: it starts only on a tick that proposed nothing.
-- *Ownership batches stopped working once the floor advanced*: `node_propose_batch` computed occupancy from the single-leader `next_slot`, which ownership never moves, and the unsigned subtraction wrapped. Ownership admission now runs on the owner's own frontier before any single-leader arithmetic.
-- *A rejected ownership batch could leave a vote behind*: `own_slots_available` estimated the batch's span arithmetically while the proposals stepped over revoked slots. It now probes every target slot through `own_slot_probe`, which is also what `next_usable_own_slot` uses, without mutating anything, and the batch is admitted whole or not at all.
-- *Recovery reported a false conflict* when an acceptor outside the deciding quorum reported an older, losing vote after another had reported the decision. `on_promise` now lets only a second decision with a different value contradict a decision; both report orders are tested.
-
-Two contract items from the same review: resubmission is documented as best effort and a dropped resubmission is counted (`resubmits_dropped`); and the membership is now sorted by `membership_init`, so ownership order is ascending id on every node whatever order the host listed the members in, which retires the rule that every host must pass the same order. The benchmark harness now fails on a transition error, on a queue overflow, and on any node that did not decide every value, so a dropped message cannot flatter a number.
-
 = Third Pass: Ground-Up Data-Oriented Redesign
 
 The third pass produced `0.2.0`. It kept the effect-machine contract, the error contract, the replicated log, the learner, and every test oracle, and replaced the core's data layout.
@@ -255,7 +241,31 @@ The `0.1.0` rule let every `Accept_Message` leave before the sender's local barr
 
 The fix is in `pre_durable_next`: only accepts whose `ballot_round` is above zero may leave before the barrier; a round-zero suggestion waits, because the owner's own vote is the only durable record that the instance was used. The reasoning is written on `Pre_Durable_Iterator` in `src/effects.odin` and in POD 0003. The simulator, not a unit test, found this; the ownership mode now runs in every `tools/check.py` invocation for that reason.
 
-== Verification as it stands
+= Fourth Pass: Adversarial Review of the Window and Ownership
+
+An independent read of the 0.2.0 sources with throwaway tests found eight defects, all fixed in the library with a regression test each (`tests/test_window_review.odin`):
+
+- *The live window was unbounded above.* `claim_live` tagged a free cell with any slot, so a lagging follower could hold slot $s + W$ in the cell of a live slot $s$; the pass-through in `record_commit` could then release two decisions through one shared value in a single transition (the record and the entry of the first carried the second's value). Fix: `claim_live` admits only $(#[`memory_floor`], #[`memory_floor`] + W]$, and the pass-through runs at most once per transition. This also removed two ways an owner could be wedged (`.Window_Overrun` forever from a far-ahead cell; `own_next` below the floor after commits and a floor advance) and the case where a revoker's own bounded promise could fail after it had already changed role.
+- *A revoked suggestion was lost when the owner itself voted the revoker's accept.* `on_accept` overwrote the owner's round-zero vote before `record_commit` could see it, and a revocation the owner started had cleared `lead_slot`. Fix: `on_accept` queues the resubmission at the overwrite, keyed on the vote's ballot alone.
+- *An ownership tick could overflow `Effects.messages`* when resubmits, skips, and retransmissions to every peer landed in one batch. Fix: one chunk of proposals per tick; retransmission only on a quiet tick.
+- *A stale duplicate `Accepted` returned `.Missing_Proposed_Value`* (an incident error) after its cell had been reused. Fix: stale acknowledgements are ignored.
+- *A leader fenced by a peer that then died never re-ran phase one.* Fix: a leader whose inherited gap stalls for `election_timeout_ticks` campaigns again; a deposed leader waits a full timeout before campaigning; a candidate that loses a decree to a higher ballot in `resolve_chunk` steps down instead of surfacing `.Not_Leader` from `tick`.
+- Minor: `ledger_replay_fold` rejects a `Write_Promise_At` for slot zero; `send_accept` reports `.Not_Leader` rather than silently returning a slot it did not propose; `propose_owned` steps over an own slot a revoker's promise reached first.
+
+The duplicate-release defect and the best-effort resubmission defect required schedules the seeded simulator had not produced in its first hundred runs: a partition longer than the window, and an owner that hears the revoker's accept before its commit.
+
+= Fifth Pass: Batches, Quorum Combinations, and Recovery Reports
+
+A third independent review reproduced four defects with an isolated program; each is fixed with a regression test in `tests/test_batch_review.odin`:
+
+- *An ownership tick could overrun the writes buffer* with read quorum three, write quorum one, and chunk two: each skip decided at once (two writes), and the stall timeout started a revocation (one promise per slot) in the same transition. A revocation now gets a transition of its own: it starts only on a tick that proposed nothing.
+- *Ownership batches stopped working once the floor advanced*: `node_propose_batch` computed occupancy from the single-leader `next_slot`, which ownership never moves, and the unsigned subtraction wrapped. Ownership admission now runs on the owner's own frontier before any single-leader arithmetic.
+- *A rejected ownership batch could leave a vote behind*: `own_slots_available` estimated the batch's span arithmetically while the proposals stepped over revoked slots. It now probes every target slot through `own_slot_probe`, which is also what `next_usable_own_slot` uses, without mutating anything, and the batch is admitted whole or not at all.
+- *Recovery reported a false conflict* when an acceptor outside the deciding quorum reported an older, losing vote after another had reported the decision. `on_promise` now lets only a second decision with a different value contradict a decision; both report orders are tested.
+
+Two contract items from the same review: resubmission is documented as best effort and a dropped resubmission is counted (`resubmits_dropped`); and the membership is now sorted by `membership_init`, so ownership order is ascending id on every node whatever order the host listed the members in, which retires the rule that every host must pass the same order. The benchmark harness now fails on a transition error, on a queue overflow, and on any node that did not decide every value, so a dropped message cannot flatter a number.
+
+= Consolidated Historical Verification (2026-09-16)
 
 `make check` runs `tools/check_style.py` (the Zen constraints of POD 0001: file, line, and procedure limits), `odin check -vet -strict-style` on `tests`, `sim`, `bench`, `cli`, and `examples/counter.odin`, then:
 
@@ -268,7 +278,26 @@ The fix is in `pre_durable_next`: only accepts whose `ballot_round` is above zer
 
 == Benchmark figures for 0.2.0
 
-`make bench-compare` (`tools/bench_compare.py`) reran this library, `paxos-zig`, OmniPaxos, and LibPaxos3 sequentially on the `0.2.0` sources and rewrote `bench/results/latest.json` (recorded 2026-09-16T23:53:16Z on the same AMD Ryzen 7 5800H host, after the fifth-pass fixes); the `0.1.0` figures quoted under "Four-way comparison" above survive only in that paragraph. The book's evidence chapter, the README, and the release notes read their tables from the recorded file. Against the `0.1.0` run, the 1 KiB workload, where the copies were the cost, fell from 1,091 ns to 505 ns per value one at a time; the three-voter 8-byte workload, where the transition logic is, moved from 145 ns to 148 ns; five voters from 185 ns to 191 ns. The file also carries the two `owned-3n` rows for rotating ownership (161 ns and 154 ns) and the durable rows (27.49 ms and 3.71 ms). The window bound added in the fourth pass costs one compare per claim and is inside the noise of these rows. POD 0009 states what the redesign was expected to change and what it was not.
+`make bench-compare` (`tools/bench_compare.py`) reran this library, `paxos-zig`, OmniPaxos, and LibPaxos3 sequentially on the `0.2.0` sources and rewrote `bench/results/latest.json` (recorded 2026-09-16T23:53:16Z on the same AMD Ryzen 7 5800H host, after the fifth-pass fixes); the `0.1.0` figures quoted under "Four-way comparison" above survive only in that paragraph. Those figures belong to the September 16 harness. Current matched comparisons and profiles are recorded separately in POD 0009. Against the `0.1.0` run, the 1 KiB workload, where the copies were the cost, fell from 1,091 ns to 505 ns per value one at a time; the three-voter 8-byte workload, where the transition logic is, moved from 145 ns to 148 ns; five voters from 185 ns to 191 ns. The file also carries the two `owned-3n` rows for rotating ownership (161 ns and 154 ns) and the durable rows (27.49 ms and 3.71 ms). The window bound added in the fourth pass costs one compare per claim and is inside the noise of these rows. POD 0009 states what the redesign was expected to change and what it was not.
+
+= Sixth Pass: Recovery Storage and Matched Evidence (2026-09-17)
+
+The implemented recovery scratch now scales with chunk capacity. Range checks
+precede narrowing, selection freezes before phase two, and retries retain it.
+Sparse retransmission wraps once without repeating cells. Campaigns and bounded
+revocations durably reserve their own ballot before sending Prepare. These fixes
+and their limits are recorded in POD 0009 and the book's measurement chapters.
+
+`bench/results/recovery-validation.json` records 79 tests in debug and optimized
+builds, 720 seeded simulations of 10,000 steps, nine compile-failure fixtures,
+and four durability fixtures in both builds, with style and vet checks. The
+default check uses 240 simulations; the archived extended run uses 720.
+
+`recovery-matched-20260917.json` contains 90 workload/implementation rows with nine
+samples each; the profiles and static memory CSVs are adjacent. Three-member,
+1 KiB node-plus-effects storage fell from 633,120 to 433,176 bytes at W256/C64.
+Some workloads became faster, some remained inconclusive, and other libraries
+still lead some rows. These measurements establish no universal speed ranking.
 
 = References
 

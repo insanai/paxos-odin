@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Protocol Specification"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -57,7 +57,7 @@ If a node sends a `Promise_Message` or an `Accepted_Message` before the matching
   inset: 6pt,
   fill: (col, row) => if row == 0 { rgb("f1f5f9") } else { none },
   [*Record*], [*Meaning*], [*Emitted by*],
-  [`Write_Promise{ballot}`], [The global promise (`Ledger.promised`, Lamport's `maxBal` for every decree at or above the recovery base).], [`on_prepare` for a `.Global` prepare; `on_heartbeat` for a heartbeat above the promise.],
+  [`Write_Promise{ballot}`], [The global promise (`Ledger.promised`, Lamport's `maxBal` for every decree at or above the recovery base).], [`start_campaign` for its own ballot; `on_prepare` for a `.Global` prepare; `on_heartbeat` for a heartbeat above the promise.],
   [`Write_Promise_At{ballot, slot}`], [A promise for one decree only (`Ledger.promised_at[cell]`), made to a `.Bounded` prepare, which is a revocation under rotating ownership.], [`promise_bounded`, once per decree in `[first, last]` above the memory floor.],
   [`Write_Vote(V){ballot, slot, value: ^V}`], [A vote (`vote_ballot[cell]`, `value[cell]`, state `.Voted`).], [`send_accept` for the proposer's own vote; `on_accept` for an acceptor's vote.],
   [`Write_Chosen(V){slot, value: ^V}`], [A decision (state `.Chosen`). Derived state: a decision is implied by a write quorum of votes.], [`record_commit`, on a local quorum, a `Commit_Message`, a recovered decision, or a host-certified value.],
@@ -179,6 +179,41 @@ Hosts that write one journal per process lifetime use `ledger_apply`; hosts that
 - The four durability fixtures in `tools/check_contracts.py`, each built in both profiles.
 - `test_node_restore_and_recovery`, `review_replay_reuses_certified_trimmed_vote`, `review_snapshot_preserves_votes_above_anchor`, and `review_live_trim_rejects_conflicting_identity`.
 - The seeded simulator persists every write through an oracle that rejects promise regression and votes below the promise, records a decision as soon as a durable write quorum exists (before any leader announces it), crashes at `Before_Writes`, `Partial_Writes`, and `Partial_Messages`, advances the memory floor only half of the time so full-window paths are exercised, serves evicted history from the host image, and runs in both the single-leader and the ownership mode.
+
+= Review and Boundary Tests (2026-09-17)
+
+The durability contract is implemented. Recovery selection is now frozen before
+phase two and retained across backpressure retries (POD 0009). This does not extend
+an effect pointer's lifetime: a host must copy queued payloads before the next
+transition, including independently owned copies of duplicated simulator packets.
+
+An error does not generally imply an empty effects batch or an unchanged node.
+The host must inspect and finish the batch before deciding how to handle the error.
+Ownership batch admission is a specific stronger contract: its read-only
+`own_slot_probe` preflight rejects an unavailable batch without writing a vote or
+moving the frontier. The Python bridge proposed in POD 0011 must preserve both rules.
+
+
+= The Python Bridge as an Audited Host (2026-09-17)
+
+POD 0011's bridge compiles the core with `.Host_Managed` and enforces the four
+obligations itself. The reason is specific: `host_order_violation` calls
+`os.exit`, and a host running inside a Python interpreter cannot accept a process
+kill with no traceback, no unwound `finally` block and no chance to close its
+journal. Returning a status is the only behaviour a hosted caller can act on.
+
+The obligations are met as follows. Every output accessor requires the batch to be
+confirmed, so no message, released entry or served range can be read before its
+writes are durable. No transition may begin while a batch is unfinished, and
+finishing requires confirmation, so a batch is never discarded while it holds
+unconfirmed writes. Closing a node with an unconfirmed batch is permitted --
+`close` must work from a `finally` -- but it reports the count of abandoned
+records rather than hiding it. Recovery is journal replay; the bridge never
+confirms writes whose persistence is uncertain.
+
+A second library, compiled with `.Enforced`, runs the entire Python test suite as
+a standing proof that the bridge never trips the core's own gate. Both libraries
+must return identical status for the same trace, and a test asserts it.
 
 = References
 

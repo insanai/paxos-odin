@@ -155,3 +155,23 @@ not the protocol, is the bill. Host: AMD Ryzen 7 5800H with Radeon Graphics, Lin
 - `is_leader_caught_up` is not a lease; no leases or read barriers are implemented
   (POD 0004). Ownership has no read path.
 - The gate tracks one `Effects` batch and cannot see a copy the host made.
+
+== Recovery-storage and measurement follow-up
+
+Recovery values, metadata, and per-peer duplicate bitmaps are now chunk-sized.
+Indexes are relative to the active recovery base, with explicit range checks;
+non-power-of-two chunks remain supported. The selected recovery values are frozen
+before phase two so a window-limited retry cannot change a proposal under its
+existing ballot. Public procedures and journal/wire formats are unchanged, but
+consumers must recompile for the internal node-layout change.
+
+Sparse retransmission scans visit each used cell at most once per sweep rather
+than wrapping repeatedly over the same cells. The expanded simulator also fixes
+its duplicate-packet payload lifetime and waits for actual convergence rather than
+ending on a quiet tick with catch-up timers pending.
+
+The separate matched harness compares four pure state machines and validates
+ordered payloads at every learner. CPU and memory profiles use Callgrind and
+Massif, with no additional library runtime services or dependencies. The recorded
+measurement contract distinguishes static storage, heap capacity, RSS, and native
+elapsed time; historical results remain attributable to their original harness.

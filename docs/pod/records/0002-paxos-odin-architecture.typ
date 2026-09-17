@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Architectural Specification"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -27,7 +27,7 @@
 
 = Abstract
 
-This document specifies the architecture of `paxos-odin` version `0.2.0` (`VERSION` in `src/paxos.odin`): a bounded, data-oriented implementation of Classic and Multi-Paxos written as a pure effect machine in Odin. The library performs no I/O, owns no threads or clocks, and allocates nothing on the heap during a consensus transition. A `Node` consumes one input (an envelope, a proposal, or a tick) and fills a caller-owned `Effects` value with everything the host must do next.
+This document specifies the architecture of `paxos-odin` version `0.2.0` (`VERSION` in `src/paxos.odin`): a bounded, data-oriented implementation of Classic and Multi-Paxos written as a deterministic effect machine in Odin. The library performs no I/O, owns no threads or clocks, and allocates nothing on the heap during a consensus transition. A `Node` consumes one input (an envelope, a proposal, or a tick) and fills a caller-owned `Effects` value with everything the host must do next.
 
 Version `0.2.0` is a ground-up redesign of the core. The acceptor's state is a `Ledger` whose columns are Lamport's variables (`maxBal`, `maxVBal`, `maxVal`, and the decision) laid out as struct-of-arrays over a power-of-two window; a `Ballot` is one packed 64-bit integer; values are referenced by pointer in every message, record, and released entry instead of being copied; and the node can run with rotating slot ownership (POD 0010) as an alternative to a single elected leader. This document describes the type surface, the data layout, the ten core files, the replicated log and learner layers, the error contract, and the verification that exists today. POD 0009 records the reasoning behind the layout; POD 0008 gives the safety argument.
 
@@ -119,7 +119,7 @@ Overrunning any list is an `assert` inside the `effects_add_*` procedures, never
 
 == The ledger: Lamport's variables in columns
 
-`Ledger(Value, WINDOW)` in `src/ledger.odin` is the acceptor's whole durable state and the node's only per-slot storage:
+`Ledger(Value, WINDOW)` in `src/ledger.odin` is the acceptor's whole durable state and the node's durable per-slot storage:
 
 ```odin
 Ledger :: struct($Value: typeid, $WINDOW: int = DEFAULT_WINDOW_SLOTS)
@@ -154,7 +154,7 @@ The mapping to "The Part-Time Parliament" is direct. `promised` is `maxBal` for 
 
 == Volatile node state
 
-`Node` holds the ledger plus volatile columns indexed the same way. Phase one keeps, per window cell, `recovered_slot`, `recovered_ballot`, `recovered_state`, and `recovered_value` (the greatest vote any acceptor reported for the decree), `election: [MAX_MEMBERS]Election_Peer` (what each peer said about the chunk), and `promise_seen: [MAX_MEMBERS]Bit_Set(WINDOW_SLOTS)`. Phase two keeps `lead_slot`, `lead_ballot`, `acknowledgements: [WINDOW_SLOTS]Bit_Set(MAX_MEMBERS)`, and `acknowledged: [WINDOW_SLOTS]u32`; the proposal itself is the leader's own vote in its ledger, so there is no separate proposal store. Ownership adds `own_next`, `highest_seen`, `stall_ticks`, and a bounded `resubmit` queue. `leader_hint` is `Maybe(Node_Id)`, and the remembered no-op is `noop: Maybe(Value)`; `maybe_resolve_chunk` returns `.Missing_Noop` if a campaign never supplied one.
+`Node` holds the ledger plus volatile columns with two index domains. Phase one keeps, per recovery-chunk position, `recovered_slot`, `recovered_ballot`, `recovered_state`, and `recovered_value` (the greatest vote any acceptor reported for the decree), `election: [MAX_MEMBERS]Election_Peer` (what each peer said about the chunk), and `promise_seen: [MAX_MEMBERS]Bit_Set(CHUNK_SLOTS)`. Phase two uses window-cell indices and keeps `lead_slot`, `lead_ballot`, `acknowledgements: [WINDOW_SLOTS]Bit_Set(MAX_MEMBERS)`, and `acknowledged: [WINDOW_SLOTS]u32`; the proposal itself is the leader's own vote in its ledger, so there is no separate proposal store. Ownership adds `own_next`, `highest_seen`, `stall_ticks`, and a bounded `resubmit` queue. `leader_hint` is `Maybe(Node_Id)`, and the remembered no-op is `noop: Maybe(Value)`; `maybe_resolve_chunk` returns `.Missing_Noop` if a campaign never supplied one.
 
 == Tagged unions
 
@@ -166,7 +166,7 @@ The mapping to "The Part-Time Parliament" is direct. `promised` is `maxBal` for 
 
 = Multi-Paxos Behaviour
 
-A campaign (`node_campaign`, or a follower whose `election_ticks` reached `election_timeout_ticks`) picks a round above every round it has seen, clears the election columns, and broadcasts `Prepare_Message{ballot, first = delivered_through + 1, last = first + CHUNK_SLOTS - 1}` with `.Global` scope. An acceptor promises durably (`Write_Promise`) before replying, answers with one `Promise_Message` per used cell in the chunk (reporting `vote`, `state`, and a pointer to the value) and one `Promise_Range_Message` describing the chunk, its trim anchor, and its `chosen_through`. Once a read quorum has fully described the chunk, `resolve_chunk` re-broadcasts known decisions, re-proposes the highest-ballot vote per decree (obligation B3), fills holes with the remembered no-op, and asks the most advanced peer for a `Learn_Message` if it is ahead. Chunks continue while any peer reported `more`; then `become_leader` sets `leader_base` and the node runs phase two only.
+A campaign (`node_campaign`, or a follower whose `election_ticks` reached `election_timeout_ticks`) picks a round above every round it has seen, clears the election columns, records its own `Write_Promise`, and broadcasts `Prepare_Message{ballot, first = delivered_through + 1, last = first + CHUNK_SLOTS - 1}` with `.Global` scope. An acceptor promises durably (`Write_Promise`) before replying, answers with one `Promise_Message` per used cell in the chunk (reporting `vote`, `state`, and a pointer to the value) and one `Promise_Range_Message` describing the chunk, its trim anchor, and its `chosen_through`. Once a read quorum has fully described the chunk, `resolve_chunk` re-broadcasts known decisions, re-proposes the highest-ballot vote per decree (obligation B3), fills holes with the remembered no-op, and asks the most advanced peer for a `Learn_Message` if it is ahead. Chunks continue while any peer reported `more`; then `become_leader` sets `leader_base` and the node runs phase two only.
 
 A leader's `node_propose` claims `next_slot` and `send_accept` records the leader's own vote (`ledger_record_vote`, `Write_Vote`), counts its own acknowledgement, and broadcasts `Accept_Message`. An acceptor's `on_accept` votes when the ballot is at least its effective promise for that decree and nacks otherwise (`Nack_Message.slot` names the decree). `on_accepted` commits at the write quorum; `record_commit` emits `Write_Chosen` and `emit_contiguous` releases every slot now contiguous with `delivered_through`. Heartbeats carry `decided_through`; a follower that receives a heartbeat above its promise adopts the ballot (writing `Write_Promise`) rather than starting a needless election, and requests a `Learn_Message` when the leader is ahead. `message_decided_through` extracts a peer's progress from every message kind that reports it so `resend_to` can skip slots the peer has already decided.
 
@@ -174,7 +174,7 @@ Under rotating ownership the same procedures run with different inputs: `propose
 
 = Replicated Log and Learner
 
-`Replicated_Log_Node` wraps a `Node(Entry(Value, MAX_MEMBERS, MAX_METADATA_BYTES), ...)` with `configuration_id`, `stop_sign: Maybe(Stop_Sign)`, `stop_slot`, and `stop_pending`. Commands and stop signs share one slot line; `replicated_log_propose_stop_sign` (aliased `replicated_log_reconfigure`) proposes a validated `Stop_Sign` and `replicated_log_is_sealed` is true from the moment a stop sign is pending in the ledger until the configuration is replaced, so every later proposal fails with `.Log_Sealed`. `Log_Envelope` stamps outbound envelopes with the configuration id and `replicated_log_step_checked` refuses a mismatch before the core sees it. `replicated_log_ledger` exposes the wrapped ledger. POD 0006 specifies the reconfiguration protocol.
+`Replicated_Log_Node` wraps a `Node(Entry(Value, MAX_MEMBERS, MAX_METADATA_BYTES), ...)` with `configuration_id`, `stop_sign: Maybe(Stop_Sign)`, `stop_slot`, and `stop_pending`. Commands and stop signs share one slot line; `replicated_log_propose_stop_sign` (aliased `replicated_log_reconfigure`) proposes a validated `Stop_Sign` and `replicated_log_is_sealed` is true while a stop sign is pending or decided, so proposals during that interval fail with `.Log_Sealed`. A pending seal clears if recovery replaces the unchosen stop-sign vote; a decided seal persists. `Log_Envelope` stamps outbound envelopes with the configuration id and `replicated_log_step_checked` refuses a mismatch before the core sees it. `replicated_log_ledger` exposes the wrapped ledger. POD 0006 specifies the reconfiguration protocol.
 
 `Learner(Value, MAX_ENTRIES)` is a standalone non-voting window that stores values inline (`Learner_Cell{slot, value}`): `learner_learn_chosen(l, configuration_id, slot, value)` returns a `Learn_Result` (`Buffered`, `Advanced`, `Duplicate`) and an `Error`, refuses a foreign configuration with `.Configuration_Mismatch`, detects `.Conflicting_Chosen_Value`, and releases only the contiguous prefix through `released_through`. `learner_read_chosen` and `learner_chosen_at` read that prefix while it is still resident.
 
@@ -186,14 +186,30 @@ Under rotating ownership the same procedures run with different inputs: `propose
 
 The evidence that exists in the repository today:
 
-1. *Unit tests.* 69 procedures marked `@(test)` across `tests/` (`grep -c "@(test)" tests/*.odin`), run in both `-debug` and `-o:speed` builds. They cover ballots and quorums, the bit set, chunked recovery and retry progress, batches, inherited-prefix gating, trim identities, restoration from a replayed ledger, learner windows, sealing, the five `ownership_*` scenarios, and the repairs listed in POD 0007 (the `review_*` tests). `tests/harness.odin` supplies the journal and packet idioms every test shares.
+1. *Unit tests.* 79 procedures marked `@(test)` across `tests/` (`grep -c "@(test)" tests/*.odin`), run in both `-debug` and `-o:speed` builds. They cover ballots and quorums, the bit set, chunked recovery and retry progress, batches, inherited-prefix gating, trim identities, restoration from a replayed ledger, learner windows, sealing, the five `ownership_*` scenarios, and the repairs listed in POD 0007 (the `review_*` tests). `tests/harness.odin` supplies the journal and packet idioms every test shares.
 2. *Election matrix.* `election_matrix_preserves_chosen_values` enumerates every assignment of no vote / ballot 1 / ballot 2 to three voters, all six intersecting quorum pairs, and all six first-response orders, asserting exactly 972 cases and that any value chosen by an earlier write quorum survives.
-3. *Seeded simulator.* `sim/simulation.odin` drives one, three, or five nodes under drops, duplication, link cuts, crashes, and restarts from a replayed journal, in both the single-leader and the `--ownership` mode. Crashes land at `Before_Writes`, `Partial_Writes`, or `Partial_Messages` inside the host commit sequence, and pre-durable accepts leave early. Oracles run after every transition: agreement against a golden log, validity, promise regression, vote-below-promise, one value per ballot and slot, contiguous release, and after quiescence liveness (a fresh decision) and convergence. `tools/check.py` runs `--seeds` seeds (default 20) for each node count in each mode: 60 single-leader and 60 ownership runs.
+3. *Seeded simulator.* `sim/simulation.odin` drives one, three, or five nodes under drops, duplication, link cuts, crashes, and restarts from a replayed journal, in both the single-leader and the `--ownership` mode. Crashes land at `Before_Writes`, `Partial_Writes`, or `Partial_Messages` inside the host commit sequence, and pre-durable accepts leave early. Oracles run after every transition: agreement against a golden log, validity, promise regression, vote-below-promise, one value per ballot and slot, contiguous release, and after quiescence liveness (a fresh decision) and convergence. `tools/check.py` runs `--seeds` seeds (default 20) for each node count in each mode: 60 single-leader and 60 ownership runs, plus 120 focused small-window/chunk-3 runs covering majority and flexible quorums. The archived extended run used 100 seeds and completed 720 simulations (7.2 million steps).
 4. *Reconfiguration scenarios.* Four seeded scenarios in `tests/test_reconfiguration_sim.odin`, each over 16 seeds, check seal agreement, nothing released past the seal, replay keeps the seal, and the next configuration decides on the same slot line; the fourth runs under rotating ownership and requires decisions other owners reach above the stop sign to be abandoned.
 5. *Contract fixtures.* `tools/check_contracts.py` compiles nine programs that the compiler must reject and builds four durability fixtures in both profiles, asserting the named diagnostic.
 6. *One entry point.* `tools/check.py` runs `tools/check_style.py` (the Zen constraints of POD 0001), `odin check -vet -strict-style` on every package and the example, both test profiles, the contracts, the simulations, the counter example, the benchmark JSON schema (eleven result rows), and CLI failure propagation in a temporary directory so a stale binary cannot mask a failure.
 
 This is finite executable evidence. No refinement proof or coverage percentage is claimed; POD 0008 states the safety argument as axioms, lemmas, and proof obligations discharged by procedures.
+
+= Current Implementation Review (2026-09-17)
+
+This committed specification describes the implemented core. “Pure” means that the
+core performs no I/O; transitions mutate the node and fill an effects buffer.
+`recovery_index` checks the slot against the active range before subtracting
+`recover_base` and narrowing the result. Recovery scratch and each peer's seen
+bitmap have chunk capacity. `recovery_ready` freezes selection before phase two;
+backpressure retries cannot let a late report change a proposal at the same ballot.
+`resend_to` wraps at most once and does not repeat a used cell in one scan.
+
+`start_campaign` records its own `Write_Promise` before broadcasting Prepare.
+`start_revocation` first runs `promise_bounded` locally. Both facts are needed for
+ballot uniqueness after a crash, including when pre-durable accepts are enabled.
+Ownership exposes `resubmits_dropped` on nodes and replicated logs: a bounded
+resubmission queue supplies best-effort delivery, not an at-least-once guarantee.
 
 = References
 

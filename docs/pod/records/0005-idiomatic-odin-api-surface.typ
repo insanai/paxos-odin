@@ -7,7 +7,7 @@
 #let pod-authors = ("Vikrant Varma <vikrant@insan.ai>", "Paxos Odin Contributors")
 #let pod-category = "Design Record"
 #let pod-status = "Committed"
-#let pod-last-updated = "2026-09-16"
+#let pod-last-updated = "2026-09-17"
 
 #import "../../shared/pod.typ": pod-document
 
@@ -168,6 +168,19 @@ with `packet_of(envelope)` copying the payload at enqueue and `packet_envelope(&
 - *Larger membership bound (0.1.0).* The native `bit_set` for acknowledgements capped `MAX_MEMBERS` at 128, and a wider bound was judged not worth the indirection. `0.2.0` reversed this: the packed ballot fixed the id width at 16 bits, and the array-backed `Bit_Set` was already the window bitmap, so acknowledgements use it too.
 - *A `Packet` type in `src/` (0.2.0).* Shipping the in-process copy idiom would have put a queue policy into a library that owns no transport. The four host programs each spell the twelve lines; a host with a codec never needs them.
 - *Keeping `NodeId` and the ballot struct as aliases (0.2.0).* An alias `NodeId :: Node_Id` would have compiled old code whose ids no longer fit in sixteen bits, and there is no alias that turns a three-field struct into a `distinct u64`. Both were dropped so the compiler reports every site that needs attention.
+
+= Current Contract Review (2026-09-17)
+
+The API decisions above are implemented; the versioned before-and-after tables
+remain historical records. Membership now canonicalizes ids in ascending order,
+so callers need not agree on input order. Binary search uses that same array;
+there is no separate membership index array.
+
+Recovery scratch is chunk-sized and selection is frozen before phase two; these
+are internal layout changes. Effects still borrow payloads until the next
+transition. Ownership admission probes its actual slots before mutating state,
+and `resubmits_dropped` exposes overflow of its best-effort queue. POD 0011 proposes
+a separate Python API over a C boundary; it does not change these Odin conventions.
 
 = References
 

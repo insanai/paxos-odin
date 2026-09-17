@@ -29,6 +29,12 @@
 
 State the problem, the proposed direction, and the reason this document exists.
 
+= Status and Implementation Boundary
+
+State what ships today, what is proposed, and what evidence supports the status.
+A committed design is not automatically a completed implementation. Date reviews;
+preserve historical results with their original workload and revision.
+
 = Introduction
 
 Provide the background and the constraints that make the topic worth discussing now.
@@ -64,6 +70,12 @@ Discuss invariants, fault handling, durability guarantees, and safety proofs.
 = Operational Considerations
 
 Document runtime, memory footprint, recovery steps, or contributor workflow implications.
+
+= Validation and Acceptance Gates
+
+Name invariants, failure cases, tests, artifacts and the criteria for each phase.
+For performance work, specify matched workloads, timing boundaries and uncertainty.
+Separate implementation evidence from proof obligations and future work.
 
 = Alternatives Considered
 
