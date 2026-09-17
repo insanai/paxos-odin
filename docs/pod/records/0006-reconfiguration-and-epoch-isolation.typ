@@ -29,6 +29,14 @@
 
 `paxos-odin` changes membership by deciding a *stop sign* in the same log as application commands. This record specifies how `Replicated_Log_Node` seals a configuration, how the next configuration continues on the same slot line, how a crashed host repairs an unfinished handover, and how `Log_Envelope` keeps a delayed message from one configuration out of another. It notes how the seal interacts with rotating slot ownership (POD 0010), and closes with the seeded scenarios that exercise the design and the questions left open (obligation S1, "stop-sign sealing", in `src/paxos.odin`).
 
+= Status and Implementation Boundary
+
+This protocol is fully implemented. A pending seal clears if phase-one recovery
+replaces an unchosen stop-sign proposal. A decided seal persists across restarts.
+Under rotating ownership, concurrent owners may reach decisions above a stop slot;
+the wrapper prevents these unreleased choices from being delivered in the retired
+configuration, ensuring that the successor configuration decides those slots afresh.
+
 = Terminology and Scope
 
 - *Configuration*: a voting membership identified by a non-zero `configuration_id: u64`. A `Replicated_Log_Node` belongs to exactly one configuration at a time.
@@ -86,7 +94,7 @@ Two consequences follow from the per-slot structure, and one rule in the wrapper
 
 The scenario `reconfiguration_sim_ownership_abandons_decisions_above_the_seal` exercises exactly this: owner 2 seals in slot 2 while owners 3 and 1 get slots 3 and 4 decided; the test requires that some node's ledger holds slot 3 as chosen, that no node releases or reads it, and that the next configuration decides slot 3 with a new command.
 
-= Seeded Scenarios and Oracles
+= Validation and Acceptance Gates
 
 `tests/test_reconfiguration_sim.odin` runs four scenarios on a three-voter `Replicated_Log_Node(u64, 4, 8, 2, 32)`, each over 16 seeds. The host commit sequence in the harness carries an oracle: a node sealed by a decided stop sign never releases an entry above it. Delivery order is shuffled per seed, every journal persists before any message leaves, and every message crosses the network as a `Log_Envelope`.
 
@@ -105,14 +113,6 @@ Every scenario checks the same four oracles: `seal_expect_agreement` (every memb
 2. *Trimming across handovers.* The next configuration inherits one `Trim_Anchor` whose `chosen_trim_slot` is the stop slot. Whether the old configuration's later trim ids may be reused, and how a host that restores already trimmed stop history recovers its configuration metadata, is left to the host (POD 0007 notes the second limit). A future record should fix the relationship between `trim_id` sequences and configuration ids.
 3. *Learner handover.* `replicated_log_init_learner` follows one configuration id. A learner that observes a decided stop sign (`review_log_learner_observes_stop_and_catchup`) still needs the host to re-initialise it for the next configuration.
 4. *Traffic after the seal under rotating ownership.* A sealed node still ticks: it keeps skipping and retransmitting in its own slots above the seal until the host retires it, and those decisions are abandoned. Holding skips back once a node observes the seal would save messages during the handover; it is not needed for safety.
-
-= Current Contract Review (2026-09-17)
-
-This protocol is fully implemented. A pending seal clears if phase-one recovery
-replaces an unchosen stop-sign proposal. A decided seal persists across restarts.
-Under rotating ownership, concurrent owners may reach decisions above a stop slot;
-the wrapper prevents these unreleased choices from being delivered in the retired
-configuration, ensuring that the successor configuration decides those slots afresh.
 
 = References
 

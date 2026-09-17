@@ -33,7 +33,7 @@ remains *Open for Discussion and unimplemented*. The earlier tick-only sketch
 was insufficient: arbitrary host ticks supply neither a clock bound nor a safe
 expiry rule. The obligations below must be discharged before implementation.
 
-= Relationship to the Current Code
+= Status and Implementation Boundary
 
 The core has no lease and no freshness-guaranteed read API. `is_leader_caught_up`
 reports progress through an inherited prefix; it cannot prove current leadership.
@@ -104,7 +104,7 @@ Neither a leader hint nor a caught-up prefix grants exclusive authority. This
 proposal does not specify an ownership lease; that would require a separate proof
 of the relevant writer restrictions.
 
-= Validation Required Before Commitment
+= Validation and Acceptance Gates
 
 Model bounded clock drift, delayed grants, pauses, crash/restart and handover.
 Enumerate supported quorum combinations, including disjoint read quorums. Test
@@ -116,14 +116,17 @@ Tests supplement the proof; they cannot establish an unspecified clock model.
 Until these proof obligations are resolved, this record remains in discussion, and
 no public `can_serve_local_read` capability will be added to the core or Python SDK.
 
-= Alternatives and Open Questions
+= Alternatives Considered
 
 A consensus barrier avoids importing lease clocks but adds communication latency.
 A host-specific lease can exploit a known environment but must publish its timing
-and durability assumptions. Which environment and quorum family should the first
-proposal support? Can its assumptions be checked operationally? Which transition
-fences and restart policy provide a complete argument? These questions precede
-message layout and API naming.
+and durability assumptions.
+
+= Open Questions
+
+Which environment and quorum family should the first proposal support? Can its
+assumptions be checked operationally? Which transition fences and restart policy
+provide a complete argument? These questions precede message layout and API naming.
 
 = References
 

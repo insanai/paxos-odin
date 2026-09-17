@@ -31,6 +31,19 @@
 
 This record captures the decisions that shaped the public surface of `paxos-odin`: how types and error values are spelled, how a call site chooses between a proc-group verb and a receiver-prefixed procedure, how per-node tuning is passed, how `Effects` is declared and sized, and which alternatives were tried and rejected. The `0.1.0` decisions are kept as written; the section "The 0.2.0 decisions" adds what the data-oriented redesign (POD 0009) and rotating ownership (POD 0010) changed, and the before-and-after tables cover both steps. The goal throughout was a surface that reads as ordinary Odin, keeps every capacity visible in a type, and lets the compiler catch mismatches that used to be runtime asserts.
 
+= Status and Implementation Boundary
+
+The API decisions defined in this document are implemented; the versioned before-and-after
+tables remain historical design records. Membership canonicalizes ids in ascending order,
+so callers need not agree on input order. Binary search uses that same array; there is no
+separate membership index array.
+
+Recovery scratch is chunk-sized and candidate selection is frozen before entering phase
+two; these remain internal layout optimizations. Effects buffers continue to borrow
+payloads until the next transition. Ownership admission probes target slots before mutating
+state, and `resubmits_dropped` exposes any overflow in its best-effort queue. POD 0011
+defines a separate Python API over a C boundary without altering these Odin conventions.
+
 = Naming
 
 == Types and error values
@@ -79,7 +92,7 @@ Zero means the default for every field, so `node_init` takes `options := Node_Op
 - *Remembered no-op.* `Node.noop` is `Maybe(Value)`; it is set by `campaign` and `tick` and consulted by `maybe_resolve_chunk`, which returns `.Missing_Noop` rather than filling a hole with a zero value.
 - *Log_Envelope.* `Log_Envelope(Value, MAX_MEMBERS, MAX_METADATA_BYTES)` pairs a `configuration_id` with a core `Envelope(Entry(...))`. `replicated_log_envelope` stamps one and `replicated_log_step_checked` (reachable through the `step` group) checks it. POD 0006 gives the protocol reasons.
 
-= The 0.2.0 Decisions
+= Design Decisions in 0.2.0
 
 == `Node_Id` is `u16`
 
@@ -168,20 +181,6 @@ with `packet_of(envelope)` copying the payload at enqueue and `packet_envelope(&
 - *Larger membership bound (0.1.0).* The native `bit_set` for acknowledgements capped `MAX_MEMBERS` at 128, and a wider bound was judged not worth the indirection. `0.2.0` reversed this: the packed ballot fixed the id width at 16 bits, and the array-backed `Bit_Set` was already the window bitmap, so acknowledgements use it too.
 - *A `Packet` type in `src/` (0.2.0).* Shipping the in-process copy idiom would have put a queue policy into a library that owns no transport. The four host programs each spell the twelve lines; a host with a codec never needs them.
 - *Keeping `NodeId` and the ballot struct as aliases (0.2.0).* An alias `NodeId :: Node_Id` would have compiled old code whose ids no longer fit in sixteen bits, and there is no alias that turns a three-field struct into a `distinct u64`. Both were dropped so the compiler reports every site that needs attention.
-
-= Current Contract Review (2026-09-17)
-
-The API decisions above are implemented; the versioned before-and-after tables
-remain historical records. Membership now canonicalizes ids in ascending order,
-so callers need not agree on input order. Binary search uses that same array;
-there is no separate membership index array.
-
-Recovery scratch is chunk-sized and candidate selection is frozen before
-entering phase two; these remain internal layout optimizations. Effects buffers
-continue to borrow payloads until the next transition. Ownership admission probes
-target slots before mutating state, and `resubmits_dropped` exposes any overflow
-in its best-effort queue. POD 0011 defines a separate Python API over a C boundary
-without altering these Odin conventions.
 
 = References
 
