@@ -165,16 +165,21 @@ then runs after every promise and every manifest:
 
 #code_file("src/election.odin", [
 ```odin
-	complete := 0
-	any_more := false
-	for i in 0..<membership_count(&node.membership) {
-		peer := &node.election[i]
-		if !peer.range_described || peer.received_in_range < peer.expected_in_range do continue
-		complete += 1
-		if peer.more do any_more = true
+	if !node.recovery_ready {
+		complete := 0
+		any_more := false
+		for i in 0..<membership_count(&node.membership) {
+			peer := &node.election[i]
+			if !peer.range_described || peer.received_in_range < peer.expected_in_range do continue
+			complete += 1
+			any_more ||= peer.more
+		}
+		if complete < membership_read_quorum(&node.membership) do return .None
+		// Phase two may pause at the window boundary. Freeze the selection before any
+		// vote leaves, so a late promise cannot change a value under this same ballot.
+		node.recovery_ready = true
+		node.recovery_more = any_more
 	}
-	if complete < membership_read_quorum(&node.membership) do return .None
-	if node.noop == nil do return .Missing_Noop
 ```
 ])
 
@@ -184,15 +189,61 @@ promise the manifest announced arrived too. The candidate waits until
 acceptor counts once its manifest and both promises are in, in whatever order
 they took. Wire order does not matter, and neither does a duplicate.
 
+=== One slot, two indexes
+
+The ledger keeps `WINDOW_SLOTS` cells; recovery scratch keeps only
+`CHUNK_SLOTS` reports and one chunk-sized bitmap per peer. They serve different
+lifetimes. The ledger survives the election; scratch describes just the chunk
+being recovered.
+
+Take a window of 8 and a chunk of 3 starting at slot 7. Slots 7, 8, and 9 map to
+ledger cells 6, 7, and 0, but to scratch indexes 0, 1, and 2. Using the ledger mask
+for scratch would both exceed its bounds and confuse the next chunk with this one.
+`recovery_index` checks that the slot belongs to the current range before subtracting
+`recover_base`. The chunk need not be a power of two.
+
+#book_figure(
+  [The arrows map each slot's ledger cell to its recovery scratch index. Slot 9
+  shares physical ledger cell 0 with slot 1 at different times; the slot tag and
+  memory floor govern reuse. Recovery scratch has its own contiguous indexing.],
+  recovery_storage_picture(),
+)
+
+=== Freeze the answer before acting on it
+
+A complete read quorum gives the candidate enough evidence to select values.
+`recovery_ready` then freezes that selection, and `recovery_more` remembers whether
+another chunk is needed. This matters when the current window cannot hold every
+selected slot: phase two may begin, pause, and resume after the host advances the
+memory floor.
+
+Suppose the candidate has already sent X for one slot at ballot 5. A late promise
+reports an older vote for Y. Replacing X in scratch would make the retry send a
+second value at the same ballot. The candidate must keep its original selection.
+Late reports cannot change it; a later campaign selects again under a new ballot.
+
+#book_figure(
+  [A full window pauses phase two without reopening value selection. Once the chunk
+  is finished, its scratch metadata can be reset. Outgoing values point into the
+  ledger, so clearing scratch does not invalidate the current effect batch.],
+  recovery_selection_flow(),
+)
+
+#predict([
+  With a chunk starting at slot 7, where does slot 9 live in scratch? If phase two
+  pauses after sending X, may a late report replace X with a higher-ballot losing
+  vote? Explain which invariant the retry must preserve.
+])
+
 === The next chunk
 
 If any complete peer reported `more`, the candidate resolves this chunk (below)
 and calls `begin_next_chunk`: `recover_base` moves to the slot after the chunk
 and `recover_last` to the end of the next one, every `Election_Peer` is reset
 except its two fences, `promise_seen` is cleared, and a new `Prepare` with the
-new `first` and `last` goes out under the same ballot. At most
-`CHUNK_SLOTS` promises per peer are ever in flight, however long the unresolved
-suffix is. When no complete peer reports `more`, the candidate becomes leader.
+new `first` and `last` goes out under the same ballot. Each reply describes at most `CHUNK_SLOTS` slots per peer. Delayed replies
+and retransmissions may remain in the network; the candidate only counts reports
+for its current ballot and chunk. When no complete peer reports `more`, the candidate becomes leader.
 
 == The Fences
 
@@ -247,7 +298,8 @@ with `.Missing_Noop` if none was recorded. `resolve_chunk` then walks the chunk:
 
 #code_file("src/election.odin", [
 ```odin
-		cell := cell_of(slot, W)
+		cell, in_chunk := recovery_index(node, slot)
+		assert(in_chunk, "Recovery slot outside chunk. Hint: Report this invariant failure.")
 		if chosen, is_chosen := ledger_chosen_at(&node.ledger, slot); is_chosen {
 			broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = chosen})
 		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Chosen {
@@ -304,11 +356,12 @@ eleven. Then node 1 crashed. Node 3's election timer fires, and the host calls
 
 #transcript((
   [1], [Node 3],
-  [Chooses a round above $b_1$ and sends `Prepare{first = 10, scope = .Global}`,
+  [Chooses a round above $b_1$, writes its own promise, and after persistence
+  sends `Prepare{first = 10, scope = .Global}`,
   with `last` closing one chunk, to nodes 1, 2, and 3. Node 1 is down and never
   answers.],
   [2], [Node 3],
-  [Steps its own `Prepare`. It writes a promise, sends itself
+  [Steps its own `Prepare`. Its promise is already durable, so it only sends itself
   `Promise{slot 12, vote b_1, state .Voted, Z}` and a manifest with
   `reported = 1`, `chosen_through = 9`, `more = false`.],
   [3], [Node 2],
@@ -448,15 +501,18 @@ its members. The `Replicated_Log_Node` in `src/replicated_log.odin` layers this
 on the core `Node`; its entries are an `Entry` union of the host's `Value` and a
 `Stop_Sign`. From the moment a stop sign is pending on a node, `log_propose`
 refuses commands with `.Log_Sealed`; once the stop is decided in slot $s$, no
-slot above $s$ is ever chosen in that configuration, and the next configuration
+slot above $s$ is ever released to the application in that configuration, and the next configuration
 starts at $s + 1$ on the same slot line. The full treatment, including how a
 delayed message from the old configuration is rejected, is in the
 advanced-features chapter.
 
 == Global Slots on One Line
 
-A slot number is used once, ever. `Slot :: u64` counts from 1 and never resets:
-not on a new leader, not on a trim, and not on a configuration change. What the
+Application slot numbers form one increasing sequence. `Slot :: u64` counts
+from 1 and never resets:
+not on a new leader, not on a trim, and not on a configuration change. A decision
+above a stop sign may be abandoned and its position decided by the next
+configuration, but that position was never released in the old configuration. What the
 window bounds is residency, not history: at most `WINDOW_SLOTS` slots live in
 protocol memory at a time, and everything below the memory floor survives only
 in the host's journal and materialized state.

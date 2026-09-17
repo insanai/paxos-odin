@@ -250,7 +250,7 @@ and `WORD_BITS :: 64`. `Ballot` constants: `BALLOT_ZERO`, `BALLOT_ROUND_BITS`
     [The greatest of the global promise, every per-decree promise, and every vote.],
   [`ledger_highest_used(l) -> Slot`], [The greatest slot held by any used cell.],
   [`ledger_apply(l, write: Write(Value)) -> Error`],
-    [Strict single-configuration replay of one record (rules in chapter VIII).],
+    [Strict single-configuration replay of one record (rules in Part VIII).],
   [`ledger_replay_fold(l, write: Write(Value)) -> Error`],
     [Lifetime replay across window reuse: promises fold to their maximum, a vote or per-decree promise whose cell a later slot owns is skipped, decisions and anchors stay strict.],
 )
@@ -539,7 +539,9 @@ every slot from the fence up; when no peer reports `more`, `become_leader`
 sets `.Leader`, `leader_hint = id`,
 `next_slot = leader_base = max(next_slot, slot_add(max(ledger_highest_used, fences), 1))`,
 and releases any contiguous prefix. A `Nack_Message` for the current ballot,
-or any message carrying a different ballot, returns the node to `.Follower`.
+with a greater promised ballot makes the node step down. A message handler can also call
+`observe_leader`, which demotes when the observed ballot differs from the local
+ballot. Its promise and role checks determine whether that call is reached.
 
 Under rotating ownership `node_campaign` is refused; `tick_ownership` starts a
 `start_revocation` after `election_timeout_ticks` ticks without progress,
@@ -648,19 +650,22 @@ stop with its evidence preserved.
   table.header([*Quantity*], [*Formula*], [*Where it lives*]),
   [Majority], [$floor(N \/ 2) + 1$], [`membership_init`: `total / 2 + 1`.],
   [Crashes a majority tolerates], [$N - (floor(N \/ 2) + 1)$], [Five voters survive two.],
-  [Flexible quorum safety], [$Q_1 + Q_2 > N$], [`membership_init` refuses otherwise.],
+  [Flexible quorum safety], [$|Q_1| + |Q_2| > N$], [`membership_init` refuses otherwise.],
   [Ballot packing], [`round << 24 | priority << 16 | node`],
     [`ballot_make`; 40, 8, and 16 bits, so `<` on `Ballot` is B1.],
   [Cell index], [`(slot - 1) & (W - 1)`],
     [`cell_of`; `W` is `WINDOW_SLOTS`, a power of two. `learner_cell_index`
     uses `(slot - 1) mod MAX_ENTRIES`.],
+  [Recovery index], [`slot - recover_base`],
+    [`recovery_index` checks range before subtraction; scratch has `CHUNK_SLOTS`
+    entries and does not use the ledger mask.],
   [Owner of a slot], [$("slot" - 1) mod N$],
     [`owner_of`, an index into the membership order; the owner's ballot is
     `ballot_make(0, 0, owner)`.],
   [Stable-path messages per value], [$3(N - 1)$],
     [`send_accept` broadcasts $N - 1$ accepts; each `on_accept` answers once;
     `on_accepted` broadcasts $N - 1$ commits exactly once.],
-  [Acknowledgements a commit waits for], [$Q_2 - 1$ replies],
+  [Acknowledgements a commit waits for], [$|Q_2| - 1$ replies],
     [`send_accept` counts the leader's own vote first.],
   [Window backpressure], [$"next_slot" - "memory_floor" <= "WINDOW_SLOTS"$],
     [`node_propose`. A batch must fit in the free cells: `WINDOW_SLOTS`
@@ -690,7 +695,8 @@ stop with its evidence preserved.
 5. The greatest vote wins: `on_promise` keeps the highest-ballot vote per
    slot, and a reported decision dominates; `resolve_chunk` re-proposes it,
    or the no-op for a true hole, only after `maybe_resolve_chunk` has a read
-   quorum of complete chunk descriptions.
+   quorum of complete chunk descriptions. `recovery_ready` freezes the selected
+   values before phase two, including across retries at the window boundary.
 6. Chosen means a write quorum of distinct voters: `on_accepted` inserts the
    member index into `acknowledgements[cell]` and counts `acknowledged[cell]`
    against `membership_write_quorum`; a duplicate never counts twice.
@@ -701,8 +707,8 @@ stop with its evidence preserved.
 9. Persist before send: `effects_add_write` raises `writes_pending`;
    `effects_messages_slice` and `effects_reset` stop the process while it is
    raised under `.Enforced`.
-10. Slot numbers are never reused and cells are retagged only for released
-    history: `claim_live` reuses a cell only when its old slot is chosen and
+10. Within a configuration, a decided slot is never assigned a second value,
+    and live cells are retagged only for released history: `claim_live` reuses a cell only when its old slot is chosen and
     at or below `memory_floor`; `ledger_claim` also accepts slots at or below
     the anchor; `resolve_chunk` starts above `quorum_fences`.
 

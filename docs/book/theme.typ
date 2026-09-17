@@ -26,7 +26,12 @@
     header: context {
       if counter(page).get().first() > 1 {
         set text(size: 8pt, fill: gray)
-        let headings = query(heading.where(level: 1).before(here()))
+        // A chapter heading follows the header on its opening page. Include
+        // headings on this page so the running title does not name the last chapter.
+        let current-page = here().page()
+        let headings = query(heading.where(level: 1)).filter(
+          item => item.location().page() <= current-page,
+        )
         let chapter = if headings.len() > 0 { headings.last().body } else { [] }
         grid(
           columns: (1fr, 1fr),
@@ -44,6 +49,7 @@
   set raw(tab-size: 4)
   show raw: set text(font: "Liberation Mono", size: 8.3pt)
   set table(stroke: 0.45pt + rule, inset: 6pt)
+  show table: set par(justify: false)
   show link: set text(fill: blue)
   show heading.where(level: 1): heading => {
     pagebreak(weak: true)
@@ -170,7 +176,7 @@
 
     #v(4mm)
     #text(size: 15pt, fill: cover_ink)[
-      $ |Q| > frac(N, 2) quad => quad Q ∩ Q' != ∅ $
+      $ |Q_1| + |Q_2| > N quad => quad Q_1 ∩ Q_2 != ∅ $
     ]
     #v(6mm)
     #line(length: 49mm, stroke: 0.55pt + cover_gold)
@@ -301,8 +307,19 @@
   #block(width: 100%, inset: 8pt)[#body]
 ]
 
+#let fit_figure(body) = layout(size => {
+  let width = measure(body).width
+  let factor = calc.min(1, size.width / width)
+  scale(x: factor * 100%, y: factor * 100%, reflow: true, body)
+})
+
 #let book_figure(caption, body) = figure(
-  placement: auto,
-  body,
+  placement: none,
+  context {
+    if target() == "html" {
+      html.frame(block(width: 165mm, fit_figure(body)))
+    } else { fit_figure(body) }
+  },
+  kind: image,
   caption: text(size: 9pt, fill: gray)[#caption],
 )

@@ -1,6 +1,6 @@
 #import "theme.typ": *
 
-= How This Book Teaches
+#heading(level: 1, numbering: none)[How This Book Teaches]
 
 Paxos is hard for a predictable reason: the reader must hold crashes, lost and
 reordered messages, competing leaders, stable storage, and application state in mind
@@ -11,30 +11,29 @@ one layer at a time and keeps returning to a single question.
   What fact prevents two different values from becoming chosen in the same slot?
 ], kind: "idea")
 
-The design of the book borrows five ideas from the learning sciences and states them
-as constraints, not guarantees:
+The editorial aim draws on four habits associated with Feynman, Lamport, Knuth,
+and Dijkstra. These are our working principles, not quotations or claims that the
+book reproduces any author's voice:
 
-1. *Small units, worked before faded.* Every mechanism appears first as a fully worked
-   case, then as a case with gaps to fill, then as a transfer question. This follows
-   the worked-example research of Sweller and Renkl: novices learn more from studying
-   a complete solution than from solving too early.
-2. *Self-explanation prompts.* The `Predict` and `Teach it back` boxes ask you to
-   state *why* a step is legal, not only what happened. Chi's studies found that the
-   act of explaining is where the learning happens.
-3. *Retrieval, not recognition.* Exercises appear without their answers; the answers
-   sit in the desk reference so you can check yourself after an attempt. Roediger and
-   Karpicke showed that recalling beats re-reading.
-4. *Plain-language teach-backs.* Each chapter ends by asking you to explain the
-   mechanism without protocol vocabulary. If the explanation needs the word
-   "ballot" to work, you have memorised a name rather than understood a fact.
-5. *Lamport's order.* State the safety goal, derive the inductive invariant, specify
-   the state transitions, and only then look at wire messages and code. Lamport wrote
-   his paper in that order; this book keeps it.
+1. *Start with something the reader can picture.* Use three voters and one value
+   before introducing a general set of quorums. Explain the example in ordinary
+   language, then give its formal name.
+2. *Make the reasoning inspectable.* State assumptions, define “chosen”, and name
+   the invariant before presenting the transition that preserves it. Separate a
+   safety claim from a condition for progress.
+3. *Read the program as an explanation.* Place a small code excerpt beside the
+   reason it exists. Show an entire trace when local rules are hard to compose.
+4. *Spend complexity carefully.* Give each variable one meaning, distinguish an
+   index from a slot, and use a counterexample to test a tempting simplification.
+
+A diagram should answer a question: who remembers the earlier vote, which event
+must precede a reply, or which storage may be reused? Labels carry that meaning;
+colour is a second cue. The text explains the diagram's conclusion and its limits.
 
 == The three representations
 
-Every major idea appears at three levels, and mastery means moving between them
-freely.
+Read each major idea at three levels. Moving between them is a useful check on
+understanding.
 
 #table(
   columns: (auto, 1.2fr, 1.4fr),
@@ -50,7 +49,8 @@ that shape.
 
 == The learning loop
 
-Each chapter moves through six steps:
+The chapters use the following learning loop; reference sections can be consulted
+directly:
 
 1. *Orient*: the learning contract and a checkpoint on prerequisites.
 2. *Predict*: write down what you think happens before the text shows it.
@@ -65,7 +65,7 @@ Each chapter moves through six steps:
   columns: (auto, 1fr, 1fr),
   table.header([*Reader*], [*Sequence*], [*Do, not only read*]),
   [Protocol learner], [Parts I--III including the safety argument, then VII (reference), then IV--VI.],
-    [Draw the quorum-intersection picture from memory; complete exercises 1.1 to 12.1 before reading the answers.],
+    [Draw the quorum-intersection picture from memory; complete the protocol exercises before reading the answers.],
   [Systems builder], [This chapter, then Parts IV--VI, returning to I--III when a rule needs its reason.],
     [Run `make check`; read the effects of one transition in the counter example; run the simulator with a seed of your own and read its oracles.],
 )
@@ -82,14 +82,15 @@ The claims in this book are backed by artefacts you can run:
   corrective hint.
 - `examples/counter.odin`: a three-node replicated counter that shows the whole host
   contract in one file of about a hundred and thirty lines.
-- `tests/`: 69 deterministic tests, including a 972-case election matrix, four
+- `tests/`: 79 deterministic tests, including a 972-case election matrix, four
   seeded reconfiguration scenarios, and five rotating-ownership scenarios.
 - `sim/`: a seeded fault simulator with agreement, validity, monotonicity,
   contiguity, liveness, and convergence oracles, run with one leader and with every
   node proposing in its own slots.
-- `bench/`: an in-memory cost benchmark and a durable variant with a journal and
-  `fsync`.
-- `tools/check.py`: one command that runs all of the above in both build modes.
+- `bench/`: matched CPU drivers, recorded profiles, and a separate historical
+  harness with a journal-and-`fsync` variant.
+- `tools/check.py`: style, unit tests in both build modes, contract fixtures, fault
+  simulations, and smoke checks. Full timing and profiling runs are separate.
 
 What the repository does not supply is listed just as plainly in Part VI, under the
 capability map. There is no transport, no journal format, no client protocol, no lease,
@@ -103,7 +104,8 @@ already believe. Keep the page.
 
 1. Three machines must agree on one value. Why is "the first message to arrive wins"
    wrong?
-2. Why must a majority be involved, and what exactly does a majority guarantee?
+2. What does a majority guarantee, and could different read and write quorum sizes
+   provide the same guarantee?
 3. What must a machine remember across a crash, and why?
 4. When is a value *chosen*, as opposed to *known to be chosen*?
 

@@ -48,7 +48,7 @@ promises or votes, and it answers `.Learner_Message_Forbidden` to anything but C
 
 == Phase one: earn the right to propose
 
-Phase one has two purposes, both from chapter 1. It secures a read quorum's promise
+Phase one has two purposes, both from the foundations chapter. It secures a read quorum's promise
 to refuse lower ballots, and it collects that quorum's votes so that B3 can be applied.
 
 #book_figure(
@@ -164,7 +164,8 @@ partial answer look complete.
 === Value selection
 
 The candidate's `on_promise` stores each report in the `recovered_ballot`,
-`recovered_state` and `recovered_value` columns for the slot's cell and replaces a
+`recovered_state` and `recovered_value` columns at the chunk-relative index
+`slot - recover_base`. This index is distinct from a ledger cell. It replaces a
 vote only when `msg.vote > node.recovered_ballot[cell]`, so each slot keeps the
 greatest ballot seen; a report with `state = .Chosen` dominates every vote. Two
 reports with equal ballots and different values return `.Conflicting_Value`: that
@@ -174,13 +175,15 @@ the slots and applies B3 to each:
 
 #code_file("src/election.odin", [
 ```odin
+		cell, in_chunk := recovery_index(node, slot)
+		assert(in_chunk, "Recovery slot outside chunk. Hint: Report this invariant failure.")
 		if chosen, is_chosen := ledger_chosen_at(&node.ledger, slot); is_chosen {
 			broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = chosen})
 		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Chosen {
 			record_commit(node, slot, node.recovered_value[cell], effects) or_return
 			if decided, ok := ledger_chosen_at(&node.ledger, slot); ok {
 				broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = decided})
-	}
+			}
 		} else {
 			value := node.noop.?
 			if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
@@ -261,7 +264,7 @@ to the accepted ballot (a vote implies the promise, even if no Prepare was ever 
 stores the vote with `ledger_record_vote`, adds `Write_Vote` to the batch, and only
 then sends `Accepted_Message` with the ballot, the slot, and `decided_through`, its
 own contiguous decided prefix. The leader records that prefix per peer and uses it in
-chapter 3 to decide what to retransmit. A duplicate Accept for a vote already held
+the Multi-Paxos chapter to decide what to retransmit. A duplicate Accept for a vote already held
 under the same ballot is answered with Accepted again and no new write. A cell that
 is already `.Chosen` never votes again: an Accept for the same value gets Accepted, an
 Accept for a different value gets the decision back as a `Commit_Message`. One more
@@ -296,6 +299,13 @@ slot already chosen returns early.
   otherwise a dispatch on the `Message(Value)` variant.
 ], source: [`node_step` in `src/consensus.odin`])
 
+#book_figure(
+  [Three voters, write quorum two. X becomes chosen when B makes the second vote
+  durable. The leader learns this later. A delayed acknowledgement changes knowledge,
+  not the chosen value; C need not have voted yet. Time runs downward.],
+  chosen_timeline(),
+)
+
 == A complete trace
 
 Members 1, 2 and 3; read and write quorums both 2; every priority 0. The host calls
@@ -306,10 +316,11 @@ unpacked `(round, priority, node)` triples, and the chunk is the default 64 slot
 
 #transcript((
   [1], [N1], [`start_campaign`: ballot `(1, 0, 1)`, role `.Preparing`,
-    `recover_base = 1`, `recover_last = 64`. No writes. Sends
+    `recover_base = 1`, `recover_last = 64`. Writes `Write_Promise{(1,0,1)}`.
+    After the host makes it durable, sends
     `Prepare{(1,0,1), first = 1, last = 64, scope = .Global}` to 1, 2, 3.],
-  [2], [N1], [`on_prepare` on its own Prepare: `(1,0,1)` is above `promised`, which
-    is `BALLOT_ZERO`. Writes `Write_Promise{(1,0,1)}`. No used cells, so no per-slot
+  [2], [N1], [`on_prepare` on its own Prepare: `(1,0,1)` equals the promise already
+    written by the campaign. No new write and no used cells, so no per-slot
     promise. Sends `Promise_Range{reported = 0}` to 1.],
   [3], [N2], [`on_prepare`: writes `Write_Promise{(1,0,1)}`, `leader_hint = 1`. Sends
     `Promise_Range{reported = 0}` to 1.],
@@ -342,8 +353,8 @@ unpacked `(round, priority, node)` triples, and the chunk is the default 64 slot
 Look at step 9. Tea was chosen the instant N2's `Write_Vote` in step 8 became
 durable, because at that moment two of three acceptors held durable votes under
 `(1, 0, 1)`. Step 9 is N1 *learning* that fact. Had N1 crashed between steps 8 and 9,
-tea would still be chosen, and any future leader's phase one would meet N2 and be
-forced to re-propose it.
+tea would still be chosen, and any future read quorum would meet the choosing quorum `{N1, N2}`.
+At least one witness would preserve tea through the highest-vote rule.
 
 #predict([
   Swap steps 12 and 13, so N3 receives Accept before it has ever seen a Prepare.
@@ -511,7 +522,7 @@ re-establishes it and the next campaign starts above every round the journal hol
 ], hint: [Ask first how the leader at (4, 0, 2) finished phase one without seeing a
   vote for (3, 0, 1).])
 
-#checkpoint([Before chapter 3], [
+#checkpoint([Before the Multi-Paxos chapter], [
   Name the write that precedes each of Promise, Accepted and Commit. Say at which
   step of the trace tea became chosen and at which step N1 found out. Explain why a
   Nack needs no write. State what `ledger_replay_fold` does with a promise record

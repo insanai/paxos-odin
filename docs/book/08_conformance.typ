@@ -1,6 +1,6 @@
 #import "theme.typ": *
 
-// Unicode line breaking forbids a break before "."; see the same rule in chapter VII.
+// Unicode line breaking forbids a break before "."; see the same rule in Part VII.
 #show raw.where(block: false): it => {
   if it.text.starts-with(".") { sym.zws }
   it
@@ -82,10 +82,10 @@ volatile `node.ballot` for its own attempts.
     in order.],
 )
 
-Three departures from the letter of the paper are deliberate. Step 2 and step
-4 accept a ballot equal to the promise, not only greater, so a retransmitted
-`Prepare_Message` or `Accept_Message` is answered idempotently without a new
-write. `on_prepare` reports a decided cell in the same answer as the votes,
+Several departures from the paper's message rules are deliberate. A repeated
+Prepare at the current promise is answered idempotently. An Accept may carry a
+ballot above the effective promise; accepting it raises the per-slot promise.
+A repeated Accept for the same vote needs no new write. `on_prepare` reports a decided cell in the same answer as the votes,
 with `state = .Chosen`, and `on_promise` lets it dominate every vote: the
 paper's president learns passed decrees separately. And round zero of every
 decree is reserved for the decree's owner (`ownership_ballot`), which
@@ -120,9 +120,11 @@ proof applies unchanged.
     one that decides the intervening decrees.],
     [`src/replicated_log.odin` uses a stop sign instead of a delay: a decided
     `Stop_Sign` in slot $s$ seals its configuration, nothing above $s$ is
-    ever chosen in it, proposals answer `.Log_Sealed`, and
+    released to the application in it, proposals answer `.Log_Sealed`, and
     `replicated_log_init_from_stop` starts the next configuration at $s + 1$
-    on the same slot line with an inherited trim anchor.],
+    on the same slot line with an inherited trim anchor. Under rotating ownership,
+    decisions made above the seal before it was learned are abandoned; the new
+    configuration decides those positions afresh.],
   [Section 2.2 (B1)], [Each ballot has a unique number.],
     [`Ballot` is one packed `u64`, `round << 24 | priority << 16 | node`, so
     the total order is integer comparison and the node field makes two
@@ -335,10 +337,10 @@ that can silence one member as if it had crashed:
   reached nobody and is revoked to the no-op; when member 3 returns it learns
   the revocation and proposes the value again in a later own slot.
 
-In all, `tests/*.odin` holds 69 `@(test)` procedures; the ones above are the
+In all, `tests/*.odin` holds 79 `@(test)` procedures; the ones above are the
 schedule-driven subset. `review_hundred_twenty_eight_voters` and
 `review_thousand_voters_reach_quorum` in `tests/test_review.odin` exercise the
-sorted membership index and the word-array bit set at sizes the default
+sorted membership array and the word-array bit set at sizes the default
 capacities never reach.
 
 == What this evidence does and does not say
@@ -350,4 +352,4 @@ together. The evidence is bounded by what was run: finitely many seeds, five
 nodes, one fault mix, two modes. A schedule the generator never produced is
 not covered, and no claim here rests on exhaustive state exploration. The
 lemmas in the safety-argument chapter remain the argument, the invariants in
-chapter VII are its checklist, and the oracles are its instrumentation.
+Part VII are its checklist, and the oracles are its instrumentation.

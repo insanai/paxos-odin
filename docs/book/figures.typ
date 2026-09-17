@@ -27,7 +27,7 @@
   node((2, 0), [Quorum #linebreak() `Promise`], ..node_style),
   node((2, 1), [Phase 2a #linebreak() `Accept`], ..node_style),
   node((1, 1), [Quorum #linebreak() `Accepted`], ..node_style),
-  node((0, 1), [Chosen / Decided], fill: green_light, stroke: 0.8pt + green,
+  node((0, 1), [Leader learns #linebreak() value is chosen], fill: green_light, stroke: 0.8pt + green,
     corner-radius: 3pt, inset: 7pt),
   edge((0, 0), (1, 0), "-|>"),
   edge((1, 0), (2, 0), "-|>"),
@@ -123,9 +123,8 @@
   edge((2, 0), (3, 0), "-|>", [sealed]),
 )
 
-// Benchmark tables are generated from the recorded results file written by
-// `make bench-compare` (tools/bench_compare.py). Nothing here is typed by hand: the
-// machine, tool versions, and every number come from bench/results/latest.json.
+// Historical harness tables retain their recorded machine and revision.
+// The current matched tables below read a separate, explicitly named archive.
 #let bench = json("/bench/results/latest.json")
 
 #let bench_rows(impl, workload, mode) = bench.runs.filter(r =>
@@ -216,3 +215,198 @@
 
 // Kept for chapters that only need this library's own numbers.
 #let benchmark_results_table() = benchmark_comparison_table()
+
+// Current matched data is separate from the historical durability harness.
+#let matched = json("/bench/results/recovery-matched-20260917.json")
+#let matched_row(impl, voters, payload, depth) = matched.runs.find(r =>
+  r.impl == impl and r.nodes == voters and r.payload_bytes == payload and r.depth == depth)
+#let matched_ns(impl, voters, payload, depth) = matched_row(impl, voters, payload, depth).summary.median
+#let matched_impls = (("odin", [Odin]), ("zig", [Zig]),
+  ("omnipaxos", [OmniPaxos]), ("libpaxos", [LibPaxos3]))
+
+#let matched_comparison_table() = {
+  text(size: 8pt, fill: gray)[Recorded #matched.meta.date on #matched.meta.cpu_model.
+    Nine samples per row; median ns per completed value; lower is better.]
+  table(
+    columns: (0.5fr, 0.6fr, 0.5fr, 0.8fr, 0.8fr, 0.8fr, 0.9fr, 0.9fr),
+    align: (left, right, right, right, right, right, right, right),
+    table.header([*$N$*], [*Bytes*], [*Depth*], [*Odin before*],
+      ..matched_impls.map(i => [*#i.at(1)*])),
+    ..matched.runs.filter(r => r.impl == "odin").map(r => (
+      [#r.nodes], [#r.payload_bytes], [#r.depth],
+      [#calc.round(matched_ns("odin-baseline", r.nodes, r.payload_bytes, r.depth), digits: 1)],
+      ..matched_impls.map(i => [#calc.round(matched_ns(i.at(0), r.nodes, r.payload_bytes, r.depth), digits: 1)]),
+    )).flatten(),
+  )
+}
+
+#let matched_cost_picture() = {
+  // Common linear scale within each panel; no truncated baseline.
+  for spec in ((3, 8, 64), (5, 8, 1), (3, 1024, 64)) {
+    let (voters, payload, depth) = spec
+    let maximum = calc.max(..matched_impls.map(i => matched_ns(i.at(0), voters, payload, depth)))
+    block(above: 7pt, below: 7pt, breakable: false)[
+      #text(weight: "bold", size: 9pt)[#voters voters · #payload bytes · depth #depth]
+      #v(3pt)
+      #grid(columns: (23mm, 85mm, 22mm), row-gutter: 4pt, column-gutter: 3mm, align: left + horizon,
+        ..matched_impls.map(i => {
+          let value = matched_ns(i.at(0), voters, payload, depth)
+          ([#i.at(1)], rect(width: 85mm * value / maximum, height: 7pt,
+            fill: if i.at(0) == "odin" { blue } else { gray }, stroke: none),
+            text(size: 8pt)[#calc.round(value, digits: 1) ns])
+        }).flatten(),
+      )
+    ]
+  }
+}
+
+#let recovery_storage_picture() = cetz.canvas(length: 1cm, {
+  import cetz.draw: *
+  content((4, 2.1), text(size: 9pt)[One slot, two indexes: window 8, chunk 3, base 7])
+  content((-0.3, 1.2), text(size: 8pt)[slot], anchor: "east")
+  content((-0.3, 0.4), text(size: 8pt)[ledger cell], anchor: "east")
+  for i in range(8) {
+    let active = i == 0 or i >= 6
+    rect((i, 0), (i + 0.9, 0.8), fill: if active { blue_light } else { white }, stroke: gray)
+    content((i + 0.45, 0.4), text(size: 9pt)[#i])
+    content((i + 0.45, 1.2), text(size: 9pt)[#(i + 1)])
+  }
+  content((0.45, 1.65), text(size: 8pt, fill: blue)[also 9])
+  for (j, slot, cell) in ((0, 7, 6), (1, 8, 7), (2, 9, 0)) {
+    let x = 2.2 + j * 1.2
+    rect((x, -2), (x + 1, -1.2), fill: green_light, stroke: green)
+    content((x + 0.5, -1.6), text(size: 9pt)[#j])
+    line((cell + 0.45, 0), (x + 0.5, -1.2), stroke: 0.6pt + blue, mark: (end: ">"))
+    content((x + 0.5, -2.35), text(size: 8pt)[slot #slot])
+  }
+  content((1.85, -1.6), text(size: 8pt)[scratch index], anchor: "east")
+  content((4, -3), text(size: 8pt)[ledger: (slot − 1) & 7 #h(8mm) scratch: slot − 7])
+})
+
+#let recovery_selection_flow() = diagram(
+  spacing: (32mm, 17mm), edge-stroke: gray,
+  node((0, 0), [Collect reports #linebreak() for one chunk], ..node_style),
+  node((1, 0), [Complete read quorum #linebreak() Freeze selected values], ..node_style),
+  node((2, 0), [Drive phase two #linebreak() Copy into ledger], ..node_style),
+  node((2, 1), [Window full #linebreak() Keep selection], fill: amber_light, stroke: amber, inset: 7pt),
+  node((1, 1), [Chunk finished #linebreak() Reset scratch metadata], fill: green_light, stroke: green, inset: 7pt),
+  edge((0, 0), (1, 0), "-|>"),
+  edge((1, 0), (2, 0), "-|>"),
+  edge((2, 0), (2, 1), "-|>"),
+  edge((2, 1), (2, 0), "-|>", [floor advances], bend: 35deg),
+  edge((2, 0), (1, 1), "-|>"),
+  edge((1, 1), (0, 0), "-|>", [next chunk]),
+)
+
+#let chosen_timeline() = cetz.canvas(length: 1cm, {
+  import cetz.draw: *
+  for (x, label) in ((0, "Leader A"), (4, "Voter B"), (8, "Voter C")) {
+    content((x, 0.5), text(weight: "bold", size: 9pt, label))
+    line((x, 0), (x, -4), stroke: 0.6pt + gray)
+  }
+  content((0, -0.3), text(size: 8pt)[A's vote durable], anchor: "west")
+  line((0, -0.8), (4, -1.3), mark: (end: ">"), stroke: blue)
+  content((2, -0.8), text(size: 8pt)[Accept X])
+  circle((4, -1.7), radius: 0.09, fill: green)
+  content((4.2, -1.7), text(size: 8pt, fill: green)[B's vote durable: X chosen], anchor: "west")
+  line((4, -2.2), (0, -2.7), mark: (end: ">"), stroke: blue)
+  content((2, -2.2), text(size: 8pt)[Accepted])
+  content((0.2, -3), text(size: 8pt)[A learns X is chosen], anchor: "west")
+  line((0, -3.5), (8, -3.9), mark: (end: ">"), stroke: gray)
+  content((5, -3.4), text(size: 8pt)[Commit X: tell C])
+})
+
+#let borrowed_value_flow() = diagram(
+  spacing: (32mm, 17mm), edge-stroke: gray,
+  node((0, 0), [Transition #linebreak() Ledger owns value], ..node_style),
+  node((1, 0), [Effects borrow pointers #linebreak() Valid until next transition], ..node_style),
+  node((2, 0), [Host copies / serialises #linebreak() Queue owns bytes], fill: green_light, stroke: green, inset: 7pt),
+  node((2, 1), [Later delivery #linebreak() Rebind to packet's copy], ..node_style),
+  node((0, 1), [Next transition #linebreak() May reuse ledger storage], fill: amber_light, stroke: amber, inset: 7pt),
+  edge((0, 0), (1, 0), "-|>"),
+  edge((1, 0), (2, 0), "-|>"),
+  edge((2, 0), (2, 1), "-|>"),
+  edge((2, 0), (0, 1), "-|>", [batch consumed]),
+)
+
+#let ownership_picture() = {
+  table(columns: (21mm, ..range(6).map(_ => 16mm)), align: center,
+    table.header([*Slot*], [1], [2], [3], [4], [5], [6]),
+    [*Owner*], [A], [B], [C], [A], [B], [C],
+    [*Value*], table.cell(fill: green_light)[X], table.cell(fill: amber_light)[hole],
+      table.cell(fill: green_light)[Z], [·], [·], [·],
+    [*Release*], [X →], [blocked], [waits], [·], [·], [·],
+  )
+  align(center, text(size: 8pt, fill: gray)[
+    B skips slot 2, or a read quorum recovers it at a higher ballot.\
+    Only then can the application receive slots 2 and 3.
+  ])
+}
+
+#let flexible_quorum_picture() = {
+  table(columns: (35mm, ..range(5).map(_ => 18mm)), align: center,
+    table.header([*Five voters*], [A], [B], [C], [D], [E]),
+    [Write quorum: 2], table.cell(fill: green_light)[vote X],
+      table.cell(fill: green_light)[vote X], [·], [·], [·],
+    [Read quorum: 4], [·], table.cell(fill: blue_light)[report X],
+      table.cell(fill: blue_light)[report], table.cell(fill: blue_light)[report],
+      table.cell(fill: blue_light)[report],
+  )
+  align(center, text(size: 8pt)[
+    B witnesses both quorums. Any four voters must include A or B.
+  ])
+}
+
+#let proof_dependency_picture() = diagram(
+  spacing: (34mm, 17mm), edge-stroke: gray,
+  node((0, 0), [Quorums intersect #linebreak() A witness exists], ..node_style),
+  node((1, 0), [Durable votes + promises #linebreak() The witness remembers], ..node_style),
+  node((2, 0), [Complete reports #linebreak() Selection preserves X], ..node_style),
+  node((1, 1), [One value per ballot + induction #linebreak() Every chosen value equals X],
+    fill: green_light, stroke: green, inset: 7pt),
+  edge((0, 0), (1, 0), "-|>"),
+  edge((1, 0), (2, 0), "-|>"),
+  edge((2, 0), (1, 1), "-|>"),
+)
+
+#let recovery_memory_picture() = {
+  let before = csv("/bench/results/recovery-memory-before.csv")
+  let after = csv("/bench/results/recovery-memory-after.csv")
+  for spec in (("256", "64"), ("4096", "256")) {
+    let select(rows) = rows.find(r => r.at(0) == "1024" and r.at(1) == "3"
+      and r.at(2) == spec.at(0) and r.at(3) == spec.at(1))
+    let old = int(select(before).last())
+    let new = int(select(after).last())
+    block(above: 6pt, below: 6pt, breakable: false)[
+      #text(size: 9pt, weight: "bold")[Window #spec.at(0), chunk #spec.at(1)]
+      #v(3pt)
+      #grid(columns: (18mm, 80mm, 30mm), align: left + horizon, row-gutter: 5pt, column-gutter: 3mm,
+        [Before], rect(width: 80mm, height: 9pt, fill: gray, stroke: none), [#old B],
+        [After], rect(width: 80mm * new / old, height: 9pt, fill: blue, stroke: none), [#new B],
+      )
+    ]
+  }
+}
+
+// Proposed SDK boundaries; arrows denote calls, not a second consensus protocol.
+#let python_sdk_layers() = diagram(
+  spacing: (42mm, 18mm),
+  node((0, 0), [Python application], ..node_style),
+  node((1, 0), [`Session` / `Node` #linebreak() Owned Python bytes], ..node_style),
+  node((1, 1), [Versioned C ABI #linebreak() Opaque handle + batch token], ..node_style),
+  node((0, 1), [Existing Odin core #linebreak() Bounded node + effects], ..node_style),
+  edge((0, 0), (1, 0), "-|>"),
+  edge((1, 0), (1, 1), "-|>"),
+  edge((1, 1), (0, 1), "-|>"),
+)
+
+#let python_sdk_batch() = diagram(
+  spacing: (42mm, 17mm),
+  node((0, 0), [1. Begin transition #linebreak() Retain native batch], ..node_style),
+  node((1, 0), [2. Copy journal records #linebreak() Persist + sync], ..node_style),
+  node((1, 1), [3. Confirm exact token #linebreak() Copy outputs], ..node_style),
+  node((0, 1), [4. Send / release #linebreak() Finish batch], ..node_style),
+  edge((0, 0), (1, 0), "-|>"),
+  edge((1, 0), (1, 1), "-|>"),
+  edge((1, 1), (0, 1), "-|>"),
+)

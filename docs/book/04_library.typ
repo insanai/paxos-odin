@@ -32,6 +32,14 @@ callback, no socket handle, no allocator, and no wall-clock read in `src/`.
   effects_flow(),
 )
 
+A second host now exists, in another language. The Python package described in
+Part IX drives exactly this contract across a C boundary: it copies the writes,
+persists them, confirms, and only then reads the messages and the released
+entries. Its bridge compiles the core with the host-managed gate and enforces the
+same order itself, because the enforced gate ends the process and a host inside an
+interpreter cannot act on that. Nothing about the contract changes; only who is
+keeping it.
+
 The reason is determinism. Given the same node state and the same event, a
 transition produces the same mutation and the same batch, whether it runs under
 `odin test`, inside the seeded fault simulator in `sim/`, or behind a real
@@ -145,10 +153,11 @@ must be comparable, because it is stored in the ledger's `value` column and
 compared with `==` to detect a conflicting vote or decision. Odin equality
 compares active union variants and string contents. A fixed-size struct of
 integers, such as the `Command` in `examples/counter.odin`, needs nothing more.
-A value that references memory compares by contents inside one process, but
-the reference means nothing to a peer; the host defines its own wire and
-journal encoding and keeps the referenced bytes immutable while any cell may
-hold the value.
+Comparability alone does not make a value suitable for replication. A string
+compares by contents, but a pointer compares by address; that address has no shared
+meaning on another machine. Prefer self-contained values. If a value refers to
+external bytes, the host must define consistent equality and encoding, and keep
+those bytes alive and immutable for every reference held by the protocol.
 
 == The Ledger: Lamport's Variables in Columns
 
@@ -317,6 +326,14 @@ node's `pass_through` field, which is why the `committed` list has room for
 `WINDOW_SLOTS + 1` entries. The pointer rule is the same either way: valid
 until the node's next transition.
 
+#book_figure(
+  [Borrowed pointers stop at the host boundary. Before another transition, the host
+  consumes the batch, completes its required persistence, and copies or serialises
+  anything needed later. An in-process queue must rebind each delivered envelope
+  to its packet's own value, including when duplicating a packet.],
+  borrowed_value_flow(),
+)
+
 === The host commit sequence
 
 The host consumes one batch in a fixed order. The counter's `host_commit`
@@ -451,10 +468,10 @@ Durability_Gate :: enum {
 ```
 ])
 
-The spelling is deliberately searchable: `paxos.Node(u64, 1, 64, 16,
-.Host_Managed)` and its `Effects` in `tests/test_durability.odin` are the only
-such declarations in the repository, and a reviewer can find every audited
-exception with one grep.
+The spelling is deliberately searchable. For an example, read
+`paxos.Node(u64, 1, 64, 16, .Host_Managed)` and its `Effects` in
+`tests/test_durability.odin`. Search for `.Host_Managed` when auditing callers;
+each use takes on the same obligations.
 
 == The Public Transition Surface
 

@@ -72,8 +72,7 @@ on `Node` and `Effects`, `WINDOW` on `Ledger`, `MAX_METADATA_BYTES` on
 batch, and a ledger is therefore a compile-time constant, and the exact
 per-transition maxima in the `Effects` comment are the reason a batch can never
 overflow. Values are not copied into batches either: a write, a message, or a
-committed entry points into the ledger, and the copy happens once, in the
-host's codec. The hosts that surround the core are free to allocate: the
+committed entry points into the ledger, and the host's transport and journal determine how many copies occur. The hosts that surround the core are free to allocate: the
 counter uses `core:container/queue` for its network and `tests/harness.odin`
 keeps its journal and its queue in a `[dynamic]` array. The line is drawn at
 the package boundary, not at the process.
@@ -102,8 +101,8 @@ own column, and two bitmaps say which cells are worth visiting:
 ])
 
 A phase-one answer walks `used` and reads `slot`, `vote_ballot`, and `state`;
-it never streams the `value` column through the cache, and a value of a
-kilobyte costs the scan nothing. The walk itself is `bit_set_next`, which
+the metadata walk does not load the payload bytes. Producing and consuming the
+reply still costs work: the host copies or serialises each reported value. The walk itself is `bit_set_next`, which
 counts trailing zeros in a 64-bit word instead of testing every cell:
 
 #code_file("src/ledger.odin", [
@@ -543,7 +542,8 @@ in order:
 + *Seeded simulations*: the `sim` binary for one, three, and five nodes across a
   range of seeds and steps (twenty seeds of ten thousand steps by default),
   once with a single leader and once with `--ownership`, with crashes injected
-  inside the host commit sequence and oracles run after every transition.
+  inside the host commit sequence and oracles run after every transition. Another
+  120 runs use window 8/chunk 3 and majority or extreme flexible quorums.
 + *The example*: `examples/counter.odin` must run to completion.
 + *Benchmark schema*: the `bench` binary with `--iterations=1024 --json` must
   report eleven results with positive throughput and latency; the numbers

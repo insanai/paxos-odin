@@ -4,6 +4,9 @@
 #show: book
 
 #include "book/00_front.typ"
+#pagebreak()
+#outline(title: [Contents], depth: 1)
+#pagebreak()
 #include "book/00_learning.typ"
 #include "book/01_foundations.typ"
 #include "book/02_protocol.typ"
@@ -15,5 +18,7 @@
 #include "book/04_style.typ"
 #include "book/05_examples.typ"
 #include "book/06_engineering.typ"
+#include "book/06_measurement_methods.typ"
 #include "book/07_reference.typ"
 #include "book/08_conformance.typ"
+#include "book/09_python_sdk.typ"

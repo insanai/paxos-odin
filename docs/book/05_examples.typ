@@ -1,7 +1,7 @@
 #import "theme.typ": *
 #import "figures.typ": *
 
-// Unicode line breaking forbids a break before "."; see the same rule in chapter VII.
+// Unicode line breaking forbids a break before "."; see the same rule in Part VII.
 #show raw.where(block: false): it => {
   if it.text.starts-with(".") { sym.zws }
   it
@@ -97,7 +97,7 @@ This is the one idiom the data-oriented core asks of every host. A
 only until the sender's next transition. A real transport serialises the value
 into a frame at that moment; this in-process transport does the equivalent by
 copying it into the `Packet`. `paxos.message_value` answers whether the message
-kind carries a value at all, so the three variants that do not are copied
+kind carries a value at all, so the variants without values are copied
 unchanged. `packet_envelope` reverses the move before delivery: it repoints the
 message at the packet's own copy, which the caller keeps alive for the duration
 of `step`. The test harness (`tests/harness.odin`) and the simulator carry the
@@ -144,7 +144,7 @@ host_commit :: proc(cluster: ^Cluster, node_index: int, effects: ^Effects) {
 ```
 ])
 
-This is the contract from Chapter 4 with step 1 reduced to a comment. The order
+This is the contract from the bounded-core chapter with step 1 reduced to a comment. The order
 is still real: if `messages_slice` came before `confirm_writes_durable` the
 program would stop with the durability banner. A real host replaces the comment
 with an append and a sync, and `queue.push_back` with a send. Note that step 3
@@ -327,7 +327,11 @@ was new:
 apply :: proc(state: ^State, slot: paxos.Slot, command: Command) -> Result {
 	assert(slot == state.applied_slot + 1)
 	if record, known := state.clients[command.client_id]; known {
-		if command.request_id <= record.request_id {
+		if command.request_id < record.request_id {
+			state.applied_slot = slot
+			return stale_request_result()
+		}
+		if command.request_id == record.request_id {
 			state.applied_slot = slot
 			return record.result
 		}
@@ -338,6 +342,11 @@ apply :: proc(state: ^State, slot: paxos.Slot, command: Command) -> Result {
 	return result
 }
 ```
+
+`stale_request_result` is a host-defined result for an older request whose answer
+is no longer retained. Returning the most recent answer for that older request would
+be incorrect. Keeping one answer per client is sufficient only with the stated
+one-outstanding-request discipline; hosts needing older answers retain more history.
 
 `values`, `clients`, and `applied_slot` are persisted together and included in
 every snapshot; a dedup table that outlives the store would answer a retry with a
@@ -367,15 +376,16 @@ elsewhere, at the moment of the read. The library says so on
 `node_is_leader_caught_up`: it "is not a lease and not a read barrier".
 
 A linearizable read on the leader therefore needs a barrier. The plain design is
-to propose a read-only command, wait until its slot is applied locally, and then
-read `values`; the read is ordered after every write decided before it. This
+to propose a read-only command, capture the result from `values` when that command is applied, and return it
+only after local application. With replies sent only after
+application, the read follows every write that completed before the read began. This
 costs one consensus round per read, or per batch of reads that share a barrier.
 The cheaper alternative, a leader lease bounded by ticks and heartbeat
 acknowledgements, is not implemented in this repository; it is the subject of
 the proposal in `docs/pod/records/0004-fast-path-leases.typ`, whose status is
 "Open for Discussion". A follower may serve a read without a barrier only when
 the service contract calls it stale and the reply carries `applied_slot`, so the
-client can tell how stale.
+client knows which prefix was read. That index alone does not bound staleness in time.
 
 === Snapshots and `install_chosen_trim`
 
@@ -473,9 +483,11 @@ seen with the no-op (at most `SKIP_BURST` per tick), and a stalled owner is
 repaired after `election_timeout_ticks` by a bounded revocation, a phase one
 over the stalled chunk that fences the owner out of those slots only and
 re-proposes any vote it finds. An owner whose suggestion lost to a revocation
-proposes it again in its next own slot. The read barrier of the previous
-section is unchanged: a read-only command in the reader's own slot orders the
-read after everything decided before it. The host picks this option when write
+queues a best-effort resubmission; the host still handles retries and deduplication.
+The read command must be evaluated at its position in the applied sequence. Reply
+to writes only after contiguous application: a value merely chosen in a higher
+slot is not yet a completed application operation. Under that contract, the read
+follows every write completed before it began. The host picks this option when write
 latency across regions is the cost that matters, and keeps the single leader
 when a quiet region would otherwise be skipped for every slot it owns.
 

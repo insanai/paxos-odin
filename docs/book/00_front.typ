@@ -8,7 +8,7 @@
 ]
 
 This book explains one fundamental algorithm: Leslie Lamport's Paxos consensus
-protocol. It also explains one concrete, production-grade implementation of that
+protocol. It also explains one concrete, bounded implementation of that
 algorithm written in the *Odin* programming language: `paxos-odin`.
 
 The two tasks are kept together throughout this text. A line of systems code is
@@ -32,8 +32,8 @@ construction described in Lamport, Malkhi, and Zhou's "Reconfiguring a State Mac
 #callout([The primary promise], [
   A careful reader should be able to derive the core Paxos safety invariant, trace
   it directly into the struct fields and effects of `paxos-odin`, run a replicated
-  three-node counter in memory, build an event-driven host application, and verify
-  formal safety guarantees without confusing a consensus protocol contract with an
+  three-node counter in memory, build an event-driven host application, and inspect
+  the safety argument and its assumptions without confusing a consensus protocol contract with an
   application-level contract.
 ], kind: "idea")
 
@@ -44,7 +44,7 @@ construction described in Lamport, Malkhi, and Zhou's "Reconfiguring a State Mac
 
 #pagebreak()
 
-= Preface
+#heading(level: 1, numbering: none)[Preface]
 
 The usual introduction to Paxos starts too late. It begins with "Prepare" and
 "Accept" messages. Those messages then look like arbitrary rules from a game whose
@@ -57,16 +57,13 @@ at any moment. A network messenger may vanish into thin air. No machine may ever
 erase ink that was once written. How can the machines guarantee that two
 different values are never declared final?
 
-The answer will grow in small, inevitable steps. Each step will eliminate one
-tempting but flawed solution. When Prepare and Accept finally appear, they will
-have no mystery left: they are the shortest, most natural names for facts that we
-already need.
+We build the answer by testing small examples. Each example exposes a flaw in a
+tempting solution and gives us a condition the next solution must satisfy. Prepare
+and Accept then become messages that carry those conditions between machines.
 
-The style of this book is mathematical, but it is never dry or terse. We compute
-small, concrete traces. We predict outcomes before seeing answers, explain
-transitions in plain English, and deliberately inspect adversarial failure
-scenarios. We keep an unrelenting ledger of the facts that survive every machine
-crash and message loss.
+We compute small traces, predict outcomes before seeing answers, and explain each
+transition in plain language. Then we move a crash or delay a message and ask which
+facts still hold. The formal argument collects those facts into invariants.
 
 The implementation follows the exact same pedagogical order:
 1. First come values, node identities, and ballots.
@@ -89,7 +86,8 @@ library: the bounded state machine, the host contract, the advanced features,
 rotating slot ownership, and the coding rules that keep the code reviewable.
 Part V builds three systems on it. Part VI is the evidence and its limits. Part VII is
 the desk reference, with the answers to selected exercises, and Part VIII maps
-Lamport's paper to the procedures that implement it.
+Lamport's paper to the procedures that implement it. Part IX develops the proposed
+Python SDK, keeping its future interface distinct from the implemented Odin core.
 
 == Audience and prerequisites
 
@@ -106,7 +104,7 @@ Part I and skip forward when it passes.
   lexicographically. The library packs the triple into one 64-bit integer so that
   the lexicographic order is integer comparison.
 - The owner of slot $s$ under rotating ownership is member $(s - 1) mod N$ in
-  membership order; its ballot in that slot has round $0$.
+  ascending node-id order; its ballot in that slot has round $0$.
 - Slots are one-based; $s = 0$ means "no slot".
 - Code identifiers appear in `monospace`; Odin types are `Ada_Case`, procedures are
   `snake_case`, error values are written with a leading dot, as in `.Not_Leader`.
@@ -117,12 +115,14 @@ Part I and skip forward when it passes.
 ```sh
 make build                       # library object, simulator, benchmark, CLI into bin/
 make test                        # odin test tests
-make check                       # style, tests in two builds, contracts, 120 seeded simulations, smoke runs
+make check                       # style, tests in two builds, contracts, 240 seeded simulations, smoke runs
 make example                     # the three-node counter
 ./bin/paxos-sim --seed=7 --steps=10000 --nodes=5 --verbose
 ./bin/paxos-sim --seed=7 --steps=10000 --nodes=5 --ownership   # every node proposes
 ./bin/paxos-bench --durable      # in-memory modes plus journal-and-fsync modes
-make bench-compare               # this library, paxos-zig, OmniPaxos, LibPaxos3; records bench/results/
+make bench-matched               # matched CPU workloads across four libraries
+make bench-profile               # Callgrind and Massif evidence
+make bench-compare               # historical harness, including durable modes
 make docs                        # this book and the POD records as PDF
 ```
 ])

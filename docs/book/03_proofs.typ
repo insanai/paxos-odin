@@ -1,4 +1,5 @@
 #import "theme.typ": *
+#import "figures.typ": proof_dependency_picture
 
 = The Safety Argument
 
@@ -23,13 +24,21 @@ lemma, its procedures, and the test or simulator oracle that exercises it. Where
 code guarantees less than a sentence in the package documentation suggests, the lemma
 says exactly what is guaranteed and what the host must add.
 
+#book_figure(
+  [Read the proof as a chain of obligations. Intersection supplies a witness;
+  persistence and promises preserve its evidence; recovery carries that evidence
+  forward. The diagram is a map of the argument, not a substitute for its premises.],
+  proof_dependency_picture(),
+)
+
 == Axioms of the model
 
 - *A1 (Processes).* A configuration has a fixed, finite set of members. A process
   runs the library's transitions one at a time and may crash at any instant. A crashed
   process may restart, and when it does it holds exactly the records it persisted
   before the crash and nothing else: every field of `Node` outside the `Ledger` is
-  volatile and is rebuilt by `node_restore` from the ledger alone.
+  volatile and is reset or rebuilt by `node_restore`, using the ledger and the
+  host's durable consumed floor and configuration.
 - *A2 (Channels).* Envelopes may be lost, duplicated, reordered and delayed without
   bound, but never forged or corrupted. Every envelope a node processes was sent by
   `envelope.from` with the contents it carries; the host authenticates the transport,
@@ -151,9 +160,10 @@ does the same on replay. $qed$
 *Lemma 4 (B3, the max-vote rule).* Suppose the proposer of a campaign ballot $b$
 issues an Accept for $(b, s, v)$. Then there is a set $Q_1$ of at least
 `read_quorum_size` acceptors, each of which promised $b$ for $s$ before reporting, such
-that either (i) some $a in Q_1$ reported a vote $(b'', v)$ in $s$ and no member of
-$Q_1$ reported a vote in $s$ at a ballot above $b''$, or (ii) no member of $Q_1$ reported
-a vote in $s$, and $v$ is the no-op or a fresh client value.
+that either (i) a received report supplies a vote $(b'', v)$ in $s$ whose ballot
+is at least as high as every vote reported by $Q_1$, or (ii) no received report
+supplies a vote in $s$, and $v$ is the no-op or a fresh client value. The selected
+report in (i) may come from an additional peer whose chunk is not yet complete.
 
 *Proof.* Every Accept at a campaign ballot is issued by `resolve_chunk` or, after
 `become_leader`, by `node_propose` and `node_propose_batch`. `resolve_chunk` runs only
@@ -168,7 +178,10 @@ candidate's `on_promise` keeps, per slot, the report with the greatest `vote`,
 promotes a `.Chosen` report over any vote, and returns `.Conflicting_Value` on two
 values at one ballot. `resolve_chunk` then proposes `recovered_value[cell]` for a slot
 with a `.Voted` record and `node.noop` for a slot with none, which is (i) and (ii)
-inside the chunk. A fresh value from `node_propose` lands at `next_slot`, which
+inside the chunk. Reports already received from additional peers can raise the
+selected ballot, but cannot lower it below the maximum from the complete quorum.
+`recovery_ready` freezes this selection before any phase-two vote and keeps it
+unchanged across a window-limited retry. A fresh value from `node_propose` lands at `next_slot`, which
 `become_leader` set above `ledger_highest_used` and both fences; by Lemma 6 no member
 of the final chunk's $Q_1$ holds a vote there, which is (ii). $qed$
 
@@ -199,7 +212,8 @@ trim anchor (Lemma 8), in which case $a$'s manifest fences $s$ and $e$ is never 
 So when $a$ answered, it reported a vote $(b_m, u_m)$ in $s$ with $b_m >= b_0$, and
 case (ii) of Lemma 4 is excluded.
 
-By Lemma 4 (i), $u$ is the value of the greatest vote $(b_M, u_M)$ reported by $Q_1$,
+By Lemma 4 (i), $u$ is the value of a reported vote $(b_M, u_M)$ at least as high
+as every vote reported by $Q_1$,
 with $b_M >= b_m >= b_0$. If $b_M = b_0$, then $u_M = v_0$ by Lemma 3. If $b_M > b_0$,
 the vote $(b_M, u_M)$ was cast on receipt of an Accept for $(b_M, s, u_M)$ that
 happened before the report, hence before $e$; by the induction hypothesis
@@ -218,7 +232,7 @@ and the decision is $v_0$ by Corollary 1 and the same induction. $qed$
 ], kind: "idea")
 
 *Corollary 1 (decided implies chosen).* If any node has decided $s$ with value $v$,
-then $v$ is chosen in $s$.
+then $v$ is chosen in $s$ once the transition's required writes are durable.
 
 *Proof.* `record_commit` is reached from four places. `on_accepted` calls it only when
 `acknowledged[cell]` reached `membership_write_quorum`, counting each member once
@@ -230,8 +244,9 @@ cell already holding it), and by Lemma 3 all those votes are for the same value,
 they form a $Q_2$. `send_accept` calls it directly only when the write quorum is one,
 where the proposer's own vote is a $Q_2$. `on_commit` and `node_learn_chosen` record a
 value another node had decided (A2, A5), and `resolve_chunk` records a value a reporting
-peer had decided; both are chosen by induction on the number of nodes that decided
-$s$. $qed$
+peer had decided; both carry an earlier decision. Following these reports backward through the
+finite execution reaches a quorum-backed decision; this induction is over decision
+events, including repeated reports, rather than over the number of distinct nodes. $qed$
 
 Theorem 1 with Corollary 1 is what the simulator's `AGREEMENT` oracle checks: it
 records the first value it sees chosen in each slot, counting durable votes directly in
@@ -541,6 +556,40 @@ is released again, which is why the host applies idempotently. The standalone `L
 
 The simulator's `CONTIGUITY` oracle fails the run if any node releases a slot other
 than `consumed + 1`.
+
+== Chunk-local recovery scratch
+
+The volatile recovery arrays and each peer's report bitmap have capacity
+`CHUNK_SLOTS`, independently of the durable ledger window. For an active range
+`[recover_base, recover_last]`, `recovery_index` first checks range membership,
+then checks `slot - recover_base < CHUNK_SLOTS`, and only then converts the offset
+to an array index. Subtraction is therefore nonnegative and the index is bounded.
+Distinct slots in the range have distinct offsets. This argument does not require
+the chunk size to be a power of two or to divide the ledger window.
+
+`reset_recovery_chunk` invalidates slot tags, states, ballots, and per-peer duplicate
+bitmaps at a new campaign or chunk. Payload bytes need not be zeroed: they are read
+only through a valid state and matching absolute slot tag. Delayed reports are
+rejected by ballot and range before they can access a new chunk's scratch. The
+cross-chunk trim and chosen-prefix fences are retained separately.
+
+Once enough complete peer manifests constitute a read quorum, `recovery_ready`
+freezes the collected selection and `recovery_more`. This happens before the first
+phase-two vote. A window-limited retry retains that same selection; a late promise
+cannot replace a value already issued under this ballot. New chunks clear the
+freeze. Without this rule, a late higher losing vote could replace a proposal made
+from an earlier complete read quorum during a partial drive.
+
+Resolution copies selected payloads into ledger-owned storage before emitting
+borrowed writes and messages. No outgoing effect borrows scratch that will be
+invalidated by chunk rollover. The refactor changes volatile representation, not
+journal or wire formats, quorum intersection, or the persistence-before-reply rule.
+
+Tests exercise absolute-slot reference selection, non-power-of-two chunks, ring
+crossings, stale and duplicate reports, a blocked partial drive, a late promise
+after that drive, and large payload lifetimes. The simulator additionally exercises
+small windows with both flexible-quorum extremes and crashes. These are checks of
+the implementation's correspondence to the argument, not a machine-checked proof.
 
 == Obligations, lemmas, procedures, evidence
 

@@ -47,8 +47,8 @@ specification ships with this repository.
 
 == What the repository tests today
 
-`odin test tests` runs 69 deterministic tests in about a second. They are grouped by
-file; the names below are the actual test procedures.
+`odin test tests` runs 79 deterministic tests. They are grouped below by file, with representative
+procedure names where a particular rule needs a direct reference.
 
 #table(
   columns: (auto, auto, 1.6fr),
@@ -58,13 +58,19 @@ file; the names below are the actual test procedures.
   [`test_election_matrix.odin`], [1 (972 cases)],
     [Every assignment of no vote / ballot 1 / ballot 2 to three voters, every first-response order, and all six intersecting quorum pairs: if an earlier write quorum chose a value, every later decision preserves it.],
   [`test_review.odin`], [21],
-    [Regressions found in review: campaigns discard prior-term proposals, fences survive chunk boundaries, retries make progress across chunks, snapshots keep votes above the anchor, trim identity conflicts fail closed, duplicate acknowledgements never make a quorum, 128 and 1,024 voters reach a quorum through the sorted membership index, a leader fetches decisions from a follower that is ahead, and more.],
+    [Regressions found in review: campaigns discard prior-term proposals, fences survive chunk boundaries, retries make progress across chunks, snapshots keep votes above the anchor, trim identity conflicts fail closed, duplicate acknowledgements never make a quorum, 128 and 1,024 voters reach a quorum through the sorted membership array, a leader fetches decisions from a follower that is ahead, and more.],
   [`test_ownership.odin`], [5],
     [Rotating ownership: three owners decide concurrently without a campaign, idle owners skip, a crashed owner's slots are revoked, a revocation keeps a vote it finds (Lamport's B3), and a suggestion revoked to the no-op is resubmitted in a later own slot.],
   [`test_window_review.odin`], [8],
     [The second adversarial review: a follower refuses slots beyond its window, the pass-through releases one decision per transition with its own value, a stale acknowledgement is not an error, an owner keeps proposing after the floor passes its next slot, a far accept cannot wedge an owner, a suggestion the owner itself overwrites is resubmitted, a revocation range stays inside the window, and a leader whose inherited gap stalls re-runs phase one.],
   [`test_batch_review.odin`], [6],
     [The third adversarial review: an ownership tick fits the effect capacities under write quorum one, an ownership batch is admitted on the owner's own frontier after the floor advances, a rejected batch leaves nothing behind, an older vote reported after a decision is not a conflict, ownership order is ascending id whatever order the host gave, and a resubmission the bounded queue cannot hold is counted.],
+  [`test_recovery_chunk.odin`], [7],
+    [Chunk sizes 1, 3, and 8; ring crossings; reordered and duplicate reports;
+    stale reports; window backpressure; large payloads; frozen phase-two selection;
+    sparse retransmission without duplicate sends.],
+  [`test_slot_exhaustion.odin`], [3],
+    [Boundary behaviour near the largest representable slot.],
   [`test_reconfiguration.odin`], [2],
     [A three-node handover with a delayed old-configuration message rejected by the checked `Log_Envelope` step; stop-sign initialisation with aliased slices.],
   [`test_reconfiguration_sim.odin`], [4 (16 seeds each)],
@@ -143,66 +149,151 @@ The oracles run after every observed transition:
   [Convergence], [After quiescence every node must have applied every slot of the golden log.],
 )
 
-`tools/check.py` runs one hundred and twenty simulations of ten thousand steps (one,
-three, and five voters, twenty seeds each, in both modes) as part of `make check`,
-together with style checks, the
-tests in both build modes, the contract fixtures, the example, the benchmark's JSON
-contract, and a check that the CLI cannot report success after a tool failure.
+`make check` runs 240 simulations of ten thousand steps: 120 with the default
+window (one, three, and five voters; twenty seeds; both leadership modes), and
+120 with an eight-slot window and three-slot chunks (three voters; majority,
+read-all/write-one, and read-one/write-all quorums; twenty seeds; both modes).
+It also checks style, tests in both build modes, contract fixtures, the example,
+the benchmark's JSON contract, and CLI failure propagation.
+
+The recovery review used `python3 tools/check.py --seeds=100`: 600 default-window
+runs plus the 120 focused runs, for 7.2 million steps. The focused matrix caps each
+configuration at twenty seeds. These are two different runs; the larger count is
+recorded evidence, not the default of `make check`.
 
 #predict([
   The simulator crashes a node after a random *prefix* of its writes has been journaled.
-  Which of the four write kinds, if it is the one that was lost, can never cause a
-  safety violation on restart? Answer before reading the next section.
+  Why can recovery safely replay that prefix if no reply relying on a lost promise
+  or vote was sent? Contrast this with sending Accepted before its vote was durable.
 ])
 
-== The CPU benchmark, against three other libraries
+== Matched CPU measurements
 
-`bench/` runs the same three-voter and five-voter workloads as the sibling harnesses, and
-`make bench-compare` (`tools/bench_compare.py`) runs this library, `paxos-zig`, OmniPaxos
-(Rust), and LibPaxos3 (C) one after another on one machine and records a single
-results file under `bench/results/`. The tables in this book are read from that file at
-compile time; a number that is not in the file cannot appear here.
+First decide what a row means. The matched drivers in `bench/matched/` compare the
+cost of completing an ordered stream in memory. Every library processes the same
+4,096 values per epoch, with the same voter count, payload size, and limit on
+outstanding work. Every learner's ordered payloads are checked. A separate warm-up
+precedes timing; repeated runs rotate the execution order. There is no disk,
+serialization, or network delay in this measurement.
 
-#benchmark_comparison_table()
+The matrix covers three and five voters, 8-, 64-, and 1,024-byte values, and depths
+1, 8, and 64. The four implementations retain their native algorithms: OmniPaxos can
+coalesce entries, and LibPaxos3 performs phase-one preexecution. Equal workload does
+not mean identical work inside each implementation. The Odin baseline preserves the
+source from before the recovery-storage changes.
 
-Read the table for what it is. Every implementation ran in the same session with an
-in-process transport and no serialisation, so the rows measure CPU cost per committed
-value, not service latency. With three voters and 8-byte values `paxos-zig` is between
-a fifth and thirty percent cheaper than this library; with five voters the two are
-this library is about a tenth cheaper; with 1 KiB values this library is more than
-five times cheaper, because a value is never copied between
-proposal and commit: the ledger holds one copy and every record and message points at
-it. The rotating-ownership rows cost within a tenth of the single-leader rows per value
-on the same three nodes, and buy a log in which every node proposes without a round
-trip to a leader. OmniPaxos pays for allocation and locking in the one-at-a-time mode
-and wins in two rows, with sixty-four values in flight and with 1 KiB values at eight
-in flight, where it coalesces many log entries into few envelopes; this library and
-`paxos-zig` always send one envelope per value. LibPaxos3 runs a heavier twelve-envelope path with phase-one
-pre-execution and reports it as its only mode.
+#matched_comparison_table()
+
+The table is loaded directly from
+`bench/results/recovery-matched-20260917.json` when the book compiles. That file also
+records raw samples, source and binary hashes, compiler versions and flags, CPU
+affinity, and the paired comparison intervals. Use `make bench-matched` to repeat the
+workloads; see `docs/book/06_measurement_methods.typ` for dependency paths and baseline reconstruction.
+
+=== Read across workloads before naming a winner
+
+#book_figure(
+  [Three slices of the same matrix. Bar length is median time per value and starts
+  at zero. Each panel has its own scale, printed in nanoseconds beside every bar.
+  The best result changes with payload, voter count, and outstanding work.],
+  matched_cost_picture(),
+)
+
+For three voters and 1 KiB values, the paired median cost decreased by about
+16–26% relative to the Odin baseline. Several small-payload workloads became about
+1–3% slower. At five voters, 1 KiB, and depth 64, the paired ratio is 1.047 with a
+95% bootstrap interval of 0.928–1.089. That interval includes both an improvement
+and a regression, so this row does not establish either.
+
+The regression gate rejects a workload when its entire paired 95% interval exceeds
+1.05. All workloads passed this gate; passing does not prove that every slowdown is
+smaller than 5%. The five-voter interval above illustrates the distinction. Zig and
+OmniPaxos lead some categories. These measurements support specific workload claims,
+not a claim that one library is always fastest.
+
+#predict([
+  Odin is faster at three voters and 1 KiB, but slower than Zig at five voters and
+  8 bytes. Which row would you use to estimate your service? Name two costs the
+  benchmark leaves out before interpreting the number as request latency.
+])
+
+== Memory: count the storage you mean
+
+Recovery reports are temporary; ledger entries must remain available until the host
+releases them. Reducing the former from a window to a chunk removes payload storage,
+metadata, and per-peer bitmap words. For three voters and 1 KiB values:
+
+#table(
+  columns: (1fr, 1fr, 1fr, 0.7fr), align: (left, right, right, right),
+  table.header([*Window / chunk*], [*Before, bytes*], [*After, bytes*], [*Reduction*]),
+  [256 / 64], [633,120], [433,176], [31.6%],
+  [4,096 / 256], [9,080,448], [5,081,568], [44.0%],
+)
+
+#book_figure(
+  [One node plus one effects buffer, three voters and 1 KiB values. Each pair uses
+  its own zero-based scale and prints the byte count. The data comes from the
+  recorded CSV files; the bars exclude queues and application memory.],
+  recovery_memory_picture(),
+)
+
+These totals count one node plus one effects buffer. They exclude transport queues,
+application state, and runtime overhead. When chunk and window sizes are equal,
+the node's size is unchanged. The CSV files `recovery-memory-before.csv` and
+`recovery-memory-after.csv` under `bench/results/` record the configurations.
+
+Three measurements answer different questions:
+
+#table(
+  columns: (auto, 1fr, 1fr),
+  table.header([*Measure*], [*Counts*], [*Does not establish*]),
+  [Inline size], [Bytes reserved by the configured structs.], [Total process memory.],
+  [Massif], [Instrumented heap and stack allocation.], [Static/BSS storage or resident pages.],
+  [Sampled peak RSS], [Resident process pages observed after execution begins.],
+    [Which library field caused the footprint, or every possible peak.],
+)
+
+In the recorded three-voter, 1 KiB, depth-64 profile, Odin's sampled peak RSS was
+25.4 MB, compared with 52.8 MB for Zig, 32.9 MB for OmniPaxos, and 27.9 MB for
+LibPaxos3 (decimal MB). Odin did not have the smallest RSS in the small-payload
+profiles. Massif can exceed RSS when allocated pages are untouched, or miss static
+storage entirely; never add the two measurements together.
+
+== Profiling an optimisation
+
+A useful profile tests an explanation. The retransmission hypothesis was that a
+sparse bitmap scan revisited the same occupied cell until it exhausted the chunk
+budget. A regression test now requires one retry for one used slot. The retained
+scan wraps at most once and visits each used cell at most once per sweep.
+
+In the dedicated retransmission workload, Callgrind instructions fell from
+12,591,988 to 10,139,090 (19.5%). A first attempt that counted occupied cells before
+scanning used 17,833,184 instructions and was discarded. The retained change's paired
+native timing ratio was 0.877, with a 95% interval of 0.820–0.905. The steady-state
+matrix above checks the broader effect; the dedicated result is not a promised
+speedup for every workload.
+
+`make bench-profile` builds symbolised drivers and collects Callgrind and Massif
+profiles. Instrumented elapsed time is not a native timing result. Raw traces,
+annotations, and both retry experiments are archived in
+`bench/results/recovery-profiles-20260917.tar.gz`; the associated JSON and
+POD 0009 describe the measurements and their limits.
+
+== Historical durability measurements
+
+The earlier harness also measured a journal and storage barrier. Its CPU rows use a
+different host path, including a journal replay mirror, so their nanoseconds cannot
+be compared directly with the matched matrix. The durability table below is retained
+as evidence from its recorded revision and machine, not as a fresh run of the current
+source.
 
 #benchmark_durable_table()
 
-The durable rows put the in-memory numbers in proportion. With every node appending
-its `effects.writes` to a journal file and issuing one `fsync` per host commit round,
-one value costs tens of milliseconds on this disk, and group commit over eight values
-brings it to a few milliseconds; the two bounded libraries land within a few percent of
-each other because the barrier, not the protocol, sets the pace. In the `durable-sync`
-row every value costs six barriers (the leader's accept, two followers' accepts, and
-three commit records); group commit cuts that to under one barrier per value.
-
-Numbers move by tens of nanoseconds with cache state and machine load. Rerun
-`make bench-compare` before drawing a conclusion finer than the ones above.
-
-A profile explains the 8-byte rows. Under callgrind, one committed value on three
-voters is seven transitions and about 1,200 library instructions, roughly 170 per
-transition, with the in-process harness adding about a quarter of the program on top
-for its `Packet` copies. At the measured nanoseconds that is several instructions per
-cycle: the path is instruction-bound, and no single procedure dominates it. The
-remaining cost is spread over the 72-byte envelope copies (the `Message` union is
-sized by `Promise_Range_Message`), the union dispatch in `node_step`, the per-cell
-ledger checks, and one membership lookup per message. POD 0009 records what would
-move it (a smaller union, inline values for small `Value` types) and why each is a
-wire-format decision rather than a patch.
+On that disk, one barrier per host commit round cost tens of milliseconds per value;
+grouping eight values reduced the cost to a few milliseconds. The lesson is a
+workload question: if storage dominates the service, a faster consensus transition
+may make little difference to end-to-end latency. `make bench-compare` runs this
+historical harness; the matched CPU and profile commands are separate.
 
 == Capability map: exact boundaries
 

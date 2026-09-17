@@ -35,9 +35,10 @@ runners are unreliable. A runner may take an hour or a week, deliver slips out o
 order they were written, deliver the same slip twice, or never arrive. The one thing
 a runner never does is change the words on a slip.
 
-What we want is easy to state. At most one of the two values may ever be written on
-that line, in any copy. A merchant may be told a value only after it is settled. And
-if runners deliver and a majority of librarians stay at their desks, the line should
+What we want is easy to state. At most one value may ever be marked final on that line.
+Tentative votes may differ; final decisions must agree. A merchant may be told a value only after it is settled. And
+if runners deliver, a majority of librarians stay at their desks, and one proposer
+can finish without repeated interruption, the line should
 eventually be filled. The first two wishes say what must never happen; the third says
 what should eventually happen. They are different kinds of promise.
 
@@ -85,9 +86,9 @@ disagree, but if one librarian is asleep or one runner is lost, the line stays b
 forever. What survives: a value is settled by a *set* of acceptances, not by one
 person. What fails: the set is too large to survive a single absence.
 
-The final protocol combines the three survivors: durable local state, one proposer at
-a time, and a settling set of acceptances large enough to overlap every other such set
-yet small enough to survive absences.
+The final protocol combines the three survivors: durable local state, ordered attempts by proposers,
+and quorums that connect each new attempt to earlier decisions. Concurrent proposers
+can delay progress, but must not break agreement.
 
 #exercise([1.1], [
   A cluster has four voters. Write down two sets of two voters that do not intersect.
@@ -99,7 +100,7 @@ yet small enough to survive absences.
 
 A proof is only as good as the world it assumes. This library assumes four rules.
 
-+ *Nodes crash-stop.* A node runs the algorithm exactly until it halts, and it may
++ *Nodes may crash and recover.* A node runs the algorithm exactly until it halts, and it may
   halt between any two instructions. After halting it says nothing. It comes back
   only if the host rebuilds it from a durable journal, and is then the same member
   only because it remembers what it wrote.
@@ -163,7 +164,7 @@ The error names the consequence, not the arithmetic: `.Non_Intersecting_Quorums`
 
 Why odd counts? Three acceptors need two and survive one crash. Four need three and
 still survive only one: the fourth member costs a machine, a journal and a link and
-buys nothing. Five need three and survive two. Voting groups are usually three or five.
+does not increase the number of crashes tolerated by majority quorums. Five need three and survive two. Voting groups are usually three or five.
 
 === Intersection is not memory
 
@@ -297,7 +298,7 @@ carries the chosen value whenever a choice was made.
 
 == The greatest-vote proof
 
-Here is the proof that B1, B2 and B3 together keep safety. Chapter 2 uses it to
+Here is the proof that B1, B2 and B3 together keep safety. The single-decree chapter uses it to
 explain why each message field exists, and the safety-argument chapter restates it as
 formal lemmas, each mapped to the procedure that keeps it.
 
@@ -372,7 +373,7 @@ never produces one. A host that sees it has a journal written out of order or
 corrupted, and the hint in `explain_error` says to stop the node. The other half of
 indelible ink lives in `Effects`: every transition returns its writes and messages in
 one batch, and with the default `Durability_Gate.Enforced` the batch refuses to hand
-out messages until the host calls `confirm_writes_durable`. Chapter 2 walks through
+out messages until the host calls `confirm_writes_durable`. The single-decree chapter walks through
 that gate at every crash point.
 
 #exercise([4.1], [
@@ -383,8 +384,8 @@ that gate at every crash point.
 
 == From rules to messages
 
-We have not named a single message, yet the protocol is determined. Read the
-invariants as instructions to a proposer and the messages fall out.
+We can now derive the messages from their purpose. Read the invariants as
+obligations on a proposer and ask what evidence it must request and send.
 
 + B1 says: pick a ballot greater than any you have seen. That needs no message, only a
   memory of the greatest round observed.
@@ -405,10 +406,11 @@ invariants as instructions to a proposer and the messages fall out.
 )
 
 One more message follows from liveness rather than safety. An acceptor that receives a
-Prepare or an Accept below its promise must not stay silent, or the proposer waits
-forever; it answers *Nack* with the ballot it has promised. Chapter 2 shows all six.
+Prepare or an Accept below its promise answers *Nack* with the ballot it has
+promised. This lets the proposer react promptly instead of waiting for a timeout.
+The single-decree chapter shows the exchange.
 
-#checkpoint([Before chapter 2], [
+#checkpoint([Before the single-decree chapter], [
   Answer without looking up. Why does a four-member cluster tolerate no more crashes
   than a three-member one? Which of B1, B2, B3 does `.Non_Intersecting_Quorums`
   protect? If a read quorum reports `((3, 0, 1), apple)`, `((9, 0, 2), apple)` and

@@ -69,7 +69,8 @@ For a voter, one tick increments `election_ticks`, `heartbeat_ticks`, and
   skipping cells at or below what the peer has already decided, resending a
   `Commit_Message` for a `.Chosen` cell and an `Accept_Message` for a `.Voted`
   cell this leader is driving under its current `lead_ballot`, and stops after
-  `CHUNK_SLOTS` messages. The cursor keeps its position, so a quiet peer
+  `CHUNK_SLOTS` messages or one complete sweep. It wraps at most once and never
+  visits the same used cell twice in that sweep. The cursor keeps its position, so a quiet peer
   cannot pin every retry to the first chunk.
 + A *candidate* still in `.Preparing` before its timeout retries
   `maybe_resolve_chunk`, for the case where the window could not hold the
@@ -182,7 +183,14 @@ intersect every write quorum, so that a later ballot's phase one sees at least
 one vote from any earlier ballot's phase two. With uniform sizes over $N$
 members, that is
 
-$ Q_1 + Q_2 > N. $
+$ |Q_1| + |Q_2| > N. $
+
+#book_figure(
+  [Read and write quorums have different jobs. Here two votes choose X and four
+  reports recover the past. Their overlap is forced by 4 + 2 > 5. The diagram
+  assumes no intervening votes; the highest-vote argument handles that case.],
+  flexible_quorum_picture(),
+)
 
 Two write quorums need not intersect: within one ballot the leader proposes one
 value per slot, and across ballots the read quorum does the intersecting. The
@@ -215,7 +223,7 @@ five voters:
     leader tolerates three silent voters. An election needs four promises, so
     replacing the leader tolerates only one.],
   [5], [2], [4], [Elections need only two promises, but every commit needs four
-    durable votes; a single slow disk slows every commit.],
+    durable votes; two unavailable voters prevent a commit; one slow voter can be bypassed.],
   [5], [5], [1], [The leader commits on its own vote: `send_accept` calls
     `record_commit` before the `Accept` leaves. An election needs all five
     voters.],
@@ -239,8 +247,9 @@ membership near the 65535 bound is still one lookup per message.
 == Reconfiguration: The Stop-Sign Invariant
 
 A configuration is a voter set, a pair of quorum sizes, and a configuration id.
-Two configurations must never both choose values for the same slot, and the
-place to agree on the boundary between them is the log itself.
+The application must see one sequence across configuration changes. A stop sign
+fixes which prefix belongs to the old configuration; the next configuration owns
+the application sequence after that boundary.
 `Replicated_Log_Node` wraps the core `Node` with entries that are either a
 command or a stop sign:
 
@@ -299,9 +308,9 @@ The seal starts early on purpose. The proposer is sealed the moment
 an acceptor is sealed the moment it votes for the stop. If the stop is later
 overtaken (a higher ballot re-proposes that slot with a command, as recovery
 may) the pending flag is recomputed after every transition
-(`replicated_log_observe_effects`) and the seal clears. Sealing early loses
-nothing; sealing late would risk a command above the stop being chosen in the
-old configuration, which is the one thing the invariant forbids.
+(`replicated_log_observe_effects`) and the seal clears. This local gate stops new proposals as soon as the node
+knows a stop is pending. Other owners may still decide later slots before learning
+the stop; the release rule below excludes those slots from the application log.
 
 === Observing the decision
 
@@ -443,10 +452,10 @@ Trim_Anchor :: struct {
 
 The anchor carries no hash. The core compares anchors by identity only: two
 anchors with the same `trim_id` must be the same anchor. A host that wants to
-verify a state image against what its peers report binds the image's checksum
-to the id itself, for example by deriving `trim_id` from the checksum or by
-keeping a table from id to checksum in the same durable record that chose the
-trim. How the anchor is chosen is the host's business; the natural way is to
+verify a state image binds a monotonically increasing `trim_id` to the image's
+checksum in the durable record that chose the trim. A raw checksum is not a
+suitable sequence number: a later checksum can be numerically smaller and would
+fail the trim-regression check. How the anchor is chosen is the host's business; the natural way is to
 put the trim record in the log as an ordinary command, ordered with everything
 else. Once the host knows the record is chosen, it calls
 `install_chosen_trim(&node, anchor, &effects)`. The call refuses an anchor

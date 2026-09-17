@@ -1,4 +1,5 @@
 #import "theme.typ": *
+#import "figures.typ": ownership_picture
 
 = Rotating Slot Ownership
 
@@ -17,8 +18,7 @@
 
 The Multi-Paxos chapter made a single stable leader the engine of the log: it
 runs phase one once, and from then on every proposal is one round trip of
-`Accept` and `Accepted`. That is the cheapest a decision can be, but the cost is paid on one
-node. Every value a client hands to a follower must first cross the network to
+`Accept` and `Accepted`. The leader coordinates each decision and can become a bottleneck.  Every value a client hands to a follower must first cross the network to
 the leader, so a proposal from a non-leader pays a forwarding hop before its
 round trip, and the leader's outbound bandwidth, disk, and CPU bound the
 throughput of the whole group. In a group spread across sites the forwarding
@@ -64,10 +64,9 @@ Slot $s$ is owned by the member at index $(s - 1) mod N$. With members
 5, 8, ..., and member 3 owns 3, 6, 9, .... The first test in
 `tests/test_ownership.odin` pins this down: `owner_of(&node, 1)` is 1 and
 `owner_of(&node, 5)` is 2. No message ever carries an owner id; every member
-computes the same answer from the same membership, which is why the membership
-order must be identical on every node. Two hosts that pass the same ids in a
-different order to `membership_init` will disagree about who owns slot 2, and
-`on_accept` on one of them will silently discard the other's suggestions.
+computes the same answer from the same membership. Hosts may pass the ids in
+different orders: `membership_init` sorts them into the same ascending order.
+They must still agree on the member set and quorum sizes for the configuration.
 
 The private helper `own_slot_from(node, from)` returns the first slot at or
 after `from` that this node owns; `node_init` seeds `own_next` with
@@ -81,6 +80,13 @@ already holds.
   nothing requires that, because any member can propose at any time in its own
   slots.
 ], source: [`src/ownership.odin`])
+
+#book_figure(
+  [Ownership distributes proposals, but application order remains shared. A chosen
+  value in slot 3 waits behind an empty slot 2. The owner can fill the hole with a
+  no-op; if it is unavailable, recovery must first preserve any earlier vote.],
+  ownership_picture(),
+)
 
 == Partitioning the Ballot Space
 
@@ -329,7 +335,7 @@ state:
 ```odin
 	base := node.delivered_through + 1
 	chunk_end := slot_add(base, Slot(C - 1))
-	last := min(chunk_end, max(node.highest_seen, base), node.memory_floor + Slot(W))
+	last := min(chunk_end, max(node.highest_seen, base), slot_add(node.memory_floor, Slot(W)))
 	prepare := Prepare_Message{
 		ballot = ballot_make(greatest + 1, node.priority, node.id),
 		first = base, last = last, scope = .Bounded,
