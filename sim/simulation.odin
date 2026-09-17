@@ -14,8 +14,8 @@ import "core:os"
 import paxos "../src"
 
 MAX_SIM_NODES    :: 5
-SIM_WINDOW       :: 256
-SIM_CHUNK        :: 64
+SIM_WINDOW       :: #config(SIM_WINDOW, 256)
+SIM_CHUNK        :: #config(SIM_CHUNK, 64)
 MAX_SIM_SLOTS    :: 4096
 MAX_SIM_JOURNAL  :: 32768
 MAX_SIM_MESSAGES :: 32768
@@ -151,7 +151,8 @@ sim_init :: proc(sim: ^Simulator, cfg: Config) {
 
 	node_ids: [MAX_SIM_NODES]paxos.Node_Id
 	for i in 0..<cfg.node_count do node_ids[i] = paxos.Node_Id(i + 1)
-	sim_check(paxos.init(&sim.membership, node_ids[:cfg.node_count]))
+	sim_check(paxos.init(&sim.membership, node_ids[:cfg.node_count],
+		#config(SIM_READ_QUORUM, 0), #config(SIM_WRITE_QUORUM, 0)))
 
 	for i in 0..<cfg.node_count {
 		options := paxos.Node_Options{priority = u8(i), rotating_ownership = cfg.ownership}
@@ -382,10 +383,18 @@ deliver_one :: proc(sim: ^Simulator, effects: ^Sim_Effects) {
 	if to_idx in sim.partitions[from_idx] || !(to_idx in sim.alive) do return
 
 	if !prng_chance(&sim.prng, sim.config.faults.drop_permille) {
-		sim_check(paxos.step(&sim.nodes[to_idx], envelope, effects))
+		err := paxos.step(&sim.nodes[to_idx], envelope, effects)
+		if err != .None {
+			fmt.eprintf("Failed envelope %v, node ballot=%v recovery=%d..%d\n", envelope,
+				sim.nodes[to_idx].ballot, sim.nodes[to_idx].recover_base, sim.nodes[to_idx].recover_last)
+			if value, ok := paxos.message_value(envelope.message); ok {
+				fmt.eprintf("Payload: %v\n", value^)
+			}
+		}
+		sim_check(err)
 		process_effects(sim, to_idx, effects)
 	}
-	if prng_chance(&sim.prng, sim.config.faults.duplicate_permille) do enqueue(sim, packet.envelope)
+	if prng_chance(&sim.prng, sim.config.faults.duplicate_permille) do enqueue(sim, envelope)
 }
 
 @(private="file")
@@ -542,7 +551,10 @@ run_quiescence :: proc(sim: ^Simulator, effects: ^Sim_Effects) -> (probe_slot: p
 			sim_check(err)
 			process_effects(sim, i, effects)
 		}
-		if small_array.len(sim.queue) == 0 && round > 50 do break
+		// A quiet tick is not convergence: heartbeat/catch-up timers may still be pending.
+		caught_up := true
+		for i in 0..<sim.config.node_count do caught_up &&= sim.consumed[i] >= sim.golden_max
+		if caught_up && small_array.len(sim.queue) == 0 && round > 50 do break
 	}
 	return
 }

@@ -419,14 +419,19 @@ resend_to :: proc(
 	l := &node.ledger
 	sent := 0
 	cursor := node.resend_cursor[peer_idx]
+	start := cursor
+	wrapped := false
 	for _ in 0..<W {
 		cell, used := bit_set_next(l.used, cursor)
 		if !used {
+			if wrapped do break
+			wrapped = true
 			cursor = 0
 			cell, used = bit_set_next(l.used, 0)
 			if !used do break
 		}
-		cursor = (cell + 1) % W
+		if wrapped && cell >= start do break
+		cursor = cell + 1
 		slot := l.slot[cell]
 		if slot <= node.peer_decided_through[peer_idx] do continue
 		switch l.state[cell] {
@@ -443,7 +448,7 @@ resend_to :: proc(
 		sent += 1
 		if sent == C do break
 	}
-	node.resend_cursor[peer_idx] = cursor
+	node.resend_cursor[peer_idx] = cursor % W
 }
 
 // The sender's decided prefix, when the message kind reports it.

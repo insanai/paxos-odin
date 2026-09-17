@@ -71,6 +71,9 @@ Node :: struct(
 	priority:                           u8,
 	voting_member:                      bool,
 	campaign_enabled:                   bool,
+	// Chunk selection is frozen once phase two starts; flags share existing alignment space.
+	recovery_ready:                     bool,
+	recovery_more:                      bool,
 	// This node's position in membership order, resolved once (learners: 0).
 	self_index:                         int,
 	gate_proposals_on_inherited_prefix: bool,

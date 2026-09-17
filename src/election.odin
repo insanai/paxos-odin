@@ -66,6 +66,8 @@ chunk_limit :: #force_inline proc(node: ^Node($V, $M, $W, $C, $G)) -> Slot {
 // Payloads need no clearing: state and absolute slot tags establish validity.
 @(private)
 reset_recovery_chunk :: proc(node: ^Node($V, $M, $W, $C, $G)) {
+	node.recovery_ready = false
+	node.recovery_more = false
 	node.promise_seen = {}
 	node.recovered_slot = {}
 	node.recovered_ballot = {}
@@ -255,6 +257,7 @@ on_promise :: proc(
 	effects: ^Effects(V, M, W, C, G),
 ) -> Error {
 	if node.role != .Preparing || msg.ballot != node.ballot do return .None
+	if node.recovery_ready do return maybe_resolve_chunk(node, effects)
 	cell, in_chunk := recovery_index(node, msg.slot)
 	if !in_chunk do return .None
 	if msg.state == .Empty do return .Invalid_Promise
@@ -299,6 +302,7 @@ on_promise_range :: proc(
 	effects: ^Effects(V, M, W, C, G),
 ) -> Error {
 	if node.role != .Preparing || msg.ballot != node.ballot do return .None
+	if node.recovery_ready do return maybe_resolve_chunk(node, effects)
 	if msg.reported > u32(C) || msg.last < msg.first do return .Invalid_Promise
 	if msg.first == node.recover_base && msg.last != chunk_limit(node) do return .Invalid_Promise
 
@@ -320,16 +324,23 @@ maybe_resolve_chunk :: proc(
 	node: ^Node($V, $M, $W, $C, $G),
 	effects: ^Effects(V, M, W, C, G),
 ) -> Error {
-	complete := 0
-	any_more := false
-	for i in 0..<membership_count(&node.membership) {
-		peer := &node.election[i]
-		if !peer.range_described || peer.received_in_range < peer.expected_in_range do continue
-		complete += 1
-		if peer.more do any_more = true
-	}
-	if complete < membership_read_quorum(&node.membership) do return .None
 	if node.noop == nil do return .Missing_Noop
+	if !node.recovery_ready {
+		complete := 0
+		any_more := false
+		for i in 0..<membership_count(&node.membership) {
+			peer := &node.election[i]
+			if !peer.range_described || peer.received_in_range < peer.expected_in_range do continue
+			complete += 1
+			any_more ||= peer.more
+		}
+		if complete < membership_read_quorum(&node.membership) do return .None
+		// Phase two may pause at the window boundary. Freeze the selection before any
+		// vote leaves, so a late promise cannot change a value under this same ballot.
+		node.recovery_ready = true
+		node.recovery_more = any_more
+	}
+	any_more := node.recovery_more
 
 	resolved := resolve_chunk(node, any_more, effects) or_return
 	if !resolved do return .None
