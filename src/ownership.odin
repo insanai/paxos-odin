@@ -18,7 +18,7 @@ import "core:container/small_array"
 //     stalled chunk at a round above zero. Per-decree promises fence the owner out of
 //     those slots only; the revoker re-proposes any vote it finds (B3) or the no-op.
 //   - Resubmit: an owner whose suggestion was revoked to the no-op proposes the value
-//     again in its next own slot. Nothing a client handed in is silently lost.
+//     again in its next own slot. This is best effort; the host owns retries and deduplication.
 
 // The member that owns `slot`.
 owner_of :: #force_inline proc(node: ^Node($V, $M, $W, $C, $G), slot: Slot) -> Node_Id {
@@ -38,23 +38,31 @@ own_slot_from :: proc(node: ^Node($V, $M, $W, $C, $G), from: Slot) -> Slot {
 	mine := Slot(node.self_index) + 1
 	if from <= mine do return mine
 	offset := (from - mine) % count
-	return from if offset == 0 else from + (count - offset)
+	return from if offset == 0 else slot_add(from, count - offset)
 }
 
 // The next own slot this node may still suggest in: one that is neither decided nor
 // revoked (promised above round zero). Revoked or decided own slots are stepped over.
 @(private)
-next_usable_own_slot :: proc(node: ^Node($V, $M, $W, $C, $G)) -> (Slot, Error) {
+next_usable_own_slot :: proc(node: ^Node($V, $M, $W, $C, $G)) -> (slot: Slot, err: Error) {
+	slot = own_slot_probe(node, node.own_next) or_return
+	node.own_next = slot
+	return slot, .None
+}
+
+// The first own slot at or after `from` that a suggestion could take, without changing
+// any state: above the floor, inside the window, and in a cell that is free, released,
+// or holds this slot with no decision and no higher promise.
+@(private)
+own_slot_probe :: proc(node: ^Node($V, $M, $W, $C, $G), from: Slot) -> (slot: Slot, err: Error) {
 	l := &node.ledger
 	mine := ownership_ballot(node.id)
+	if node.memory_floor == max(Slot) do return 0, .Global_Slot_Exhausted
+	slot = from
+	// The host may have consumed past our next slot (its decisions arrived as commits).
+	if slot <= node.memory_floor do slot = own_slot_from(node, node.memory_floor + 1)
 	for {
-		slot := node.own_next
 		if slot == max(Slot) do return 0, .Global_Slot_Exhausted
-		if slot <= node.memory_floor {
-			// The host consumed past our next slot (its decisions arrived as commits).
-			node.own_next = own_slot_from(node, node.memory_floor + 1)
-			continue
-		}
 		if slot - node.memory_floor > Slot(W) do return 0, .Window_Full
 		cell := cell_of(slot, W)
 		occupant := l.slot[cell]
@@ -62,21 +70,25 @@ next_usable_own_slot :: proc(node: ^Node($V, $M, $W, $C, $G)) -> (Slot, Error) {
 		case occupant == slot:
 			if l.state[cell] != .Chosen && ledger_promise_for(l, cell) <= mine do return slot, .None
 		case occupant == 0 || (occupant <= node.memory_floor && l.state[cell] == .Chosen):
-			return slot, .None
+			if l.promised <= mine do return slot, .None
 		case:
 			// The cell still holds an older open slot; wait for the host to release it.
 			return 0, .Window_Full
 		}
-		node.own_next = own_slot_from(node, slot + 1)
+		slot = own_slot_from(node, slot + 1)
 	}
 }
 
-// How many consecutive own slots fit in the window from the next usable one.
+// Whether `wanted` suggestions can be placed now: the own slots they would take, with
+// every revoked or decided one stepped over, all lie inside the window. Nothing changes.
 @(private)
-own_slots_available :: proc(node: ^Node($V, $M, $W, $C, $G), wanted: int) -> bool {
-	count := Slot(membership_count(&node.membership))
-	last := node.own_next + Slot(wanted - 1) * count
-	return last >= node.own_next && last - node.memory_floor <= Slot(W)
+own_slots_available :: proc(node: ^Node($V, $M, $W, $C, $G), wanted: int) -> Error {
+	cursor := node.own_next
+	for _ in 0..<wanted {
+		slot := own_slot_probe(node, cursor) or_return
+		cursor = own_slot_from(node, slot + 1)
+	}
+	return .None
 }
 
 // Proposes `value` in this node's next usable own slot.
@@ -86,8 +98,14 @@ propose_owned :: proc(
 	value: V,
 	effects: ^Effects(V, M, W, C, G),
 ) -> (slot: Slot, err: Error) {
-	slot = next_usable_own_slot(node) or_return
-	send_accept(node, slot, ownership_ballot(node.id), value, effects) or_return
+	for {
+		slot = next_usable_own_slot(node) or_return
+		err = send_accept(node, slot, ownership_ballot(node.id), value, effects)
+		if err != .Not_Leader do break
+		// A revoker's promise reached this slot first; the next own slot is ours.
+		node.own_next = own_slot_from(node, slot + 1)
+	}
+	err or_return
 	node.own_next = own_slot_from(node, slot + 1)
 	node.highest_seen = max(node.highest_seen, slot)
 	return slot, .None
@@ -125,9 +143,10 @@ start_revocation :: proc(
 	greatest := max(node.highest_observed_round, ballot_round(node.ballot))
 	greatest = max(greatest, ballot_round(ledger_highest_ballot(&node.ledger)))
 	if greatest >= MAX_ROUND do return .Ballot_Exhausted
+	if node.delivered_through == max(Slot) do return .Global_Slot_Exhausted
 	base := node.delivered_through + 1
 	chunk_end := slot_add(base, Slot(C - 1))
-	last := min(chunk_end, max(node.highest_seen, base), node.memory_floor + Slot(W))
+	last := min(chunk_end, max(node.highest_seen, base), slot_add(node.memory_floor, Slot(W)))
 	prepare := Prepare_Message{
 		ballot = ballot_make(greatest + 1, node.priority, node.id),
 		first = base, last = last, scope = .Bounded,
@@ -156,9 +175,9 @@ start_revocation :: proc(
 @(private)
 queue_resubmit :: proc(node: ^Node($V, $M, $W, $C, $G), value: V) {
 	if !small_array.push_back(&node.resubmit, value) {
-		// The queue is bounded by one chunk; a burst beyond it is re-proposed by the host
-		// through the ordinary timeout-and-retry discipline.
-		return
+		// The queue is bounded by one chunk. Resubmission is best effort: a burst beyond
+		// it is counted (node_resubmits_dropped) and left to the host's own retry.
+		node.resubmits_dropped = saturating_increment(node.resubmits_dropped)
 	}
 }
 
@@ -205,7 +224,11 @@ tick_ownership :: proc(
 		return .None
 	}
 	node.stall_ticks = saturating_increment(node.stall_ticks)
-	if node.stall_ticks >= node.election_timeout_ticks do return start_revocation(node, noop, effects)
+	// A revocation gets a transition of its own: its promises would not fit next to a
+	// chunk of proposals (write quorum one decides each skip at once, two writes each).
+	if node.stall_ticks >= node.election_timeout_ticks && proposed == 0 {
+		return start_revocation(node, noop, effects)
+	}
 	// Ask the owner of the stuck slot for what it knows before suspecting it.
 	if node.stall_ticks % node.heartbeat_interval_ticks == 0 {
 		owner := owner_of(node, node.delivered_through + 1)

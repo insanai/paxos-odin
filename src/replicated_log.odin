@@ -691,6 +691,15 @@ replicated_log_ledger :: proc(
 	return &node.core.ledger
 }
 
+replicated_log_resubmits_dropped :: proc(
+	node: ^Replicated_Log_Node(
+		$Value, $MAX_MEMBERS, $WINDOW_SLOTS, $CHUNK_SLOTS,
+		$MAX_METADATA_BYTES, $GATE,
+	),
+) -> u32 {
+	return node.core.resubmits_dropped
+}
+
 // ---------------------------------------------------------------------------
 // Seal bookkeeping
 // ---------------------------------------------------------------------------

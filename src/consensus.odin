@@ -116,9 +116,11 @@ on_accept :: proc(
 			return .None
 		}
 		// An owner whose own suggestion is being overwritten by a revoker's value proposes
-		// it again in a later own slot (at least once: the slot may still decide it).
-		if node.ownership && node.lead_slot[cell] == msg.slot &&
-		   l.vote_ballot[cell] == ownership_ballot(node.id) && l.value[cell] != value {
+		// it again in a later own slot (at least once: the slot may still decide it). The
+		// vote's ballot identifies the suggestion; the lead columns may have been cleared
+		// by a revocation this owner started itself.
+		if node.ownership && l.vote_ballot[cell] == ownership_ballot(node.id) &&
+		   l.value[cell] != value {
 			queue_resubmit(node, l.value[cell])
 		}
 	case .Empty:
@@ -207,7 +209,7 @@ record_commit :: proc(
 		return .None
 	}
 	// An owner whose suggestion lost to a revocation proposes it again later.
-	if node.ownership && node.lead_slot[cell] == slot && l.state[cell] == .Voted &&
+	if node.ownership && l.state[cell] == .Voted &&
 	   l.vote_ballot[cell] == ownership_ballot(node.id) && l.value[cell] != value {
 		queue_resubmit(node, l.value[cell])
 	}
@@ -329,15 +331,15 @@ node_propose_batch :: proc(
 	if len(values) == 0 do return nil, .Empty_Batch
 	if len(values) > C do return nil, .Batch_Too_Large
 	if len(slots) < len(values) do return nil, .Slot_Buffer_Too_Small
-	if Slot(len(values)) > max(Slot) - node.next_slot do return nil, .Global_Slot_Exhausted
-	occupied := node.next_slot - 1 - node.memory_floor
-	if occupied >= Slot(W) || Slot(len(values)) > Slot(W) - occupied do return nil, .Window_Full
 	if node.ownership {
-		_ = next_usable_own_slot(node) or_return
-		if !own_slots_available(node, len(values)) do return nil, .Window_Full
+		// Every target slot is probed first, so the batch is admitted whole or not at all.
+		own_slots_available(node, len(values)) or_return
 		for value, i in values do slots[i] = propose_owned(node, value, effects) or_return
 		return slots[:len(values)], .None
 	}
+	if Slot(len(values)) > max(Slot) - node.next_slot do return nil, .Global_Slot_Exhausted
+	occupied := node.next_slot - 1 - node.memory_floor
+	if occupied >= Slot(W) || Slot(len(values)) > Slot(W) - occupied do return nil, .Window_Full
 	for value, i in values {
 		slots[i] = node.next_slot
 		node.next_slot += 1

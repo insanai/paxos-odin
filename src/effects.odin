@@ -29,10 +29,11 @@ Durability_Gate :: enum {
 // Node it serves; the compiler rejects a mismatch. The zero value is ready to use.
 //
 // Nothing in a batch owns a value: writes, messages, and committed entries point into
-// the node's ledger. Capacities are the exact per-transition maxima: one recovery chunk
-// of votes, each possibly followed by a local decision, plus one promise; one chunk per
-// peer plus prepares, heartbeats, and one catch-up request; one window plus one
-// pass-through entry of decisions.
+// the node's ledger. Capacities are per-transition maxima: one recovery chunk of votes,
+// each possibly followed by a local decision, plus one promise; one chunk per peer plus
+// prepares, heartbeats, and one catch-up request (an ownership tick proposes at most
+// one chunk and retransmits only on a quiet tick); one window plus one pass-through
+// entry of decisions.
 Effects :: struct(
 	$Value: typeid,
 	$MAX_MEMBERS: int = DEFAULT_MAX_MEMBERS,

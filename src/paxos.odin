@@ -90,6 +90,7 @@ proposal_frontier    :: proc{node_proposal_frontier, replicated_log_proposal_fro
 committed_at         :: proc{node_committed_at, replicated_log_read, learner_chosen_at}
 read_decided         :: proc{node_read_decided, replicated_log_read_decided, learner_read_chosen}
 is_leader_caught_up  :: proc{node_is_leader_caught_up, replicated_log_is_leader_caught_up}
+resubmits_dropped    :: proc{node_resubmits_dropped, replicated_log_resubmits_dropped}
 is_campaign_enabled  :: proc{node_is_campaign_enabled, replicated_log_is_campaign_enabled}
 memory_floor         :: proc{node_memory_floor, replicated_log_memory_floor}
 trim_anchor          :: proc{node_trim_anchor, replicated_log_trim_anchor}

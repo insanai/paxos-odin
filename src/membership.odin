@@ -5,23 +5,18 @@ import "core:slice"
 
 // The fixed voting membership of one configuration with its quorum sizes.
 //
-// `members` keeps the caller's order; that position is the member's stable index in
-// every per-member array of a node. `by_id` is the same set sorted by id so a lookup
-// in a large membership is a binary search. Quorums satisfy B2: any phase-one quorum
-// and any phase-two quorum intersect because read + write > count.
+// `members` is sorted by id whatever order the host listed them in, so every node
+// derives the same stable index per member (and, under rotating ownership, the same
+// owner per slot) and a lookup in a large membership is a binary search. Quorums
+// satisfy B2: any phase-one quorum and any phase-two quorum intersect because
+// read + write > count.
 Membership :: struct($MAX_MEMBERS: int = DEFAULT_MAX_MEMBERS) {
 	members:           small_array.Small_Array(MAX_MEMBERS, Node_Id),
-	by_id:             [MAX_MEMBERS]Member_Ref,
 	read_quorum_size:  int,
 	write_quorum_size: int,
 }
 
-Member_Ref :: struct {
-	id:    Node_Id,
-	index: u16,
-}
-
-// Memberships up to this size use a linear scan; larger ones binary-search `by_id`.
+// Memberships up to this size use a linear scan; larger ones binary-search `members`.
 LINEAR_LOOKUP_LIMIT :: 8
 
 // Validates and installs a membership. Zero overrides select majorities.
@@ -38,16 +33,15 @@ membership_init :: proc(
 
 	// Build a candidate so validation errors leave the caller's membership intact.
 	validated: Membership(MAX_MEMBERS)
-	for id, index in node_ids {
+	for id in node_ids {
 		if id == 0 do return .Invalid_Node_Id
-		for previous in node_ids[:index] {
-			if previous == id do return .Duplicate_Node_Id
-		}
 		small_array.push_back(&validated.members, id)
-		validated.by_id[index] = Member_Ref{id = id, index = u16(index)}
 	}
 	total := len(node_ids)
-	slice.sort_by_key(validated.by_id[:total], proc(ref: Member_Ref) -> Node_Id { return ref.id })
+	slice.sort(validated.members.data[:total])
+	for i in 1..<total {
+		if validated.members.data[i - 1] == validated.members.data[i] do return .Duplicate_Node_Id
+	}
 
 	majority := total / 2 + 1
 	read := read_quorum_override if read_quorum_override != 0 else majority
@@ -76,11 +70,10 @@ membership_index_of :: #force_inline proc(
 	low, high := 0, count
 	for low < high {
 		mid := (low + high) / 2
-		ref := m.by_id[mid]
 		switch {
-		case ref.id == id: return int(ref.index), true
-		case ref.id < id:  low = mid + 1
-		case:              high = mid
+		case m.members.data[mid] == id: return mid, true
+		case m.members.data[mid] < id:  low = mid + 1
+		case:                           high = mid
 		}
 	}
 	return -1, false

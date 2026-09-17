@@ -93,16 +93,17 @@ Node :: struct(
 	stall_ticks:                        u32,
 	gap_ticks:                          u32,
 	resubmit:                           small_array.Small_Array(CHUNK_SLOTS, Value),
+	resubmits_dropped:                  u32,
 
-	// Phase one: what each peer reported for the chunk being recovered.
+	// Phase one: scratch indexed by slot - recover_base, valid only for this chunk.
 	election:                           [MAX_MEMBERS]Election_Peer,
-	promise_seen:                       [MAX_MEMBERS]Bit_Set(WINDOW_SLOTS),
+	promise_seen:                       [MAX_MEMBERS]Bit_Set(CHUNK_SLOTS),
 	recover_base:                       Slot,
 	recover_last:                       Slot,
-	recovered_slot:                     [WINDOW_SLOTS]Slot,
-	recovered_ballot:                   [WINDOW_SLOTS]Ballot,
-	recovered_state:                    [WINDOW_SLOTS]Cell_State,
-	recovered_value:                    [WINDOW_SLOTS]Value,
+	recovered_slot:                     [CHUNK_SLOTS]Slot,
+	recovered_ballot:                   [CHUNK_SLOTS]Ballot,
+	recovered_state:                    [CHUNK_SLOTS]Cell_State,
+	recovered_value:                    [CHUNK_SLOTS]Value,
 
 	// Phase two: acknowledgements for the slots this leader is driving. The proposal
 	// itself is the leader's own vote in its ledger.
@@ -116,11 +117,8 @@ Node :: struct(
 @(private)
 clear_election :: proc(node: ^Node($V, $M, $W, $C, $G)) {
 	node.election = {}
-	node.promise_seen = {}
+	reset_recovery_chunk(node)
 	node.recover_base = 0
-	node.recovered_slot = {}
-	node.recovered_ballot = {}
-	node.recovered_state = {}
 	node.lead_slot = {}
 	node.lead_ballot = {}
 	node.acknowledgements = {}
@@ -385,4 +383,10 @@ node_read_decided :: proc(
 		output[i] = Committed(V){slot = slot, value = value}
 	}
 	return count, .None
+}
+
+// How many losing suggestions could not be queued for resubmission because the queue
+// (one chunk) was full. Resubmission is best effort; the host retries those itself.
+node_resubmits_dropped :: proc(node: ^Node($V, $M, $W, $C, $G)) -> u32 {
+	return node.resubmits_dropped
 }

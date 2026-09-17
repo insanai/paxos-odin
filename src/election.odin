@@ -63,10 +63,30 @@ chunk_limit :: #force_inline proc(node: ^Node($V, $M, $W, $C, $G)) -> Slot {
 	return node.recover_last
 }
 
+// Payloads need no clearing: state and absolute slot tags establish validity.
+@(private)
+reset_recovery_chunk :: proc(node: ^Node($V, $M, $W, $C, $G)) {
+	node.promise_seen = {}
+	node.recovered_slot = {}
+	node.recovered_ballot = {}
+	node.recovered_state = {}
+}
+
+// Check before subtracting or converting; chunks need not be powers of two.
+@(private)
+recovery_index :: #force_inline proc(
+	node: ^Node($V, $M, $W, $C, $G), slot: Slot,
+) -> (int, bool) {
+	if slot < node.recover_base || slot > node.recover_last do return 0, false
+	offset := slot - node.recover_base
+	if offset >= Slot(C) do return 0, false
+	return int(offset), true
+}
+
 @(private)
 highest_recovered_slot :: proc(node: ^Node($V, $M, $W, $C, $G)) -> Slot {
 	highest := ledger_highest_used(&node.ledger)
-	for cell in 0..<W {
+	for cell in 0..<C {
 		if node.recovered_state[cell] != .Empty {
 			highest = max(highest, node.recovered_slot[cell])
 		}
@@ -208,12 +228,14 @@ promise_bounded :: proc(
 ) -> bool {
 	l := &node.ledger
 	if msg.last - msg.first >= Slot(C) do return false
-	for slot := msg.first; slot <= msg.last; slot += 1 {
+	for offset in 0..=msg.last - msg.first {
+		slot := msg.first + offset
 		if slot <= node.memory_floor do continue
 		cell, ok := claim_live(node, slot)
 		if !ok || msg.ballot < l.promised_at[cell] do return false
 	}
-	for slot := msg.first; slot <= msg.last; slot += 1 {
+	for offset in 0..=msg.last - msg.first {
+		slot := msg.first + offset
 		if slot <= node.memory_floor do continue
 		cell := cell_of(slot, W)
 		if l.promised_at[cell] == msg.ballot do continue
@@ -233,10 +255,10 @@ on_promise :: proc(
 	effects: ^Effects(V, M, W, C, G),
 ) -> Error {
 	if node.role != .Preparing || msg.ballot != node.ballot do return .None
-	if msg.slot < node.recover_base || msg.slot > chunk_limit(node) do return .None
+	cell, in_chunk := recovery_index(node, msg.slot)
+	if !in_chunk do return .None
 	if msg.state == .Empty do return .Invalid_Promise
 
-	cell := cell_of(msg.slot, W)
 	if bit_set_insert(&node.promise_seen[member], cell) {
 		node.election[member].received_in_range += 1
 	}
@@ -252,7 +274,9 @@ on_promise :: proc(
 		node.recovered_ballot[cell] = msg.vote
 		node.recovered_value[cell] = reported
 	case .Chosen:
-		if node.recovered_value[cell] != reported do return .Conflicting_Commit
+		// An acceptor outside the deciding quorum may still hold an older, losing vote;
+		// only another decision can contradict a decision.
+		if msg.state == .Chosen && node.recovered_value[cell] != reported do return .Conflicting_Commit
 	case .Voted:
 		if msg.state == .Chosen {
 			node.recovered_state[cell] = .Chosen
@@ -339,7 +363,8 @@ resolve_chunk :: proc(
 
 	for slot <= drive_limit {
 		if slot == max(Slot) do return false, .Global_Slot_Exhausted
-		cell := cell_of(slot, W)
+		cell, in_chunk := recovery_index(node, slot)
+		assert(in_chunk, "Recovery slot outside chunk. Hint: Report this invariant failure.")
 		if chosen, is_chosen := ledger_chosen_at(&node.ledger, slot); is_chosen {
 			broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = chosen})
 		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Chosen {
@@ -347,10 +372,19 @@ resolve_chunk :: proc(
 			if decided, ok := ledger_chosen_at(&node.ledger, slot); ok {
 				broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = decided})
 			}
-		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
-			send_accept(node, slot, node.ballot, node.recovered_value[cell], effects) or_return
 		} else {
-			send_accept(node, slot, node.ballot, node.noop.?, effects) or_return
+			value := node.noop.?
+			if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
+				value = node.recovered_value[cell]
+			}
+			accept_err := send_accept(node, slot, node.ballot, value, effects)
+			if accept_err == .Not_Leader {
+				// A higher ballot already holds this decree: this candidate lost. Step down
+				// quietly; the winner (or the next timeout) finishes the range.
+				node.role = .Follower
+				return false, .None
+			}
+			accept_err or_return
 		}
 		slot += 1
 	}
@@ -369,10 +403,10 @@ begin_next_chunk :: proc(node: ^Node($V, $M, $W, $C, $G), effects: ^Effects(V, M
 	if node.ownership {
 		node.recover_last = min(node.recover_last, max(node.highest_seen, node.recover_base))
 	}
+	reset_recovery_chunk(node)
 	for i in 0..<membership_count(&node.membership) {
 		peer := &node.election[i]
 		peer^ = Election_Peer{anchor = peer.anchor, chosen_through = peer.chosen_through}
-		bit_set_reset(&node.promise_seen[i])
 	}
 	broadcast_all(node, effects, Prepare_Message{
 		ballot = node.ballot, first = node.recover_base, last = node.recover_last,
