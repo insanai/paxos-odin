@@ -47,7 +47,7 @@ specification ships with this repository.
 
 == What the repository tests today
 
-`odin test tests` runs 55 deterministic tests in about a second. They are grouped by
+`odin test tests` runs 69 deterministic tests in about a second. They are grouped by
 file; the names below are the actual test procedures.
 
 #table(
@@ -61,6 +61,10 @@ file; the names below are the actual test procedures.
     [Regressions found in review: campaigns discard prior-term proposals, fences survive chunk boundaries, retries make progress across chunks, snapshots keep votes above the anchor, trim identity conflicts fail closed, duplicate acknowledgements never make a quorum, 128 and 1,024 voters reach a quorum through the sorted membership index, a leader fetches decisions from a follower that is ahead, and more.],
   [`test_ownership.odin`], [5],
     [Rotating ownership: three owners decide concurrently without a campaign, idle owners skip, a crashed owner's slots are revoked, a revocation keeps a vote it finds (Lamport's B3), and a suggestion revoked to the no-op is resubmitted in a later own slot.],
+  [`test_window_review.odin`], [8],
+    [The second adversarial review: a follower refuses slots beyond its window, the pass-through releases one decision per transition with its own value, a stale acknowledgement is not an error, an owner keeps proposing after the floor passes its next slot, a far accept cannot wedge an owner, a suggestion the owner itself overwrites is resubmitted, a revocation range stays inside the window, and a leader whose inherited gap stalls re-runs phase one.],
+  [`test_batch_review.odin`], [6],
+    [The third adversarial review: an ownership tick fits the effect capacities under write quorum one, an ownership batch is admitted on the owner's own frontier after the floor advances, a rejected batch leaves nothing behind, an older vote reported after a decision is not a conflict, ownership order is ascending id whatever order the host gave, and a resubmission the bounded queue cannot hold is counted.],
   [`test_reconfiguration.odin`], [2],
     [A three-node handover with a delayed old-configuration message rejected by the checked `Log_Envelope` step; stop-sign initialisation with aliased slices.],
   [`test_reconfiguration_sim.odin`], [4 (16 seeds each)],
@@ -165,8 +169,8 @@ Read the table for what it is. Every implementation ran in the same session with
 in-process transport and no serialisation, so the rows measure CPU cost per committed
 value, not service latency. With three voters and 8-byte values `paxos-zig` is between
 a fifth and thirty percent cheaper than this library; with five voters the two are
-within a tenth of each other, this library ahead with eight in flight; with 1 KiB values
-this library is more than five times cheaper, because a value is never copied between
+this library is about a tenth cheaper; with 1 KiB values this library is more than
+five times cheaper, because a value is never copied between
 proposal and commit: the ledger holds one copy and every record and message points at
 it. The rotating-ownership rows cost within a tenth of the single-leader rows per value
 on the same three nodes, and buy a log in which every node proposes without a round

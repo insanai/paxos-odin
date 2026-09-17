@@ -82,7 +82,7 @@ The claims in this book are backed by artefacts you can run:
   corrective hint.
 - `examples/counter.odin`: a three-node replicated counter that shows the whole host
   contract in one file of about a hundred and thirty lines.
-- `tests/`: 55 deterministic tests, including a 972-case election matrix, four
+- `tests/`: 69 deterministic tests, including a 972-case election matrix, four
   seeded reconfiguration scenarios, and five rotating-ownership scenarios.
 - `sim/`: a seeded fault simulator with agreement, validity, monotonicity,
   contiguity, liveness, and convergence oracles, run with one leader and with every

@@ -181,15 +181,26 @@ the slots and applies B3 to each:
 			if decided, ok := ledger_chosen_at(&node.ledger, slot); ok {
 				broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = decided})
 	}
-		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
-			send_accept(node, slot, node.ballot, node.recovered_value[cell], effects) or_return
 		} else {
-			send_accept(node, slot, node.ballot, node.noop.?, effects) or_return
-}
+			value := node.noop.?
+			if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
+				value = node.recovered_value[cell]
+			}
+			accept_err := send_accept(node, slot, node.ballot, value, effects)
+			if accept_err == .Not_Leader {
+				// A higher ballot already holds this decree: this candidate lost. Step down
+				// quietly; the winner (or the next timeout) finishes the range.
+				node.role = .Follower
+				return false, .None
+			}
+			accept_err or_return
+		}
 ```
 ])
 
-A slot the candidate itself already holds as chosen is re-announced. A reported
+A slot the candidate itself already holds as chosen is re-announced. A candidate
+whose accept is refused because a higher ballot already promised that decree has
+lost the election; it steps down rather than report an error. A reported
 decision is committed outright. A reported vote is re-proposed under the new ballot.
 A slot nobody voted in, below one somebody did, is filled with the host's no-op. For
 a fresh single decision none of these fire: `become_leader` runs, the role becomes

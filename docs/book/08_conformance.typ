@@ -198,6 +198,10 @@ reviewer should check against the paper:
   already owns is silently skipped, because a decision is derived state that
   the anchor or a later decision already covers; one that disagrees with a
   stored decision is `.Conflicting_Commit`; otherwise the decision is stored.
+- In phase one, `on_promise` keeps per decree the greatest vote reported and lets a
+  reported decision dominate; a `.Voted` report that arrives after a decision is an
+  older, losing vote from an acceptor outside the deciding quorum and is ignored,
+  and only a second decision with a different value is `.Conflicting_Commit`.
 - `Write_Trim` with a lower `trim_id` or lower `chosen_trim_slot`, or the same
   non-zero `trim_id` with a different slot, is `.Trim_Regression`.
 
@@ -331,7 +335,7 @@ that can silence one member as if it had crashed:
   reached nobody and is revoked to the no-op; when member 3 returns it learns
   the revocation and proposes the value again in a later own slot.
 
-In all, `tests/*.odin` holds 55 `@(test)` procedures; the ones above are the
+In all, `tests/*.odin` holds 69 `@(test)` procedures; the ones above are the
 schedule-driven subset. `review_hundred_twenty_eight_voters` and
 `review_thousand_voters_reach_quorum` in `tests/test_review.odin` exercise the
 sorted membership index and the word-array bit set at sizes the default

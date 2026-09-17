@@ -186,18 +186,18 @@ before doing anything else.
   [`membership_init(m, node_ids: []Node_Id, read_quorum_override: int = 0, write_quorum_override: int = 0) -> Error`],
     [Validate non-zero unique ids and quorum sizes; zero overrides mean majority. Errors leave `m` untouched.],
   [`membership_index_of(m, id: Node_Id) -> (int, bool)`],
-    [The stable index of `id`. Linear scan up to `LINEAR_LOOKUP_LIMIT` members, binary search over `by_id` above it.],
+    [The stable index of `id` (its rank, since members are sorted). Linear scan up to `LINEAR_LOOKUP_LIMIT` members, binary search above it.],
   [`membership_contains(m, id: Node_Id) -> bool`], [Membership test.],
   [`membership_count(m) -> int`], [Number of voters.],
   [`membership_get(m, index: int) -> Node_Id`], [The member at a stable index.],
-  [`membership_slice(m) -> []Node_Id`], [Members in the caller's order.],
+  [`membership_slice(m) -> []Node_Id`], [Members in ascending id order.],
   [`membership_read_quorum(m) -> int`, `membership_write_quorum(m) -> int`],
     [Phase-one and phase-two quorum sizes.],
 )
 
-`Membership(MAX_MEMBERS)` holds `members` (a `Small_Array` in the caller's
-order; the position is the member's stable index), `by_id` (the same set as
-`Member_Ref{id: Node_Id, index: u16}` sorted by id), `read_quorum_size`, and
+`Membership(MAX_MEMBERS)` holds `members` (a `Small_Array` sorted by id whatever
+order the host listed them in; the position is the member's stable index, and
+under rotating ownership the owner order), `read_quorum_size`, and
 `write_quorum_size`.
 
 === Ballots, slots, and bit sets
@@ -296,6 +296,8 @@ struct by replay.
     [Plain accessors. `Role` is `enum u8 { Follower, Preparing, Leader }`.],
   [`node_ledger(node) -> ^Ledger(V, W)`],
     [Inspection only; persistence goes through `Write` records.],
+  [`node_resubmits_dropped(node) -> u32`],
+    [Losing suggestions that could not be queued for resubmission (the queue holds one chunk). Resubmission is best effort; the host retries these.],
   [`node_committed_at(node, slot: Slot) -> (V, bool)`],
     [A resident decided value, by copy.],
   [`node_read_decided(node, from_slot: Slot, output: []Committed(V)) -> (int, Error)`],
@@ -358,7 +360,8 @@ struct by replay.
 `advance_memory_floor`, `install_chosen_trim`, `current_leader`,
 `decided_through`, `leader_base`, `proposal_frontier`, `committed_at`,
 `read_decided`, `is_leader_caught_up`, `is_campaign_enabled`, `memory_floor`,
-`trim_anchor`, `role`, `ballot`, `id`, `is_voting_member`, and `ledger`.
+`trim_anchor`, `role`, `ballot`, `id`, `is_voting_member`, `resubmits_dropped`, and
+`ledger`.
 `init` also covers `effects_init`, `membership_init`, and `stop_sign_init`;
 `step` covers both replicated-log overloads; `committed_at` covers
 `replicated_log_read` and `learner_chosen_at`; `read_decided` covers
@@ -481,7 +484,7 @@ revocations).
   table.header([*Constant*], [*Value*], [*Role*]),
   [`DEFAULT_MAX_MEMBERS`], [7], [Voter capacity of `Membership`, `Node`, `Effects`, `Stop_Sign`.],
   [`MAX_SUPPORTED_MEMBERS`], [65535], [Ceiling on `MAX_MEMBERS`: member indexes and the ballot's node field are 16 bits.],
-  [`LINEAR_LOOKUP_LIMIT`], [8], [Memberships up to this size use a linear scan; larger ones binary-search `by_id`.],
+  [`LINEAR_LOOKUP_LIMIT`], [8], [Memberships up to this size use a linear scan; larger ones binary-search the sorted members.],
   [`DEFAULT_WINDOW_SLOTS`], [256], [Resident consensus cells per node; must be a power of two.],
   [`DEFAULT_CHUNK_SLOTS`], [64], [Recovery chunk and batch bound; `1 <= CHUNK_SLOTS <= WINDOW_SLOTS`.],
   [`DEFAULT_MAX_METADATA_BYTES`], [256], [Stop-sign metadata capacity.],
@@ -619,7 +622,7 @@ stop with its evidence preserved.
   [`.Ballot_Exhausted`], [terminal], [No round above `MAX_ROUND`.],
   [`.Invalid_Promise`], [input], [A `Promise_Message` with `state = .Empty`, or a `Promise_Range_Message` with `last < first`, a wrong chunk limit, or `reported > CHUNK_SLOTS`.],
   [`.Missing_Noop`], [input], [A chunk resolved without a no-op from `campaign` or `tick`.],
-  [`.Missing_Proposed_Value`], [incident], [A quorum acknowledged a slot the leader holds no vote for.],
+  [`.Missing_Proposed_Value`], [incident], [A quorum acknowledged a slot whose cell the leader holds with no vote (a stale acknowledgement for a cell that moved on is ignored instead).],
   [`.Campaign_Disabled`], [backpressure], [This voter never starts elections, or runs rotating ownership.],
   table.cell(colspan: 3)[_Durability and safety_],
   [`.Promise_Regression`], [incident], [Replay moved a promise, or recorded a vote, below the durable promise.],

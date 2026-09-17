@@ -233,8 +233,8 @@ err := paxos.membership_init(&m, ids[:], 4, 2) // Q1 = 4, Q2 = 2
 
 Every `membership_*` query takes a `^Membership`. Up to `LINEAR_LOOKUP_LIMIT`
 (8) members, `membership_index_of` scans the members in order; above that it
-binary-searches `by_id`, a copy of the same set sorted by id, so a membership
-near the 65535 bound is still one lookup per message.
+binary-searches them, which works because `membership_init` sorted them, so a
+membership near the 65535 bound is still one lookup per message.
 
 == Reconfiguration: The Stop-Sign Invariant
 

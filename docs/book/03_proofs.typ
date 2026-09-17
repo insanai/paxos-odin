@@ -295,7 +295,10 @@ ledger only for a slot at or below that acceptor's delivered prefix or trim anch
 and a candidate never proposes at or below the greatest delivered prefix or trim
 anchor any complete member reported.
 
-*Proof.* Three procedures drop a slot from a cell. `claim_live` retags a cell only when
+*Proof.* Three procedures drop a slot from a cell. `claim_live` admits only slots in
+the live window $(#[`memory_floor`], #[`memory_floor`] + W]$, so the map from live
+slots to cells is a bijection and no cell is ever tagged with a slot whose predecessor
+in that cell is still live; within the window it retags a cell only when
 `held <= node.memory_floor` and the cell is `.Chosen`; `node_advance_memory_floor`
 keeps `memory_floor <= delivered_through`. `node_resume_at` clears open votes at or
 below `max(floor, anchor.chosen_trim_slot)` and sets `delivered_through` to that value.
@@ -440,10 +443,14 @@ resulting Accept from any other round-zero proposal. $qed$
 *Lemma 14 (resubmission).* A resubmitted suggestion is a new proposal in a new
 decree and violates nothing.
 
-*Proof.* `record_commit` queues `l.value[cell]` through `queue_resubmit` only when the
-node owns the slot, its cell holds its own round-zero vote, and the decided value
-differs; by Theorem 1 that value is the only one the slot will ever hold, so the
-suggestion was not chosen there. `drain_resubmits` proposes it through
+*Proof.* `queue_resubmit` is called from two places, and both key on the ledger alone:
+`on_accept`, when a higher ballot's value is about to overwrite the cell's own
+round-zero vote, and `record_commit`, when the decided value differs from that vote.
+The vote's ballot identifies the suggestion, so the check survives a revocation the
+owner itself started (which clears the lead columns). A suggestion overwritten in
+`on_accept` may yet be chosen at the revoker's ballot only if the revoker re-proposed
+it (Lemma 4), in which case the resubmission decides it twice; that is the
+at-least-once the host already handles by command id. `drain_resubmits` proposes it through
 `propose_owned`, that is, at the owner's ballot in a later own slot; Lemma 11 applies
 to that decree. The queue holds one chunk; a burst beyond it is dropped for the host's
 ordinary retry, so the guarantee is at-least-once only through the host. $qed$
@@ -518,9 +525,13 @@ $1, 2, 3, ...$ from its restart base, with no gap and no repeat.
 *Proof.* `emit_contiguous` loops from `next = delivered_through + 1`, stops at the
 first cell that is not tagged `next` or not `.Chosen`, and for each released slot
 appends `Committed{slot = next}` and sets `delivered_through = next`. The one other
-release is the pass-through in `record_commit`, taken only when `claim_live` fails and
-`slot == node.delivered_through + 1`; it records `Write_Chosen`, releases exactly that
-slot, advances `delivered_through` and then calls `emit_contiguous`. Every released
+release is the pass-through in `record_commit`, taken only when `claim_live` fails
+(the slot is just past the live window) and `slot == node.delivered_through + 1`; it
+records `Write_Chosen`, releases exactly that slot, advances `delivered_through` and
+then calls `emit_contiguous`. Record and entry both point at the single
+`pass_through` field, so `record_commit` takes this path at most once per transition:
+a second such decision in the same batch is dropped and learned again later, never
+released with the wrong value. Every released
 value is a `.Chosen` cell or a value `record_commit` was about to record, chosen by
 Corollary 1. After a restart `node_resume_at` sets `delivered_through` to the restart
 base, the host's consumed floor or the trim anchor, whichever is greater, so the host

@@ -44,9 +44,10 @@ where, and at which ballot.
 
 == The Ownership Rule
 
-The membership is an ordered list: `membership_init` keeps the caller's order,
-and a member's position in that list is its stable index. Ownership is a
-function of that index and the slot number alone:
+The membership is an ordered list: `membership_init` sorts the ids the host
+gives it, so every node holds the same list whatever order its host used, and a
+member's position in that list is its stable index. Ownership is a function of
+that index and the slot number alone:
 
 #code_file("src/ownership.odin", [
 ```odin
@@ -145,8 +146,14 @@ propose_owned :: proc(
 	value: V,
 	effects: ^Effects(V, M, W, C, G),
 ) -> (slot: Slot, err: Error) {
-	slot = next_usable_own_slot(node) or_return
-	send_accept(node, slot, ownership_ballot(node.id), value, effects) or_return
+	for {
+		slot = next_usable_own_slot(node) or_return
+		err = send_accept(node, slot, ownership_ballot(node.id), value, effects)
+		if err != .Not_Leader do break
+		// A revoker's promise reached this slot first; the next own slot is ours.
+		node.own_next = own_slot_from(node, slot + 1)
+	}
+	err or_return
 	node.own_next = own_slot_from(node, slot + 1)
 	node.highest_seen = max(node.highest_seen, slot)
 	return slot, .None
@@ -161,16 +168,26 @@ ballot as a parameter: it claims the cell, records the node's own vote and
 broadcasts the `Accept_Message`. A write quorum of one commits on the spot, as
 before.
 
-`next_usable_own_slot` decides which slot that is. Starting from `own_next`,
-it steps over any own slot that is already decided or whose per-decree promise
-is above the owner's ballot, that is, a slot a revocation has fenced:
+`next_usable_own_slot` decides which slot that is: it asks `own_slot_probe`,
+which starts from `own_next` and steps over any own slot that is already
+decided or whose per-decree promise is above the owner's ballot, that is, a
+slot a revocation has fenced, without changing any state; only then does
+`own_next` move:
 
 #code_file("src/ownership.odin", [
 ```odin
-		cell, held := ledger_cell(l, slot)
-		usable := !held || (l.state[cell] != .Chosen && ledger_promise_for(l, cell) <= mine)
-		if usable do return slot, .None
-		node.own_next = own_slot_from(node, slot + 1)
+		cell := cell_of(slot, W)
+		occupant := l.slot[cell]
+		switch {
+		case occupant == slot:
+			if l.state[cell] != .Chosen && ledger_promise_for(l, cell) <= mine do return slot, .None
+		case occupant == 0 || (occupant <= node.memory_floor && l.state[cell] == .Chosen):
+			if l.promised <= mine do return slot, .None
+		case:
+			// The cell still holds an older open slot; wait for the host to release it.
+			return 0, .Window_Full
+		}
+		slot = own_slot_from(node, slot + 1)
 ```
 ])
 
@@ -180,10 +197,12 @@ Two errors come out of it. `.Global_Slot_Exhausted` when `own_next` reaches
 leaderless log: if some slot below is not decided and the host has not consumed
 the prefix, the floor does not move, and every owner eventually gets
 `.Window_Full` until a revocation fills the hole. `node_propose_batch` first
-asks `next_usable_own_slot` for the starting slot, then `own_slots_available`
-checks that `len(values)` own slots, spaced $N$ apart, all fit under the window
-edge, and only then calls `propose_owned` once per value. A batch of $k$ values
-therefore spans $(k - 1) N + 1$ slots of the log, and the slots in between
+runs `own_slots_available`, which probes the `len(values)` own slots the batch
+would take, stepping over revoked and decided ones exactly as a proposal would,
+without changing anything; only when every one of them fits under the window
+edge does it call `propose_owned` once per value. So a batch is admitted whole
+or refused whole, and a refused batch leaves no vote behind. A batch of $k$
+values spans at least $(k - 1) N + 1$ slots of the log, and the slots in between
 belong to the other owners.
 
 #api_anchor([`propose`, `propose_batch`], [
@@ -204,21 +223,22 @@ suggestion of the host's no-op, sent by `tick`:
 // At most this many skips leave per tick, so an idle owner catching up does not flood.
 SKIP_BURST :: 8
 
-// Skips: no-ops in this node's own slots below the highest slot anyone has reached.
+// Skips: no-ops in this node's own slots below the highest slot anyone has reached, at
+// most `budget` (and never more than SKIP_BURST) per tick.
 @(private)
 skip_idle_slots :: proc(
 	node: ^Node($V, $M, $W, $C, $G),
 	noop: V,
+	budget: int,
 	effects: ^Effects(V, M, W, C, G),
-) -> Error {
-	sent := 0
-	for node.own_next <= node.highest_seen && sent < min(C, SKIP_BURST) {
-		_, err := propose_owned(node, noop, effects)
-		if err == .Window_Full do break
-		if err != .None do return err
+) -> (sent: int, err: Error) {
+	for node.own_next <= node.highest_seen && sent < min(budget, SKIP_BURST) {
+		_, propose_err := propose_owned(node, noop, effects)
+		if propose_err == .Window_Full do break
+		if propose_err != .None do return sent, propose_err
 		sent += 1
 	}
-	return .None
+	return sent, .None
 }
 ```
 ])
@@ -301,21 +321,29 @@ timeout, and before that each has sent a `Learn_Message` to member 3 every
 `heartbeat_interval_ticks`.
 
 *Bounded prepare.* `start_revocation` picks a fresh round above everything it
-has seen, exactly as `start_campaign` does, enters `.Preparing`, remembers the
-no-op, clears the election state, and then bounds the range:
+has seen, exactly as `start_campaign` does, bounds the range, promises itself,
+and only then enters `.Preparing`, remembers the no-op, and clears the election
+state:
 
 #code_file("src/ownership.odin", [
 ```odin
-	node.recover_base = node.delivered_through + 1
-	chunk_end := slot_add(node.recover_base, Slot(C - 1))
-	node.recover_last = min(chunk_end, max(node.highest_seen, node.recover_base))
+	base := node.delivered_through + 1
+	chunk_end := slot_add(base, Slot(C - 1))
+	last := min(chunk_end, max(node.highest_seen, base), node.memory_floor + Slot(W))
 	prepare := Prepare_Message{
-		ballot = node.ballot, first = node.recover_base, last = node.recover_last, scope = .Bounded,
+		ballot = ballot_make(greatest + 1, node.priority, node.id),
+		first = base, last = last, scope = .Bounded,
 	}
 	// The revoker promises itself first, so its ballot is durable before the Prepare
-	// leaves and a restart campaigns above it (the same rule as start_campaign).
-	if !promise_bounded(node, prepare, effects) do return .Window_Full
-	broadcast_all(node, effects, prepare)
+	// leaves and a restart campaigns above it (the same rule as start_campaign). If a
+	// cell of the range is still held by an older open slot, nothing has changed yet:
+	// the node stays a follower and tries again after the next timeout.
+	if !promise_bounded(node, prepare, effects) {
+		node.stall_ticks = 0
+		return .None
+	}
+	node.ballot = prepare.ballot
+	node.role = .Preparing
 ```
 ])
 
@@ -325,7 +353,8 @@ a `Write_Promise_At` for every slot of the range in the same batch as the
 is what lets a restarted revoker always pick a higher round, and the
 safety-argument chapter's pre-durable lemma rests on it.
 
-The range is $[#[`delivered_through + 1`], min(#[`chunk end`], #[`highest_seen`])]$.
+The range is $[#[`delivered_through + 1`], min(#[`chunk end`], #[`highest_seen`], #[`memory_floor + W`])]$,
+clamped to the live window so the revoker can always promise every slot of it.
 There is no reason to fence any slot above `highest_seen`: nobody has reached
 it, its owner has not been slow about it, and revoking it would only steal a
 slot from a live member. That is the second half of the prediction.
@@ -437,19 +466,21 @@ and slot 3 decides 33, not the no-op.
 
 A revocation can decide the no-op in a slot whose owner had suggested a real
 value that nobody heard. The value was accepted from a client and must not
-vanish. `record_commit` notices the case:
+vanish. Two places notice the case. `on_accept`, when the revoker's accept is
+about to overwrite the owner's own vote, and `record_commit`, when the decision
+arrives without the accept having been seen:
 
 #code_file("src/consensus.odin", [
 ```odin
 	// An owner whose suggestion lost to a revocation proposes it again later.
-	if node.ownership && node.lead_slot[cell] == slot && l.state[cell] == .Voted &&
+	if node.ownership && l.state[cell] == .Voted &&
 	   l.vote_ballot[cell] == ownership_ballot(node.id) && l.value[cell] != value {
 		queue_resubmit(node, l.value[cell])
 	}
 ```
 ])
 
-The conditions read: this node was driving the slot, its own vote there is at
+The conditions read: this node's own vote in the slot is at
 its ownership ballot, and the decision that just arrived carries a different
 value. The lost value goes into `resubmit`, a `small_array` of `CHUNK_SLOTS`
 values, and the next `tick_ownership` calls `drain_resubmits`, which
@@ -461,10 +492,10 @@ to the no-op, then reconnects member 3. The retransmitted `Commit{3, 0}` fires
 the hook, and 33 is decided in a later slot owned by member 3.
 
 What a host may rely on is narrower than "never lost." The queue holds one
-chunk of values; `queue_resubmit` drops a value beyond that, and the comment in
-the code says why: a burst that large is the host's to retry through its
-ordinary timeout-and-retry discipline, the same one it needs anyway for a
-suggestion whose owner crashes with a non-durable vote. Resubmission is a
+chunk of values; `queue_resubmit` counts a value beyond that in
+`resubmits_dropped` (read it with `paxos.resubmits_dropped`) and leaves it to
+the host's ordinary timeout-and-retry discipline, the same one it needs anyway
+for a suggestion whose owner crashes with a non-durable vote. Resubmission is a
 liveness courtesy that covers the common case, not a delivery guarantee, and a
 resubmitted value is decided in a different slot from the one it was first
 suggested in, later in the log.

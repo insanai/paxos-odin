@@ -255,10 +255,19 @@ with `.Missing_Noop` if none was recorded. `resolve_chunk` then walks the chunk:
 			if decided, ok := ledger_chosen_at(&node.ledger, slot); ok {
 				broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = decided})
 			}
-		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
-			send_accept(node, slot, node.ballot, node.recovered_value[cell], effects) or_return
 		} else {
-			send_accept(node, slot, node.ballot, node.noop.?, effects) or_return
+			value := node.noop.?
+			if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Voted {
+				value = node.recovered_value[cell]
+			}
+			accept_err := send_accept(node, slot, node.ballot, value, effects)
+			if accept_err == .Not_Leader {
+				// A higher ballot already holds this decree: this candidate lost. Step down
+				// quietly; the winner (or the next timeout) finishes the range.
+				node.role = .Follower
+				return false, .None
+			}
+			accept_err or_return
 		}
 ```
 ])
@@ -398,11 +407,14 @@ cell_of :: #force_inline proc(slot: Slot, $WINDOW: int) -> int {
 `node_init` asserts at compile time that `WINDOW_SLOTS` is a power of two, so
 the ring index is `(s - 1) & (WINDOW_SLOTS - 1)`, one mask rather than a
 division. The cell is tagged with its slot number in the ledger's `slot`
-column. `claim_live` decides whether a cell may be taken for a new slot:
+column. `claim_live` decides whether a cell may be taken for a new slot. The live
+window is $(#[`memory_floor`], #[`memory_floor`] + W]$: a slot below it has been
+consumed by the host, and a slot above it would land in the cell of a slot that is
+still live, so both are refused, and live slots and cells stay in bijection:
 
 #code_file("src/consensus.odin", [
 ```odin
-	if slot <= node.memory_floor do return 0, false
+	if slot <= node.memory_floor || slot - node.memory_floor > Slot(W) do return 0, false
 	l := &node.ledger
 	cell := cell_of(slot, W)
 	held := l.slot[cell]
