@@ -31,7 +31,7 @@ This document defines the *Paxos Odin Discussions (POD)* RFC process, metadata s
 
 = Introduction
 
-Distributed consensus libraries require uncompromising precision. Subtle design choices—such as write-ahead ordering, sliding-window recycling, and quorum intersections—cannot be captured solely in inline source comments or transient issue tracker threads.
+Distributed consensus libraries require uncompromising precision. Subtle design choices - such as write-ahead ordering, sliding-window recycling, and quorum intersections - cannot be captured solely in inline source comments or transient issue tracker threads.
 
 POD provides a structured, versioned, Typst-rendered specification pipeline embedded in the repository.
 
@@ -195,10 +195,10 @@ or claim that every chapter contains an exercise pattern it does not actually us
 
 Use one main claim per paragraph. Prefer concrete subjects and active verbs. Define
 terms before relying on them; use the same term for the same state throughout.
-“Chosen”, “known to be chosen”, “released”, and “applied” are distinct events.
+"Chosen", "known to be chosen", "released", and "applied" are distinct events.
 
-Avoid claims such as “obvious”, “inevitable”, “production-grade”, “zero cost”, or
-“always fastest” unless the text supplies the necessary evidence and scope. A
+Avoid claims such as "obvious", "inevitable", "production-grade", "zero cost", or
+"always fastest" unless the text supplies the necessary evidence and scope. A
 counterexample is more useful than a slogan. A paper argument over inspected code
 is not machine-checked implementation correctness.
 

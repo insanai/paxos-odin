@@ -134,7 +134,7 @@ Ownership uses these fields: `ownership: bool` (copied from `Node_Options.rotati
 = References
 
 - Mao, Yanhua, Junqueira, Flavio P., and Marzullo, Keith. "Mencius: Building Efficient Replicated State Machines for WANs." OSDI, 2008.
-- Lamport, Leslie. "The Part-Time Parliament." ACM TOCS, 1998. §2.2, conditions B1 to B3.
+- Lamport, Leslie. "The Part-Time Parliament." ACM TOCS, 1998. Section 2.2, conditions B1 to B3.
 - Lamport, Leslie. "Paxos Made Simple." ACM SIGACT News, 2001.
 - POD 0002: Paxos-Odin: Architecture and Pure State Machine Design.
 - POD 0003: Durability Contracts, Window Reuse, and Trim Anchors.

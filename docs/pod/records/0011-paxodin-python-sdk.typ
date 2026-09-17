@@ -101,8 +101,8 @@ vocabulary. Concretely, this means the following, each of which the
 implementation now does.
 
 - *Messages are types, not tags.* The nine protocol messages are nine frozen
-  dataclasses -- `Prepare`, `Promise`, `PromiseRange`, `Accept`, `Accepted`,
-  `Commit`, `Learn`, `Nack`, `Heartbeat` -- and `Message` is their union. An
+  dataclasses - `Prepare`, `Promise`, `PromiseRange`, `Accept`, `Accepted`,
+  `Commit`, `Learn`, `Nack`, `Heartbeat` - and `Message` is their union. An
   adapter writes `match envelope.message: case Accept(slot=s): ...`. The flat
   nineteen-field record that the ABI and the wire use exists in exactly one
   private place, and the type checker proves every `match` over the union
@@ -123,7 +123,7 @@ implementation now does.
   properties. `NodeState` remains for a host that wants the engine's full view.
 - *There is an asyncio surface.* `AsyncSession` drives itself: a receiver task
   delivers frames, a ticker task keeps the timers moving, and
-  `await session.append(...)` resolves on release. Ownership is explicit -- every
+  `await session.append(...)` resolves on release. Ownership is explicit - every
   transition, the caller's or the driver's, runs under one `asyncio.Lock`, and
   journal syncs run in a worker thread so an `fsync` never stalls the loop.
   Cancellation is honest: cancelling `append` stops *waiting*; it does not
@@ -196,7 +196,7 @@ drift from the code it describes.
 
 `committed_since(slot, *, limit=...)` reads retained local history with a bounded
 result. It supplies no freshness guarantee. Application progress uses a separate
-durable cursor; receiving a `Receipt` never means “applied.” A small
+durable cursor; receiving a `Receipt` never means "applied." A small
 `paxodin.testing.Cluster` may provide three in-process participants for examples,
 with memory-only storage visibly marked as unsuitable for durable deployments.
 
@@ -272,8 +272,8 @@ then failed would lose a contiguously released prefix with nothing holding it.
 `confirm` requires that every record was actually copied, which turns the likeliest
 integration mistake into a status instead of an acknowledged but unwritten promise.
 A batch that produced no writes is born confirmed: a transition can release
-decisions without writing anything -- a commit for an already chosen cell, or a
-configuration mismatch -- and demanding a confirmation there would assert a
+decisions without writing anything - a commit for an already chosen cell, or a
+configuration mismatch - and demanding a confirmation there would assert a
 durability fact about no records at all.
 
 A read-only batch-state query reports whether a token is pending, confirmed or
@@ -490,7 +490,7 @@ row, paired bootstrap interval, raw samples in
 #table(
   columns: (auto, auto, auto, auto, auto), inset: 6pt, stroke: 0.5pt + luma(180),
   [*Path*], [*ns/value*], [*vs native*], [*ABI crossings*], [*What it adds*],
-  [native Odin],    [826],    [1.00],  [--], [the transition alone],
+  [native Odin],    [826],    [1.00],  [-], [the transition alone],
   [C ABI],          [7,008],  [8.52],  [7],  [ctypes crossings and copies],
   [Python `Node`],  [23,787], [28.78], [7],  [owned Python objects],
   [`Session` (memory)], [29,739], [35.98], [8], [framing, journal, ordering],
@@ -507,7 +507,7 @@ today stays correct after any number of later transitions. Payload size moves th
 native and ABI rows by under 5% across 8, 64 and 1,024 bytes, because values are
 stored inline at a fixed size and a larger one costs the engine no allocation. The
 Python rows move by up to 12% at 1,024 bytes, and that is the copy into an owned
-`bytes` -- again the ownership contract, paid once per released entry. The table
+`bytes` - again the ownership contract, paid once per released entry. The table
 was re-taken after the typed message classes and the asyncio surface landed; the
 typed boundary added no measurable cost.
 
@@ -531,7 +531,7 @@ serialization, durability and release semantics before comparing another package
 or the existing Zig harness; never compare Python fsync latency with native
 in-memory transition cost. Set regression budgets from the first reproducible
 baseline, not an invented universal target. Publish evidence in Typst and raw data
-under the benchmark results tree. No “fastest Python Paxos” claim follows from
+under the benchmark results tree. No "fastest Python Paxos" claim follows from
 native-only results.
 
 == 6. Optional capabilities

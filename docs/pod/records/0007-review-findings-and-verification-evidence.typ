@@ -145,13 +145,13 @@ The simulation records values chosen by durable vote quorums, even if no leader 
 
 == First pass
 
-`docs/review-benchmark.json` records the original Odin `HEAD` sources and revised sources with the same current benchmark driver, compiler, build flags, 32,768 values, five inner samples, and three alternating outer repetitions. The amortized cost stayed approximately 113–122 ns/value on that machine, with small differences in both directions. This supports retaining the correctness repairs without claiming a demonstrated speedup. These numbers are neither network/fsync latency nor a comparison against a compiled Zig library.
+`docs/review-benchmark.json` records the original Odin `HEAD` sources and revised sources with the same current benchmark driver, compiler, build flags, 32,768 values, five inner samples, and three alternating outer repetitions. The amortized cost stayed approximately 113-122 ns/value on that machine, with small differences in both directions. This supports retaining the correctness repairs without claiming a demonstrated speedup. These numbers are neither network/fsync latency nor a comparison against a compiled Zig library.
 
 The local comparison used `../paxos-zig/src/{protocol,replicated_log,learner,bit_set,host_managed,errors,root}.zig`, its embedded test inventory, compiler/misuse fixture inventory, and simulator/verification layout. The Zig compiler was not available in `PATH`; no cross-language performance ranking is claimed.
 
 == Second pass
 
-Benchmark on the second-pass machine (AMD Ryzen 7 5800H, Linux, ZFS journal, 131,072 values per in-memory mode, median of five samples): 140–145 ns per committed value in memory across the five modes; 26.8 ms per value with one fsync per commit round (six barriers per value) and 3.39 ms with group commit over eight values (0.75 barriers per value). The earlier book table that ranked this library against other implementations was removed because it had not been measured; a recorded four-way run replaced it (see the comparison below).
+Benchmark on the second-pass machine (AMD Ryzen 7 5800H, Linux, ZFS journal, 131,072 values per in-memory mode, median of five samples): 140-145 ns per committed value in memory across the five modes; 26.8 ms per value with one fsync per commit round (six barriers per value) and 3.39 ms with group commit over eight values (0.75 barriers per value). The earlier book table that ranked this library against other implementations was removed because it had not been measured; a recorded four-way run replaced it (see the comparison below).
 
 == Four-way comparison on one machine
 

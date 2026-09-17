@@ -85,7 +85,7 @@ explicit treatment.
 A voter that forgets a live grant on restart can violate it immediately. Specify
 either durable grant recovery with a clock model that survives restart, or a
 conservative restart quarantine with proved bounds. A vague guard interval that
-“covers restart time” is not enough. A recovered leader must discard stale lease
+"covers restart time" is not enough. A recovered leader must discard stale lease
 authority. The resulting writes and barriers must fit POD 0003.
 
 == Applied state and membership

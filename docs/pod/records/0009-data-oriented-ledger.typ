@@ -162,7 +162,7 @@ the core. Measurements distinguish static capacity, allocated heap, resident mem
 and elapsed time. Callgrind instruction counts guide investigation; they are not
 substitutes for uninstrumented performance measurements.
 
-= Recovery storage and matched measurements — 2026-09-17
+= Recovery storage and matched measurements - 2026-09-17
 
 == Implementation and correctness
 
@@ -185,7 +185,7 @@ Nanoseconds per completed value (median), finite in-process workload:
 #import "../../book/figures.typ": matched_comparison_table
 #matched_comparison_table()
 
-The paired median ratios show 15.8–26.3% lower cost for the three-node 1 KiB workloads. Several small-payload rows are approximately 1–3% slower; the five-node 1 KiB/depth-64 paired ratio is 1.047 with a 95% interval of 0.928–1.089. That row is not an established improvement. Zig and OmniPaxos still lead some workload categories.
+The paired median ratios show 15.8-26.3% lower cost for the three-node 1 KiB workloads. Several small-payload rows are approximately 1-3% slower; the five-node 1 KiB/depth-64 paired ratio is 1.047 with a 95% interval of 0.928-1.089. That row is not an established improvement. Zig and OmniPaxos still lead some workload categories.
 
 These numbers are not directly interchangeable with the historical README table: the common drivers remove the journal replay mirror, use equal command counts and payloads, retain complete finite logs, and time completion. LibPaxos retains its native preexecution work; OmniPaxos retains native coalescing. No language-wide or production-service superiority is established.
 
@@ -193,7 +193,7 @@ These numbers are not directly interchangeable with the historical README table:
 
 The first retry-scan experiment counted occupied cells before scanning. Callgrind instructions increased from 12,591,988 to 17,833,184 in the dedicated retransmission workload, so that implementation was discarded.
 
-The retained one-wrap scan reduces those instructions to 10,139,090 (19.5% fewer). A paired native timing experiment reported a median ratio of 0.877, with a 95% interval of 0.820–0.905. The sparse-retry regression test verifies that a single used slot produces one retry, not repeated duplicates. The aggregate matched gate additionally checks unchanged steady-state paths.
+The retained one-wrap scan reduces those instructions to 10,139,090 (19.5% fewer). A paired native timing experiment reported a median ratio of 0.877, with a 95% interval of 0.820-0.905. The sparse-retry regression test verifies that a single used slot produces one retry, not repeated duplicates. The aggregate matched gate additionally checks unchanged steady-state paths.
 
 No speculative wire batching, protocol mode, storage adapter, networking, or threading was added. Further candidates were not implemented without measured benefit.
 

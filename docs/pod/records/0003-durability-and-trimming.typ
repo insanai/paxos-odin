@@ -206,8 +206,8 @@ The obligations are met as follows. Every output accessor requires the batch to 
 confirmed, so no message, released entry or served range can be read before its
 writes are durable. No transition may begin while a batch is unfinished, and
 finishing requires confirmation, so a batch is never discarded while it holds
-unconfirmed writes. Closing a node with an unconfirmed batch is permitted --
-`close` must work from a `finally` -- but it reports the count of abandoned
+unconfirmed writes. Closing a node with an unconfirmed batch is permitted -
+`close` must work from a `finally` - but it reports the count of abandoned
 records rather than hiding it. Recovery is journal replay; the bridge never
 confirms writes whose persistence is uncertain.
 

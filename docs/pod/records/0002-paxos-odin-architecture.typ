@@ -197,7 +197,7 @@ This is finite executable evidence. No refinement proof or coverage percentage i
 
 = Current Implementation Review (2026-09-17)
 
-This committed specification describes the implemented core. “Pure” means that the
+This committed specification describes the implemented core. "Pure" means that the
 core performs no I/O; transitions mutate the node and fill an effects buffer.
 `recovery_index` checks the slot against the active range before subtracting
 `recover_base` and narrowing the result. Recovery scratch and each peer's seen
