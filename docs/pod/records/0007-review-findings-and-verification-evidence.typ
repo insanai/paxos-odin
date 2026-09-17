@@ -265,7 +265,7 @@ A third independent review reproduced four defects with an isolated program; eac
 
 Two contract items from the same review: resubmission is documented as best effort and a dropped resubmission is counted (`resubmits_dropped`); and the membership is now sorted by `membership_init`, so ownership order is ascending id on every node whatever order the host listed the members in, which retires the rule that every host must pass the same order. The benchmark harness now fails on a transition error, on a queue overflow, and on any node that did not decide every value, so a dropped message cannot flatter a number.
 
-= Consolidated Historical Verification (2026-09-16)
+= Consolidated Historical Verification
 
 `make check` runs `tools/check_style.py` (the Zen constraints of POD 0001: file, line, and procedure limits), `odin check -vet -strict-style` on `tests`, `sim`, `bench`, `cli`, and `examples/counter.odin`, then:
 
@@ -280,7 +280,7 @@ Two contract items from the same review: resubmission is documented as best effo
 
 `make bench-compare` (`tools/bench_compare.py`) reran this library, `paxos-zig`, OmniPaxos, and LibPaxos3 sequentially on the `0.2.0` sources and rewrote `bench/results/latest.json` (recorded 2026-09-16T23:53:16Z on the same AMD Ryzen 7 5800H host, after the fifth-pass fixes); the `0.1.0` figures quoted under "Four-way comparison" above survive only in that paragraph. Those figures belong to the September 16 harness. Current matched comparisons and profiles are recorded separately in POD 0009. Against the `0.1.0` run, the 1 KiB workload, where the copies were the cost, fell from 1,091 ns to 505 ns per value one at a time; the three-voter 8-byte workload, where the transition logic is, moved from 145 ns to 148 ns; five voters from 185 ns to 191 ns. The file also carries the two `owned-3n` rows for rotating ownership (161 ns and 154 ns) and the durable rows (27.49 ms and 3.71 ms). The window bound added in the fourth pass costs one compare per claim and is inside the noise of these rows. POD 0009 states what the redesign was expected to change and what it was not.
 
-= Sixth Pass: Recovery Storage and Matched Evidence (2026-09-17)
+= Sixth Pass: Recovery Storage and Matched Evidence
 
 The implemented recovery scratch now scales with chunk capacity. Range checks
 precede narrowing, selection freezes before phase two, and retries retain it.

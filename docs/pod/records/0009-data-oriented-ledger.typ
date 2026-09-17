@@ -31,7 +31,26 @@
 
 This record explains the layout of the `0.2.0` core: a `Ledger` that stores Lamport's acceptor variables as columns over a power-of-two window, two bitmaps that make every scan a word walk, a slot tag per cell, and messages, records, and released entries that reference a value inside that ledger instead of copying it. It states the pointer contract, gives the memory formulas per configuration, says what the change made faster and what it did not, lists the constraints the layout imposes, and records the alternatives that were rejected.
 
-= The Problem
+= Status and Implementation Boundary
+
+Recovery reserves one chunk of values and metadata, rather than one complete
+ledger window. Its indexes are relative to the active recovery base; per-peer
+report bitmaps use the same offsets. On chunk rollover metadata is reset while
+payload bytes remain uninitialised until a valid report stores them. A read-quorum
+selection is frozen before phase two starts, including when the window forces a
+retry. See the chunk-local recovery argument in the proof chapter.
+
+The public procedures and durable/wire formats are unchanged. The size and layout
+of `Node` change; consumers recompile, and code inspecting its recovery arrays must
+use chunk-relative indexes. Raw node images are not a supported journal format.
+
+The matched benchmark and Valgrind drivers live outside the library. They introduce
+no runtime dependencies, storage adapters, threads, clocks, or network services into
+the core. Measurements distinguish static capacity, allocated heap, resident memory,
+and elapsed time. Callgrind instruction counts guide investigation; they are not
+substitutes for uninstrumented performance measurements.
+
+= Problem Statement
 
 In `0.1.0` a value lived inline in `Accept_Message`, `Commit_Message`, `Promise_Message`, the durable records, and `Committed`. `Message(Value)` was a union, so every envelope was as large as the largest variant plus the value, and a value was copied at each of these points: into the leader's proposal cell, into the accept envelope for each peer, into each acceptor's cell, into the acceptor's write record, into the commit envelope for each peer, into each learner's cell, and into the committed entry. For an 8-byte value the copies were noise; for a 1 KiB value they were most of the work. A profile of the in-memory benchmark on the benchmark host (POD 0007, third pass) showed the fat message union and the value copies dominating the 1 KiB workload. The per-slot `Durable_Cell{slot, accepted: Maybe(Accepted), committed: Maybe(Value)}` also meant that a phase-one scan or a retransmission scan loaded whole cells, values included, to read a ballot.
 
@@ -105,7 +124,7 @@ A ledger cell costs three 8-byte columns (`slot`, `promised_at`, `vote_ballot`),
 
 `Message(Value)` is 64 bytes and `Envelope(Value)` 72 bytes for every `Value` (the largest variant is `Promise_Range_Message`); `Write(Value)` is 32 bytes; `Committed(Value)` is 16 bytes. `Effects` capacities are therefore independent of the payload type: `size_of(Effects(u64, 7, 256, 64))` is 41,840 bytes, and the benchmark's `Effects(u64, 3, 4096, 256)` is 137,904 bytes.
 
-= Historical Measurement: 2026-09-16
+= Historical Measurements
 
 The in-memory benchmark (`bench/main.odin`, recorded by `make bench-compare` into `bench/results/latest.json`) measures the cost per committed value for three and five voters, 8-byte and 1 KiB values, synchronous, pipelined, and batched proposals, and the ownership mode.
 
@@ -136,33 +155,14 @@ The Odin features the layout does lean on are the ones the profile shows paying 
 - *16-bit node ids.* `Node_Id :: u16` so the node field fits the packed ballot; `MAX_SUPPORTED_MEMBERS` is 65,535 and member positions use `u16`. Membership stores ids in ascending order and binary-searches that array; the former `by_id` array has been removed.
 - *One transition between produce and consume.* The pointer contract holds only while the host runs one transition at a time per node and consumes or copies the batch before the next. This is the same discipline the durability rule already required.
 
-= Alternatives Rejected
+= Alternatives Considered
 
 - *Type-erased value storage.* Storing values as `[]u8` with a size parameter would have allowed variable-size payloads and decoupled the ledger from `Value`, but it would have moved equality and copying into the host, made `Committed` and the records carry a length, and removed the compile-time check that every peer agrees on the payload type. The parametric `[WINDOW]Value` keeps `==`, `size_of`, and the type mismatch errors in the compiler.
 - *A `Log_Effects` wrapper.* A separate effects type for `Replicated_Log_Node` that unwrapped `Entry` values into commands and stop signs for the host was considered again during the redesign, for the same reason as in POD 0005: a friendlier committed entry. It was rejected again because it would need a second copy of every released entry (the wrapper cannot point into the core's `Entry` and present a `Value`), which is the copy this record removes. The host reads `committed.value^` as an `Entry` and switches on it.
 - *Inline values with a small-value fast path.* Keeping values inline in messages for small `Value` types and switching to pointers above a threshold would have made `Message(Value)` and the host's transport code depend on `size_of(Value)`. One representation, with the copy made explicit at the transport and the journal, was chosen so that the same `Packet` idiom serves every payload.
 - *Array-of-structs with a `Maybe` per field.* The `0.1.0` `Durable_Cell` with `accepted: Maybe(Accepted(Value))` and `committed: Maybe(Value)` stored two values per cell and paid for both on every scan. Columns with one `state` byte store the value once and let a scan skip the value column entirely.
 
-= Follow-up: bounded recovery scratch (2026-09-17)
-
-Recovery now reserves one chunk of values and metadata, rather than one complete
-ledger window. Its indexes are relative to the active recovery base; per-peer
-report bitmaps use the same offsets. On chunk rollover metadata is reset while
-payload bytes remain uninitialised until a valid report stores them. A read-quorum
-selection is frozen before phase two starts, including when the window forces a
-retry. See the chunk-local recovery argument in the proof chapter.
-
-The public procedures and durable/wire formats are unchanged. The size and layout
-of `Node` change; consumers recompile, and code inspecting its recovery arrays must
-use chunk-relative indexes. Raw node images are not a supported journal format.
-
-The matched benchmark and Valgrind drivers live outside the library. They introduce
-no runtime dependencies, storage adapters, threads, clocks, or network services into
-the core. Measurements distinguish static capacity, allocated heap, resident memory,
-and elapsed time. Callgrind instruction counts guide investigation; they are not
-substitutes for uninstrumented performance measurements.
-
-= Recovery storage and matched measurements (2026-09-17)
+= Validation and Acceptance Gates
 
 == Implementation and correctness
 

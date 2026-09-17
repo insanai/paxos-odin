@@ -29,6 +29,20 @@
 
 This record fixes the model `paxos-odin` is argued against, the definitions the argument uses, and the theorem and lemmas that connect Lamport's conditions B1, B2 and B3 to the procedures in `src/`. It is the reference the book's chapter "The Safety Argument" expands with full proofs; here proofs are abbreviated and each lemma points at the code that discharges its premise. The record closes with the obligation-to-code map, the list of what is *not* proved, and two key insights surfaced by the analysis: the pre-durable Accept exception requires the candidate's own promise to be durable, and a stop sign seals at release rather than at choice, meaning any value chosen by the core above the seal is abandoned rather than prevented.
 
+= Status and Implementation Boundary
+
+This is a committed paper argument over the implementation, not a machine-checked
+proof. The agreement argument concerns durable votes and decisions released only
+after their required writes are confirmed. Its induction is over decision events,
+including repeated events at one node, rather than over the set of nodes.
+
+For B3, a complete read quorum is necessary before selection. Additional valid
+reports may contribute to the selected value. `recovery_ready` then freezes that
+selection before any phase-two proposal; retries reuse it. A later losing vote
+cannot contradict a known decision, whereas two reported decisions with different
+values are an error. Chunk-relative indexing must preserve this evidence until
+resolution finishes; POD 0009 records the boundary and retry tests.
+
 = Axioms
 
 - *A1 (Processes).* A configuration has a fixed, finite membership. A process runs one transition at a time, may crash at any instant, and restarts with exactly the records it persisted: every field of `Node` outside `Ledger` is volatile and is rebuilt by `node_restore`.
@@ -135,20 +149,6 @@ Fix one decree $s$ unless stated otherwise. Full proofs are in the book chapter;
 - *The pre-durable exception (Lemma 10).* The exception is sound only because the restarted proposer's ledger holds a record at the round of the in-flight ballot, and the library discharges that itself: `start_campaign` and `start_revocation` promise their own ballot in the batch that carries the `Prepare`. An earlier draft of this record left it to the host to deliver a candidate's self-addressed `Prepare` before any peer's reply; that rule is no longer needed, and a host must not rely on message order for safety.
 - *Chosen above the seal (Lemma 15).* The core can still choose a value above the stop slot in the sealed configuration: `resolve_chunk` re-drives a reported vote with no seal check, and under rotating ownership an owner that has not learned of the seal can have a suggestion decided in its own slot (`reconfiguration_sim_ownership_abandons_decisions_above_the_seal`). The log abandons such a decision: it is never released and `replicated_log_read`, `replicated_log_read_decided` and `replicated_log_decided_through` hide it. Nothing is proved about an abandoned decision beyond that. A client value abandoned this way is not reported to the host and must be proposed again in the next configuration, and a host that inspects the core ledger through `replicated_log_ledger` sees the decision and must not act on it.
 - *Learners.* `node_learn_chosen` and `learner_learn_chosen` trust the host's certification that a value is chosen for the named configuration; the argument covers voting members.
-
-= Review of the Implementation Boundary (2026-09-17)
-
-This is a committed paper argument over the implementation, not a machine-checked
-proof. The agreement argument concerns durable votes and decisions released only
-after their required writes are confirmed. Its induction is over decision events,
-including repeated events at one node, rather than over the set of nodes.
-
-For B3, a complete read quorum is necessary before selection. Additional valid
-reports may contribute to the selected value. `recovery_ready` then freezes that
-selection before any phase-two proposal; retries reuse it. A later losing vote
-cannot contradict a known decision, whereas two reported decisions with different
-values are an error. Chunk-relative indexing must preserve this evidence until
-resolution finishes; POD 0009 records the boundary and retry tests.
 
 = References
 
