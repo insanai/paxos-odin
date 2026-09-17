@@ -1,0 +1,115 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paxodin"
+version = "0.1.0.dev0"
+description = "Idiomatic Python bindings for the paxos-odin consensus core"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Paxos Odin Contributors", email = "team@insan.ai" }]
+keywords = ["paxos", "consensus", "replication", "distributed-systems"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/insanai/paxos-odin"
+Documentation = "https://github.com/insanai/paxos-odin/tree/master/docs"
+Source = "https://github.com/insanai/paxos-odin"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-timeout>=2.3",
+    "hypothesis>=6.112",
+    "mypy>=1.13",
+    "ruff>=0.16",
+]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.27"]
+
+# ---------------------------------------------------------------------------
+# Build: the wheel carries the Odin shared library built by hatch_build.py.
+# ---------------------------------------------------------------------------
+[tool.hatch.build.targets.wheel]
+packages = ["src/paxodin"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "native", "tests", "examples", "hatch_build.py", "README.md", "LICENSE"]
+
+# The sdist stages the core into native/core/ so an installed source
+# distribution never needs ../../src to exist.
+[tool.hatch.build.targets.sdist.hooks.custom]
+path = "hatch_build.py"
+
+# ---------------------------------------------------------------------------
+# Style: the Zen of Odin (POD 0001), expressed the way Python expresses it.
+# ruff is both the linter and the formatter. The only rules NOT enforced here
+# are file length and function-body length, which ruff cannot express; those
+# live in tools/check_style.py beside the Odin ones.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "D", "UP", "B", "A", "C4", "SIM", "RET", "ARG",
+    "PTH", "ERA", "TRY", "EM", "RSE", "DTZ", "TC", "ANN", "PL", "S", "RUF",
+]
+ignore = [
+    "D203",    # incompatible with D211; D211 is the modern spelling
+    "D213",    # incompatible with D212; summary starts on the first line
+    "PLR0913", # argument count is governed by the Odin options-struct rule
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+suppress-none-returning = false
+
+[tool.ruff.lint.per-file-ignores]
+# Tests spawn a subprocess to compare the two libraries; the command is a
+# literal, so S603 has nothing to check here.
+"tests/**" = ["S101", "S603", "D", "ANN", "PLR2004"]
+"examples/**" = ["D", "ANN", "S101", "T201"]
+"hatch_build.py" = ["D", "ANN", "S603", "S607"]
+# N818 wants every exception named *Error. These names mirror the core's own
+# error values one for one (.Not_Leader -> NotLeader, .Window_Full ->
+# WindowFull), which is what lets the book and the PODs name a single
+# identifier for both languages. Renaming them would break that.
+"src/paxodin/errors.py" = ["N818"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+files = ["src/paxodin"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers --strict-config"
+asyncio_mode = "auto"
+timeout = 120

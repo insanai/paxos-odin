@@ -1,0 +1,42 @@
+site_name: paxodin
+site_description: Idiomatic Python bindings for the paxos-odin consensus core
+repo_url: https://github.com/insanai/paxos-odin
+# The API reference is generated from Google-style docstrings, so it cannot
+# drift from the code. Prose lives in POD 0011 and Part IX of the book, which
+# are Typst; nothing here duplicates them.
+site_dir: ../../docs/build/html/paxodin
+docs_dir: docs
+
+theme:
+  name: material
+  features: [navigation.sections, content.code.copy]
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: {icon: material/weather-sunny, name: Light mode}
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            filters: ["!^_"]
+
+nav:
+  - Overview: index.md
+  - Session: session.md
+  - Async: aio.md
+  - Node: node.md
+  - Models: models.md
+  - Errors: errors.md
+  - Adapters: adapters.md
