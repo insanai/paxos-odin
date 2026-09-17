@@ -162,7 +162,7 @@ the core. Measurements distinguish static capacity, allocated heap, resident mem
 and elapsed time. Callgrind instruction counts guide investigation; they are not
 substitutes for uninstrumented performance measurements.
 
-= Recovery storage and matched measurements - 2026-09-17
+= Recovery storage and matched measurements (2026-09-17)
 
 == Implementation and correctness
 
