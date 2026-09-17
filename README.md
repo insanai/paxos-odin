@@ -232,7 +232,7 @@ window, durability ordering, rotating ownership, and stop signs each preserve
 the theorem. Every lemma names the procedure that discharges its premise and
 the test or oracle that exercises it (POD 0008).
 
-**Tests.** `make test` runs 55 tests in `tests/`. They include a 972-case
+**Tests.** `make test` runs 69 tests in `tests/`. They include a 972-case
 election matrix (every three-voter assignment of no vote / ballot 1 / ballot 2,
 every first-response order, every intersecting quorum pair; a value chosen by an
 earlier quorum must survive), 21 regression tests from the review recorded in
@@ -288,38 +288,37 @@ one after another: this library, [paxos-zig](https://github.com/insanai/paxos-zi
 runs them and records one attributable results file; the tables below are read
 from it, never typed by hand.
 
-Host: AMD Ryzen 7 5800H with Radeon Graphics, Linux 7.0.0-28-generic, odin version dev-2026-09-nightly:a2fb372, zig 0.16.0, rustc 1.98.1 (48a229cea 2026-09-01); Odin built with `-o:speed -no-bounds-check -microarch:native`; recorded 2026-09-16T14:40:24Z in `bench/results/latest.json`.
+Host: AMD Ryzen 7 5800H with Radeon Graphics, Linux 7.0.0-28-generic, odin version dev-2026-09-nightly:a2fb372, zig 0.16.0, rustc 1.98.1 (48a229cea 2026-09-01); Odin built with `-o:speed -no-bounds-check -microarch:native`; recorded 2026-09-16T23:53:16Z in `bench/results/latest.json`.
 
 Nanoseconds per committed value, in-process transport, no serialisation,
 median of repeated samples (lower is better):
 
 | workload | paxos-odin | paxos-zig | OmniPaxos | LibPaxos3 |
 |---|---:|---:|---:|---:|
-| 3 voters, 8 B, one at a time | 165 | 117 | 997 | 2,247 |
-| 3 voters, 8 B, 8 in flight | 149 | 117 | 196 | – |
-| 3 voters, 8 B, 64 in flight | 149 | 112 | 78 | – |
-| 5 voters, 8 B, one at a time | 225 | 210 | 2,714 | – |
-| 5 voters, 8 B, 8 in flight | 197 | 206 | 445 | – |
-| 3 voters, 1 KiB, one at a time | 486 | 2,700 | 1,244 | – |
-| 3 voters, 1 KiB, 8 in flight | 521 | 2,740 | 419 | – |
-| 3 owners, 8 B, one at a time, rotating ownership | 169 | – | – | – |
-| 3 owners, 8 B, 8 in flight, rotating ownership | 161 | – | – | – |
+| 3 voters, 8 B, one at a time | 148 | 113 | 1,010 | 2,280 |
+| 3 voters, 8 B, 8 in flight | 144 | 115 | 198 | – |
+| 3 voters, 8 B, 64 in flight | 141 | 113 | 83 | – |
+| 5 voters, 8 B, one at a time | 191 | 219 | 2,721 | – |
+| 5 voters, 8 B, 8 in flight | 182 | 210 | 446 | – |
+| 3 voters, 1 KiB, one at a time | 505 | 2,719 | 1,244 | – |
+| 3 voters, 1 KiB, 8 in flight | 552 | 2,707 | 423 | – |
+| 3 owners, 8 B, one at a time, rotating ownership | 161 | – | – | – |
+| 3 owners, 8 B, 8 in flight, rotating ownership | 154 | – | – | – |
 
 With a journal file per node and a storage barrier (`fsync`) per host commit
 round, on the same ZFS volume:
 
 | library | mode | per value | fsync per value |
 |---|---|---:|---:|
-| paxos-odin | fsync per commit round, one value | 27.99 ms | 6.00 |
-| paxos-odin | fsync per commit round, 8 values | 3.82 ms | 0.75 |
-| paxos-zig | fsync-each | 28.07 ms | – |
-| paxos-zig | group8 | 3.65 ms | – |
+| paxos-odin | fsync per commit round, one value | 27.49 ms | 6.00 |
+| paxos-odin | fsync per commit round, 8 values | 3.71 ms | 0.75 |
+| paxos-zig | fsync-each | 27.54 ms | – |
+| paxos-zig | group8 | 3.53 ms | – |
 
 Read these for what they are. On three voters with 8-byte values paxos-zig is
 between a fifth and thirty percent cheaper per value than this library; with
-five voters the two are within a tenth of each other, this library ahead with
-eight in flight; with 1 KiB values this library is more than five times
-cheaper, because a value is never copied between proposal and commit: records
+five voters this library is about a tenth cheaper; with 1 KiB values this
+library is more than five times cheaper, because a value is never copied between proposal and commit: records
 and messages point at the one copy in the ledger. Rotating ownership costs
 within a tenth of a single leader per value on the same three nodes, and in
 exchange every node proposes with no round trip to a leader. OmniPaxos pays for
@@ -398,8 +397,9 @@ the records.
   then. Values are compared with `==`; prefer fixed-size records or ids.
 - **The window is a power of two.** `WINDOW_SLOTS` is masked, not divided, to
   find a cell; the compiler rejects any other size with a hint.
-- **Ownership order is membership order.** Under rotating ownership slot `s`
-  belongs to member `(s - 1) mod N` in sorted membership order. A stalled prefix
+- **Ownership order is ascending id.** `init` sorts the membership, so slot `s`
+  belongs to the member of rank `(s - 1) mod N` on every node whatever order
+  the host listed the ids in. A stalled prefix
   is revoked after `election_timeout_ticks`; a full window applies backpressure
   to every owner.
 - **Node ids are non-zero and never reused.** Zero is a sentinel. An id names
@@ -460,7 +460,7 @@ paxos-odin/
 │   ├── learner.odin         Learner: contiguous release of certified decisions
 │   └── errors.odin          Error and explain_error
 ├── examples/counter.odin    Three-node replicated counter
-├── tests/                   55 tests (odin test tests) and the shared harness
+├── tests/                   69 tests (odin test tests) and the shared harness
 ├── sim/                     Deterministic fault simulator (paxos-sim), both modes
 ├── bench/                   In-memory and durable benchmark (paxos-bench); results/
 ├── cli/                     paxos-cli: build, test, sim, bench, example, check, docs, pod
