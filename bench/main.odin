@@ -66,6 +66,7 @@ packet_envelope :: proc(packet: ^Packet($Value)) -> paxos.Envelope(Value) {
 
 Cluster :: struct($Value: typeid, $N: int) {
 	ownership:   bool,
+	last_proposed: paxos.Slot,
 	nodes:       [N]paxos.Node(Value, N, BENCH_WINDOW, BENCH_CHUNK),
 	queue:       [BENCH_QUEUE_CAP]Packet(Value),
 	queue_count: int,
@@ -105,10 +106,11 @@ cluster_init :: proc(c: ^Cluster($Value, $N), ownership: bool) {
 cluster_flush :: proc(c: ^Cluster($Value, $N)) {
 	paxos.confirm_writes_durable(&c.effects)
 	for envelope in paxos.messages_slice(&c.effects) {
-		if c.queue_count < BENCH_QUEUE_CAP {
-			c.queue[c.queue_count] = packet_of(envelope)
-			c.queue_count += 1
+		if c.queue_count >= BENCH_QUEUE_CAP {
+			panic("Benchmark queue overflow. Hint: Increase BENCH_QUEUE_CAP; never drop messages.")
 		}
+		c.queue[c.queue_count] = packet_of(envelope)
+		c.queue_count += 1
 	}
 }
 
@@ -118,7 +120,10 @@ cluster_drain :: proc(c: ^Cluster($Value, $N)) {
 		envelope := packet_envelope(&c.queue[head])
 		head += 1
 		to := int(envelope.to - 1)
-		if paxos.step(&c.nodes[to], envelope, &c.effects) == .None do cluster_flush(c)
+		if err := paxos.step(&c.nodes[to], envelope, &c.effects); err != .None {
+			panic(paxos.explain_error(err))
+		}
+		cluster_flush(c)
 	}
 	c.queue_count = 0
 	decided := paxos.decided_through(&c.nodes[0])
@@ -132,8 +137,9 @@ cluster_drain :: proc(c: ^Cluster($Value, $N)) {
 propose_pipelined :: proc(c: ^Cluster($Value, $N), first, depth: int) {
 	for i in 0..<depth {
 		proposer := (first + i) % N if c.ownership else 0
-		_, err := paxos.propose(&c.nodes[proposer], make_value(Value, first + i), &c.effects)
+		slot, err := paxos.propose(&c.nodes[proposer], make_value(Value, first + i), &c.effects)
 		assert(err == .None, paxos.explain_error(err))
+		c.last_proposed = max(c.last_proposed, slot)
 		cluster_flush(c)
 	}
 	cluster_drain(c)
@@ -144,8 +150,9 @@ propose_batched :: proc(c: ^Cluster($Value, $N), first, depth: int) {
 	values: [BENCH_CHUNK]Value
 	slots: [BENCH_CHUNK]paxos.Slot
 	for i in 0..<depth do values[i] = make_value(Value, first + i)
-	_, err := paxos.propose_batch(&c.nodes[0], values[:depth], slots[:depth], &c.effects)
+	assigned, err := paxos.propose_batch(&c.nodes[0], values[:depth], slots[:depth], &c.effects)
 	assert(err == .None, paxos.explain_error(err))
+	c.last_proposed = max(c.last_proposed, assigned[len(assigned) - 1])
 	cluster_flush(c)
 	cluster_drain(c)
 }
@@ -172,7 +179,27 @@ run_sample :: proc(
 		}
 		executed += depth
 	}
-	return time.duration_seconds(time.since(start)) * 1e9 / f64(iterations)
+	elapsed := time.duration_seconds(time.since(start)) * 1e9 / f64(iterations)
+	cluster_verify(c, c.last_proposed)
+	return elapsed
+}
+
+// Outside the timed region: every node must release through the highest proposed
+// slot, including ownership gaps. Counting proposals alone misses those gaps.
+// Under ownership idle slots are filled by skips, which take ticks outside the timed loop.
+cluster_verify :: proc(c: ^Cluster($Value, $N), expected: paxos.Slot) {
+	for _ in 0..<64 {
+		settled := true
+		for &node in c.nodes do settled &&= paxos.decided_through(&node) >= expected
+		if settled do return
+		for &node in c.nodes {
+			err := paxos.tick(&node, make_value(Value, 0), &c.effects)
+			assert(err == .None, paxos.explain_error(err))
+			cluster_flush(c)
+		}
+		cluster_drain(c)
+	}
+	panic("Benchmark did not settle. Hint: Inspect pending slots and ownership skips before timing.")
 }
 
 // Median of SAMPLE_COUNT runs, in nanoseconds per committed value.
