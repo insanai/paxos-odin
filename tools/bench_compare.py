@@ -22,6 +22,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The matched suite has no durable or external-I/O workloads.
+if '--matched' in sys.argv:
+    command = [sys.executable, str(Path(__file__).with_name('matched_compare.py')),
+               *[arg for arg in sys.argv[1:] if arg != '--matched']]
+    raise SystemExit(subprocess.call(command))
+
 ROOT = Path(__file__).resolve().parents[1]
 ZIG_DIR = Path(os.environ.get('PAXOS_ZIG_DIR', ROOT.parent / 'paxos-zig')).resolve()
 ZIG = os.environ.get('ZIG', 'zig')
@@ -58,7 +64,8 @@ def run_capture(command, cwd, env=None, timeout=3600):
 def normalize(row):
     """Keep the fields every harness reports so rows from different harnesses line up."""
     keep = ('impl', 'workload', 'mode', 'nodes', 'payload_bytes', 'values', 'ns_per_value',
-            'syncs_per_value', 'messages')
+            'syncs_per_value', 'messages', 'samples_ns_per_value',
+            'values_per_iteration', 'measurement_iterations', 'window_slots')
     return {k: row[k] for k in keep if k in row}
 
 

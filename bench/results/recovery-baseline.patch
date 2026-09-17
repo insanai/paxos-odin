@@ -1,0 +1,106 @@
+--- a/src/election.odin
++++ b/src/election.odin
+@@ -63,30 +63,10 @@
+ 	return node.recover_last
+ }
+ 
+-// Payloads need no clearing: state and absolute slot tags establish validity.
+-@(private)
+-reset_recovery_chunk :: proc(node: ^Node($V, $M, $W, $C, $G)) {
+-	node.promise_seen = {}
+-	node.recovered_slot = {}
+-	node.recovered_ballot = {}
+-	node.recovered_state = {}
+-}
+-
+-// Check before subtracting or converting; chunks need not be powers of two.
+-@(private)
+-recovery_index :: #force_inline proc(
+-	node: ^Node($V, $M, $W, $C, $G), slot: Slot,
+-) -> (int, bool) {
+-	if slot < node.recover_base || slot > node.recover_last do return 0, false
+-	offset := slot - node.recover_base
+-	if offset >= Slot(C) do return 0, false
+-	return int(offset), true
+-}
+-
+ @(private)
+ highest_recovered_slot :: proc(node: ^Node($V, $M, $W, $C, $G)) -> Slot {
+ 	highest := ledger_highest_used(&node.ledger)
+-	for cell in 0..<C {
++	for cell in 0..<W {
+ 		if node.recovered_state[cell] != .Empty {
+ 			highest = max(highest, node.recovered_slot[cell])
+ 		}
+@@ -255,10 +235,10 @@
+ 	effects: ^Effects(V, M, W, C, G),
+ ) -> Error {
+ 	if node.role != .Preparing || msg.ballot != node.ballot do return .None
+-	cell, in_chunk := recovery_index(node, msg.slot)
+-	if !in_chunk do return .None
++	if msg.slot < node.recover_base || msg.slot > chunk_limit(node) do return .None
+ 	if msg.state == .Empty do return .Invalid_Promise
+ 
++	cell := cell_of(msg.slot, W)
+ 	if bit_set_insert(&node.promise_seen[member], cell) {
+ 		node.election[member].received_in_range += 1
+ 	}
+@@ -363,8 +343,7 @@
+ 
+ 	for slot <= drive_limit {
+ 		if slot == max(Slot) do return false, .Global_Slot_Exhausted
+-		cell, in_chunk := recovery_index(node, slot)
+-		assert(in_chunk, "Recovery slot outside chunk. Hint: Report this invariant failure.")
++		cell := cell_of(slot, W)
+ 		if chosen, is_chosen := ledger_chosen_at(&node.ledger, slot); is_chosen {
+ 			broadcast_peers(node, effects, Commit_Message(V){slot = slot, value = chosen})
+ 		} else if node.recovered_slot[cell] == slot && node.recovered_state[cell] == .Chosen {
+@@ -403,10 +382,10 @@
+ 	if node.ownership {
+ 		node.recover_last = min(node.recover_last, max(node.highest_seen, node.recover_base))
+ 	}
+-	reset_recovery_chunk(node)
+ 	for i in 0..<membership_count(&node.membership) {
+ 		peer := &node.election[i]
+ 		peer^ = Election_Peer{anchor = peer.anchor, chosen_through = peer.chosen_through}
++		bit_set_reset(&node.promise_seen[i])
+ 	}
+ 	broadcast_all(node, effects, Prepare_Message{
+ 		ballot = node.ballot, first = node.recover_base, last = node.recover_last,
+--- a/src/node.odin
++++ b/src/node.odin
+@@ -95,15 +95,15 @@
+ 	resubmit:                           small_array.Small_Array(CHUNK_SLOTS, Value),
+ 	resubmits_dropped:                  u32,
+ 
+-	// Phase one: scratch indexed by slot - recover_base, valid only for this chunk.
++	// Phase one: what each peer reported for the chunk being recovered.
+ 	election:                           [MAX_MEMBERS]Election_Peer,
+-	promise_seen:                       [MAX_MEMBERS]Bit_Set(CHUNK_SLOTS),
++	promise_seen:                       [MAX_MEMBERS]Bit_Set(WINDOW_SLOTS),
+ 	recover_base:                       Slot,
+ 	recover_last:                       Slot,
+-	recovered_slot:                     [CHUNK_SLOTS]Slot,
+-	recovered_ballot:                   [CHUNK_SLOTS]Ballot,
+-	recovered_state:                    [CHUNK_SLOTS]Cell_State,
+-	recovered_value:                    [CHUNK_SLOTS]Value,
++	recovered_slot:                     [WINDOW_SLOTS]Slot,
++	recovered_ballot:                   [WINDOW_SLOTS]Ballot,
++	recovered_state:                    [WINDOW_SLOTS]Cell_State,
++	recovered_value:                    [WINDOW_SLOTS]Value,
+ 
+ 	// Phase two: acknowledgements for the slots this leader is driving. The proposal
+ 	// itself is the leader's own vote in its ledger.
+@@ -117,8 +117,11 @@
+ @(private)
+ clear_election :: proc(node: ^Node($V, $M, $W, $C, $G)) {
+ 	node.election = {}
+-	reset_recovery_chunk(node)
++	node.promise_seen = {}
+ 	node.recover_base = 0
++	node.recovered_slot = {}
++	node.recovered_ballot = {}
++	node.recovered_state = {}
+ 	node.lead_slot = {}
+ 	node.lead_ballot = {}
+ 	node.acknowledgements = {}

@@ -1,0 +1,3962 @@
+{
+  "meta": {
+    "date": "20260917T073751Z",
+    "host": "agy01",
+    "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.41",
+    "source_sha256": "2af5e5fb7f23100a2de1f901423556d796aea3fb750a102bbb41960e03669a4c",
+    "binary_sha256": {
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-3-8": "80355d77b633ac8810ddafa70a32d028c75ebaeefa0df5b1d5d64c15e44c51e3",
+      "/home/insan/projects/paxos-odin/bin/matched/release/zig-3-8": "cc1b746cd35c8edf4ee207439b1ec48300804e9a5bccfab9597848af9e572769",
+      "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-3-8": "64d40eca77da5626aaa6a13556d0d2a95fb685acc7a98225718c34e4d804e114",
+      "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-3-8": "86f8fb01e1abaa916f3197648f40867e1dc50900bfbf4e5ff263d837e212f259",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-3-8": "fa044c89a1a4c1cb723153bfdcb4de00f1c6dad8901a006753ba80e9aec47724",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-3-64": "01ba04d7dcecd52b275f27a4e2d48de3181403342c238dd275485b4049758543",
+      "/home/insan/projects/paxos-odin/bin/matched/release/zig-3-64": "80d609a2cb8fa4d3b4a4563907c06e4a9379b6bbbaa1549f69b5c8346f790d37",
+      "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-3-64": "52e32fcb228b7ee604b40c863ab89183804fa6f1ff56b09131d9db35ced5c2ac",
+      "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-3-64": "9cac1e675d5f3a3e2a476754fd17c07ad6c16f0f571115bd3367e22ff9b77dfc",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-3-64": "cf1cc9b96f5e257666eb07cac37cd0f74d95f0e6f686f9b9a343f2e2db79a733",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-3-1024": "9b44ba9c0a8e9f584fb564af69bee04c52ac6192cf0abba096c906132de6d6c6",
+      "/home/insan/projects/paxos-odin/bin/matched/release/zig-3-1024": "3056bcadd30a78749018d1a9cb009222f760b54754a65739de6e1914968edff1",
+      "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-3-1024": "b787e705cfd62abb19b8c1ebb660ff183bc996803649a5b3a0e158a64a56424f",
+      "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-3-1024": "9f48e9bb92e91d2519840ff5e950508b409cedf98c4eafc84d58e9a980519a11",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-3-1024": "fa63fcfae4b8d6fd1cd703ec38efade2ca44caced9ffdfe7c027b345dc1de329",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-5-8": "61fe39a42f7f5f9bd3b59f4c48a4853e31373a87c093eff6722cc7f32bea3727",
+      "/home/insan/projects/paxos-odin/bin/matched/release/zig-5-8": "3893b41ffde77828860b883fb1a0a94db0b20a34b608fc71f9cec353a3202d5b",
+      "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-5-8": "64d40eca77da5626aaa6a13556d0d2a95fb685acc7a98225718c34e4d804e114",
+      "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-5-8": "86f8fb01e1abaa916f3197648f40867e1dc50900bfbf4e5ff263d837e212f259",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-5-8": "dab245fc3ee32c233d196543e187c2f82e9516819fae557e309bef7be90fa7e5",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-5-64": "d9fa8fdc21f5e7da164500328a5c79b3be311a032c674351b7743dd33d8ae3fa",
+      "/home/insan/projects/paxos-odin/bin/matched/release/zig-5-64": "3e3c90c3a9208d3053ce7b855001fb788dcb4564422f3321d15ebd1449424e04",
+      "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-5-64": "52e32fcb228b7ee604b40c863ab89183804fa6f1ff56b09131d9db35ced5c2ac",
+      "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-5-64": "9cac1e675d5f3a3e2a476754fd17c07ad6c16f0f571115bd3367e22ff9b77dfc",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-5-64": "03e39e104a0df83ec983d58ed1a2a7cb6f74e5c42798407e3ca4a2940c85a6af",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-5-1024": "8812bbd36cb1559100885cea61a892a65785d5d3e97120e27c82201bace51e00",
+      "/home/insan/projects/paxos-odin/bin/matched/release/zig-5-1024": "27191a23152d7e506f148330d07d0dd297382eb9d54a12b1b5ae53e5c349d12f",
+      "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-5-1024": "b787e705cfd62abb19b8c1ebb660ff183bc996803649a5b3a0e158a64a56424f",
+      "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-5-1024": "9f48e9bb92e91d2519840ff5e950508b409cedf98c4eafc84d58e9a980519a11",
+      "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-5-1024": "4027fb8d3b438e32e2fefb4aa506990b7ebddf0c5794c3cfd84ab410577cce10"
+    },
+    "drivers_sha256": "a9a370606be18fa161a3386f60c89f873fbf1cda783dd3e388277f9cb9a316ad",
+    "profile_build": false,
+    "epoch_values": 4096,
+    "window": 4096,
+    "chunk": 256,
+    "build_policy": {
+      "odin": "speed, no-bounds-check, native (portable symbols for profiles)",
+      "zig": "ReleaseFast, native (baseline for profiles)",
+      "rust": "release LTO, native (x86-64 for profiles)",
+      "c": "O3, native (x86-64 for profiles)"
+    },
+    "commands": {
+      "odin/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-3-8"
+      ],
+      "zig/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/zig-3-8"
+      ],
+      "omnipaxos/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-3-8",
+        "3"
+      ],
+      "libpaxos/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-3-8",
+        "3"
+      ],
+      "odin-baseline/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-3-8"
+      ],
+      "odin/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-3-64"
+      ],
+      "zig/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/zig-3-64"
+      ],
+      "omnipaxos/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-3-64",
+        "3"
+      ],
+      "libpaxos/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-3-64",
+        "3"
+      ],
+      "odin-baseline/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-3-64"
+      ],
+      "odin/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-3-1024"
+      ],
+      "zig/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/zig-3-1024"
+      ],
+      "omnipaxos/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-3-1024",
+        "3"
+      ],
+      "libpaxos/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-3-1024",
+        "3"
+      ],
+      "odin-baseline/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-3-1024"
+      ],
+      "odin/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-5-8"
+      ],
+      "zig/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/zig-5-8"
+      ],
+      "omnipaxos/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-5-8",
+        "5"
+      ],
+      "libpaxos/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-5-8",
+        "5"
+      ],
+      "odin-baseline/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-5-8"
+      ],
+      "odin/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-5-64"
+      ],
+      "zig/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/zig-5-64"
+      ],
+      "omnipaxos/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-5-64",
+        "5"
+      ],
+      "libpaxos/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-5-64",
+        "5"
+      ],
+      "odin-baseline/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-5-64"
+      ],
+      "odin/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-5-1024"
+      ],
+      "zig/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/zig-5-1024"
+      ],
+      "omnipaxos/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/omnipaxos-5-1024",
+        "5"
+      ],
+      "libpaxos/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/libpaxos-5-1024",
+        "5"
+      ],
+      "odin-baseline/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/release/odin-baseline-5-1024"
+      ]
+    },
+    "quorum": "majority",
+    "timing": "in-process finite epoch through decision; no I/O",
+    "unsupported_common_modes": [
+      "rotating ownership",
+      "API batching",
+      "durability"
+    ],
+    "libpaxos_revision": "d255f8b67a32d5e0ef43ac1a393b72cee23d8e0e",
+    "cpu_model": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "baseline_sha256": "be7d4f02574ab79c68b821af5a81c3b83757fcac47c4abf207c9e93ffdd6388c",
+    "odin": "odin version dev-2026-09-nightly:a2fb372",
+    "zig": "0.16.0",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "zig_revision": "71863b787f7b6a4f4bfc9f5aa3a62cb4d7e1d0ac",
+    "zig_source_sha256": "2869293ec5fa075ac6b499f365bc8b969def3a985148d7add7c4444802e5c5d8",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "/sys/fs/cgroup/cpu.max": "max 100000",
+    "/sys/fs/cgroup/memory.max": "max",
+    "pinned_cpu": 0
+  },
+  "runs": [
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        106.97084045410156,
+        109.24525451660156,
+        108.08990478515625,
+        106.80992126464844,
+        113.20671081542969,
+        113.41127014160156,
+        109.51805114746094,
+        109.26220703125,
+        107.17543029785156
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 109.24525451660156,
+        "q1": 107.17543029785156,
+        "q3": 109.51805114746094
+      },
+      "static_components": {
+        "node_inline_bytes": 259904,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 1572992
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        114.38755798339844,
+        112.70896911621094,
+        115.15812683105469,
+        112.9647216796875,
+        115.89028930664062,
+        112.50431823730469,
+        113.33030700683594,
+        119.51393127441406,
+        116.07470703125
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 114.38755798339844,
+        "q1": 112.9647216796875,
+        "q3": 115.89028930664062
+      },
+      "static_components": {
+        "node_inline_bytes": 526328,
+        "effects_inline_bytes": 181168,
+        "driver_capacity_bytes": 2677696
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        1045.7986755371094,
+        1084.909423828125,
+        1065.7479095458984,
+        1058.5911560058594,
+        1071.7364044189453,
+        1109.9924926757812,
+        1062.0879821777344,
+        1057.1587677001953,
+        1059.3841247558594
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 1062.0879821777344,
+        "q1": 1058.5911560058594,
+        "q3": 1071.7364044189453
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        2535.63671875,
+        2543.7227783203125,
+        2532.9723052978516,
+        2521.601516723633,
+        2569.1702575683594,
+        2546.334991455078,
+        2533.2579345703125,
+        2548.8160858154297,
+        2543.59912109375
+      ],
+      "messages": [
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2543.59912109375,
+        "q1": 2533.2579345703125,
+        "q3": 2546.334991455078
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        106.98469543457031,
+        108.41386413574219,
+        107.21807861328125,
+        106.31005859375,
+        107.93850708007812,
+        109.71945190429688,
+        107.15948486328125,
+        107.50480651855469,
+        108.867919921875
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 107.50480651855469,
+        "q1": 107.15948486328125,
+        "q3": 108.41386413574219
+      },
+      "static_components": {
+        "node_inline_bytes": 357344,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 1865312
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        111.80308532714844,
+        110.05729675292969,
+        109.5084228515625,
+        110.670166015625,
+        113.91224670410156,
+        113.31008911132812,
+        108.90733337402344,
+        113.81523132324219,
+        110.98136901855469
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 110.98136901855469,
+        "q1": 110.05729675292969,
+        "q3": 113.31008911132812
+      },
+      "static_components": {
+        "node_inline_bytes": 259904,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 1572992
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        120.69053649902344,
+        119.86668395996094,
+        116.85906982421875,
+        119.02897644042969,
+        120.22377014160156,
+        121.33639526367188,
+        117.39408874511719,
+        116.89532470703125,
+        116.89210510253906
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 119.02897644042969,
+        "q1": 116.89532470703125,
+        "q3": 120.22377014160156
+      },
+      "static_components": {
+        "node_inline_bytes": 526328,
+        "effects_inline_bytes": 181168,
+        "driver_capacity_bytes": 2677696
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        227.09654235839844,
+        226.1170654296875,
+        221.27207946777344,
+        221.40316772460938,
+        226.2641143798828,
+        222.98583984375,
+        220.46633911132812,
+        224.27757263183594,
+        224.41180419921875
+      ],
+      "messages": [
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152
+      ],
+      "validated": true,
+      "summary": {
+        "median": 224.27757263183594,
+        "q1": 221.40316772460938,
+        "q3": 226.1170654296875
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        2541.034896850586,
+        2549.9671630859375,
+        2553.8646240234375,
+        2542.822235107422,
+        2560.0610961914062,
+        2548.464385986328,
+        2557.0140533447266,
+        2546.8262939453125,
+        2548.251205444336
+      ],
+      "messages": [
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2548.464385986328,
+        "q1": 2546.8262939453125,
+        "q3": 2553.8646240234375
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        113.23333740234375,
+        110.74900817871094,
+        111.51316833496094,
+        111.81051635742188,
+        113.10758972167969,
+        110.02210998535156,
+        110.73191833496094,
+        110.29286193847656,
+        116.22390747070312
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 111.51316833496094,
+        "q1": 110.73191833496094,
+        "q3": 113.10758972167969
+      },
+      "static_components": {
+        "node_inline_bytes": 357344,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 1865312
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        111.19020080566406,
+        110.81936645507812,
+        110.2225341796875,
+        117.53692626953125,
+        110.970703125,
+        110.72557067871094,
+        109.87184143066406,
+        111.08370971679688,
+        111.61654663085938
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 110.970703125,
+        "q1": 110.72557067871094,
+        "q3": 111.19020080566406
+      },
+      "static_components": {
+        "node_inline_bytes": 259904,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 1572992
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        116.45091247558594,
+        115.53544616699219,
+        118.2755126953125,
+        120.14382934570312,
+        119.38922119140625,
+        117.70210266113281,
+        118.65495300292969,
+        118.75833129882812,
+        116.42103576660156
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 118.2755126953125,
+        "q1": 116.45091247558594,
+        "q3": 118.75833129882812
+      },
+      "static_components": {
+        "node_inline_bytes": 526328,
+        "effects_inline_bytes": 181168,
+        "driver_capacity_bytes": 2677696
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        88.96560668945312,
+        86.31919860839844,
+        88.62663269042969,
+        88.59365844726562,
+        87.69410705566406,
+        88.12472534179688,
+        87.89134216308594,
+        88.24406433105469,
+        87.68994140625
+      ],
+      "messages": [
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144
+      ],
+      "validated": true,
+      "summary": {
+        "median": 88.12472534179688,
+        "q1": 87.69410705566406,
+        "q3": 88.59365844726562
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        2556.685821533203,
+        2568.360336303711,
+        2555.0018920898438,
+        2548.192626953125,
+        2553.469284057617,
+        2592.320037841797,
+        2547.5840911865234,
+        2547.2601470947266,
+        2555.676498413086
+      ],
+      "messages": [
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2555.0018920898438,
+        "q1": 2548.192626953125,
+        "q3": 2556.685821533203
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        109.171630859375,
+        107.631591796875,
+        108.56416320800781,
+        107.40885925292969,
+        111.48866271972656,
+        107.74565124511719,
+        108.09518432617188,
+        108.53749084472656,
+        107.30229187011719
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 108.09518432617188,
+        "q1": 107.631591796875,
+        "q3": 108.56416320800781
+      },
+      "static_components": {
+        "node_inline_bytes": 357344,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 1865312
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        115.39895629882812,
+        118.04635620117188,
+        115.004638671875,
+        117.55825805664062,
+        122.9276123046875,
+        114.02734375,
+        115.12294006347656,
+        121.16375732421875,
+        115.84341430664062
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 115.84341430664062,
+        "q1": 115.12294006347656,
+        "q3": 118.04635620117188
+      },
+      "static_components": {
+        "node_inline_bytes": 518064,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 2806224
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        150.40118408203125,
+        149.75848388671875,
+        145.89718627929688,
+        152.35260009765625,
+        151.8324432373047,
+        153.91397094726562,
+        147.3541259765625,
+        150.69642639160156,
+        146.42481994628906
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 150.40118408203125,
+        "q1": 147.3541259765625,
+        "q3": 151.8324432373047
+      },
+      "static_components": {
+        "node_inline_bytes": 1443888,
+        "effects_inline_bytes": 437320,
+        "driver_capacity_bytes": 5752064
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        1264.4382629394531,
+        1215.6961059570312,
+        1215.2857666015625,
+        1228.67724609375,
+        1237.5998992919922,
+        1266.065673828125,
+        1227.8160858154297,
+        1227.0690460205078,
+        1241.822525024414
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 1228.67724609375,
+        "q1": 1227.0690460205078,
+        "q3": 1241.822525024414
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        2492.3236083984375,
+        2498.6915893554688,
+        2502.459197998047,
+        2507.5631713867188,
+        2516.054183959961,
+        2506.7691040039062,
+        2516.868423461914,
+        2508.909194946289,
+        2516.4879455566406
+      ],
+      "messages": [
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2507.5631713867188,
+        "q1": 2502.459197998047,
+        "q3": 2516.054183959961
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        118.57713317871094,
+        117.44100952148438,
+        117.33444213867188,
+        117.64781188964844,
+        121.03157043457031,
+        118.57820129394531,
+        118.58247375488281,
+        118.40231323242188,
+        115.94143676757812
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 118.40231323242188,
+        "q1": 117.44100952148438,
+        "q3": 118.57820129394531
+      },
+      "static_components": {
+        "node_inline_bytes": 830544,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 3743664
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        190.1034698486328,
+        151.22396850585938,
+        122.161376953125,
+        121.69876098632812,
+        120.87919616699219,
+        129.39584350585938,
+        123.19511413574219,
+        120.825927734375,
+        127.71511840820312
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 123.19511413574219,
+        "q1": 121.69876098632812,
+        "q3": 129.39584350585938
+      },
+      "static_components": {
+        "node_inline_bytes": 518064,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 2806224
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        151.8229217529297,
+        149.92373657226562,
+        149.3812255859375,
+        149.98765563964844,
+        148.959228515625,
+        144.74298095703125,
+        145.55296325683594,
+        156.64230346679688,
+        148.97518920898438
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 149.3812255859375,
+        "q1": 148.959228515625,
+        "q3": 149.98765563964844
+      },
+      "static_components": {
+        "node_inline_bytes": 1443888,
+        "effects_inline_bytes": 437320,
+        "driver_capacity_bytes": 5752064
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        329.35975646972656,
+        319.62611389160156,
+        321.51463317871094,
+        328.13739013671875,
+        316.9936218261719,
+        321.28125,
+        319.866943359375,
+        326.93409729003906,
+        322.94378662109375
+      ],
+      "messages": [
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152,
+        49152
+      ],
+      "validated": true,
+      "summary": {
+        "median": 321.51463317871094,
+        "q1": 319.866943359375,
+        "q3": 326.93409729003906
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        2590.7415466308594,
+        2580.9524536132812,
+        2576.5316314697266,
+        2645.122772216797,
+        2587.813995361328,
+        2576.243850708008,
+        2599.515090942383,
+        2586.7449493408203,
+        2580.0902709960938
+      ],
+      "messages": [
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2586.7449493408203,
+        "q1": 2580.0902709960938,
+        "q3": 2590.7415466308594
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        122.95747375488281,
+        122.75599670410156,
+        122.04940795898438,
+        122.60679626464844,
+        121.27992248535156,
+        128.0688934326172,
+        123.54682922363281,
+        121.53253173828125,
+        121.80744934082031
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 122.60679626464844,
+        "q1": 121.80744934082031,
+        "q3": 122.95747375488281
+      },
+      "static_components": {
+        "node_inline_bytes": 830544,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 3743664
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        119.85182189941406,
+        118.52278137207031,
+        121.27674865722656,
+        120.8621826171875,
+        120.43904113769531,
+        121.10833740234375,
+        141.83126831054688,
+        122.42239379882812,
+        120.9527587890625
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 120.9527587890625,
+        "q1": 120.43904113769531,
+        "q3": 121.27674865722656
+      },
+      "static_components": {
+        "node_inline_bytes": 518064,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 2806224
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        147.04612731933594,
+        148.59576416015625,
+        148.57017517089844,
+        149.1722869873047,
+        154.96484375,
+        153.29373168945312,
+        152.4453125,
+        159.9356231689453,
+        154.56727600097656
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 152.4453125,
+        "q1": 148.59576416015625,
+        "q3": 154.56727600097656
+      },
+      "static_components": {
+        "node_inline_bytes": 1443888,
+        "effects_inline_bytes": 437320,
+        "driver_capacity_bytes": 5752064
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        95.396484375,
+        96.48890686035156,
+        97.45555114746094,
+        96.88749694824219,
+        94.325439453125,
+        95.83027648925781,
+        96.25550842285156,
+        94.66323852539062,
+        97.01005554199219
+      ],
+      "messages": [
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144,
+        6144
+      ],
+      "validated": true,
+      "summary": {
+        "median": 96.25550842285156,
+        "q1": 95.396484375,
+        "q3": 96.88749694824219
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        2602.892532348633,
+        2602.123046875,
+        2605.0443725585938,
+        2609.846694946289,
+        2606.920135498047,
+        2580.3844299316406,
+        2587.202178955078,
+        2609.5152587890625,
+        2602.992706298828
+      ],
+      "messages": [
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648,
+        1179648
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2602.992706298828,
+        "q1": 2602.123046875,
+        "q3": 2606.920135498047
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        119.04815673828125,
+        119.34872436523438,
+        123.43919372558594,
+        118.70074462890625,
+        118.66554260253906,
+        119.57362365722656,
+        118.101806640625,
+        119.07273864746094,
+        118.04637145996094
+      ],
+      "messages": [
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216,
+        393216
+      ],
+      "validated": true,
+      "summary": {
+        "median": 119.04815673828125,
+        "q1": 118.66554260253906,
+        "q3": 119.34872436523438
+      },
+      "static_components": {
+        "node_inline_bytes": 830544,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 3743664
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 15,
+      "values": 61440,
+      "samples_ns_per_value": [
+        333.85205078125,
+        315.93564453125,
+        295.49775390625,
+        300.02802734375,
+        300.88746744791666,
+        293.641357421875,
+        300.24513346354166,
+        294.47809244791665,
+        295.104443359375
+      ],
+      "messages": [
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640
+      ],
+      "validated": true,
+      "summary": {
+        "median": 300.02802734375,
+        "q1": 295.104443359375,
+        "q3": 300.88746744791666
+      },
+      "static_components": {
+        "node_inline_bytes": 4943664,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 23947344
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 15,
+      "values": 61440,
+      "samples_ns_per_value": [
+        1727.6773763020833,
+        1717.19013671875,
+        1744.1840983072916,
+        1725.780029296875,
+        1755.5807779947916,
+        1723.3562825520833,
+        1708.1102701822917,
+        1725.5298502604167,
+        1749.2304850260416
+      ],
+      "messages": [
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640
+      ],
+      "validated": true,
+      "summary": {
+        "median": 1725.780029296875,
+        "q1": 1723.3562825520833,
+        "q3": 1744.1840983072916
+      },
+      "static_components": {
+        "node_inline_bytes": 17173488,
+        "effects_inline_bytes": 5606920,
+        "driver_capacity_bytes": 65974784
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 15,
+      "values": 61440,
+      "samples_ns_per_value": [
+        3261.9962890625,
+        3251.826171875,
+        3237.617041015625,
+        3241.958561197917,
+        3230.315185546875,
+        3265.8603352864584,
+        3225.381412760417,
+        3269.556217447917,
+        3278.5485677083334
+      ],
+      "messages": [
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3251.826171875,
+        "q1": 3237.617041015625,
+        "q3": 3265.8603352864584
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 15,
+      "values": 61440,
+      "samples_ns_per_value": [
+        3410.2988118489584,
+        3372.4163411458335,
+        3387.9806640625,
+        3408.800504557292,
+        3365.523746744792,
+        3388.6058756510415,
+        3386.23447265625,
+        3370.7417805989585,
+        3427.60361328125
+      ],
+      "messages": [
+        1105920,
+        1105920,
+        1105920,
+        1105920,
+        1105920,
+        1105920,
+        1105920,
+        1105920,
+        1105920
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3387.9806640625,
+        "q1": 3372.4163411458335,
+        "q3": 3408.800504557292
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 15,
+      "values": 61440,
+      "samples_ns_per_value": [
+        356.15322265625,
+        357.05470377604166,
+        352.317529296875,
+        356.52037760416664,
+        357.5173828125,
+        367.872802734375,
+        352.4153645833333,
+        382.54461263020835,
+        367.8750325520833
+      ],
+      "messages": [
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640,
+        368640
+      ],
+      "validated": true,
+      "summary": {
+        "median": 357.05470377604166,
+        "q1": 356.15322265625,
+        "q3": 367.872802734375
+      },
+      "static_components": {
+        "node_inline_bytes": 8942544,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 35943984
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 12,
+      "values": 49152,
+      "samples_ns_per_value": [
+        331.79441324869794,
+        340.89471435546875,
+        346.01611328125,
+        340.6815999348958,
+        326.734130859375,
+        334.7771402994792,
+        336.220947265625,
+        349.87135823567706,
+        338.14361572265625
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 338.14361572265625,
+        "q1": 334.7771402994792,
+        "q3": 340.89471435546875
+      },
+      "static_components": {
+        "node_inline_bytes": 4943664,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 23947344
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 12,
+      "values": 49152,
+      "samples_ns_per_value": [
+        1721.2474772135417,
+        1683.2674967447917,
+        1694.1952311197917,
+        1695.8507283528645,
+        1698.0164388020833,
+        1708.8375651041667,
+        1745.8470052083333,
+        1727.421875,
+        1717.5201009114583
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 1708.8375651041667,
+        "q1": 1695.8507283528645,
+        "q3": 1721.2474772135417
+      },
+      "static_components": {
+        "node_inline_bytes": 17173488,
+        "effects_inline_bytes": 5606920,
+        "driver_capacity_bytes": 65974784
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 12,
+      "values": 49152,
+      "samples_ns_per_value": [
+        2235.3648274739585,
+        2231.8406575520835,
+        2251.2676391601562,
+        2250.4533894856772,
+        2246.6563924153647,
+        2288.3992309570312,
+        2242.0892130533853,
+        2239.890828450521,
+        2277.0367024739585
+      ],
+      "messages": [
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2246.6563924153647,
+        "q1": 2239.890828450521,
+        "q3": 2251.2676391601562
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 12,
+      "values": 49152,
+      "samples_ns_per_value": [
+        3547.98681640625,
+        3542.3254191080728,
+        3532.270222981771,
+        3539.6808878580728,
+        3571.3699544270835,
+        3528.142130533854,
+        3521.576904296875,
+        3529.5475463867188,
+        3536.4665323893228
+      ],
+      "messages": [
+        884736,
+        884736,
+        884736,
+        884736,
+        884736,
+        884736,
+        884736,
+        884736,
+        884736
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3536.4665323893228,
+        "q1": 3529.5475463867188,
+        "q3": 3542.3254191080728
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 12,
+      "values": 49152,
+      "samples_ns_per_value": [
+        419.9880777994792,
+        439.8995361328125,
+        437.13848876953125,
+        422.50185139973956,
+        470.4717203776042,
+        430.34033203125,
+        430.0262451171875,
+        433.97674560546875,
+        423.94993082682294
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 430.34033203125,
+        "q1": 423.94993082682294,
+        "q3": 437.13848876953125
+      },
+      "static_components": {
+        "node_inline_bytes": 8942544,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 35943984
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 13,
+      "values": 53248,
+      "samples_ns_per_value": [
+        375.01395357572113,
+        339.56856595552887,
+        355.82605919471155,
+        349.32386192908655,
+        345.19193209134613,
+        335.0903132512019,
+        362.99329552283655,
+        351.12222055288464,
+        342.10546875
+      ],
+      "messages": [
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488
+      ],
+      "validated": true,
+      "summary": {
+        "median": 349.32386192908655,
+        "q1": 342.10546875,
+        "q3": 355.82605919471155
+      },
+      "static_components": {
+        "node_inline_bytes": 4943664,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 23947344
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 13,
+      "values": 53248,
+      "samples_ns_per_value": [
+        1951.7453237680288,
+        1926.1902794471155,
+        1937.9814077524038,
+        1977.6951998197114,
+        1943.6310283954326,
+        1935.5206392728364,
+        1914.4989858774038,
+        1941.4706467848557,
+        1933.5478140024038
+      ],
+      "messages": [
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488
+      ],
+      "validated": true,
+      "summary": {
+        "median": 1937.9814077524038,
+        "q1": 1933.5478140024038,
+        "q3": 1943.6310283954326
+      },
+      "static_components": {
+        "node_inline_bytes": 17173488,
+        "effects_inline_bytes": 5606920,
+        "driver_capacity_bytes": 65974784
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 13,
+      "values": 53248,
+      "samples_ns_per_value": [
+        2454.754695012019,
+        2462.3626990685098,
+        2450.541485126202,
+        2443.359806941106,
+        2435.670447716346,
+        2467.272479717548,
+        2488.2010404146636,
+        2442.3392427884614,
+        2444.357947716346
+      ],
+      "messages": [
+        4992,
+        4992,
+        4992,
+        4992,
+        4992,
+        4992,
+        4992,
+        4992,
+        4992
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2450.541485126202,
+        "q1": 2443.359806941106,
+        "q3": 2462.3626990685098
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 13,
+      "values": 53248,
+      "samples_ns_per_value": [
+        3830.0564716045674,
+        3808.4445049579326,
+        3773.409630408654,
+        3891.441218449519,
+        3808.7540752704326,
+        3815.0713641826924,
+        3792.517540564904,
+        3833.847393329327,
+        3904.0442833533652
+      ],
+      "messages": [
+        958464,
+        958464,
+        958464,
+        958464,
+        958464,
+        958464,
+        958464,
+        958464,
+        958464
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3815.0713641826924,
+        "q1": 3808.4445049579326,
+        "q3": 3833.847393329327
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 13,
+      "values": 53248,
+      "samples_ns_per_value": [
+        508.5894118088942,
+        461.30309119591345,
+        469.88052133413464,
+        464.1114971454327,
+        472.9249924879808,
+        457.32198392427887,
+        470.0181415264423,
+        456.351318359375,
+        471.2997483473558
+      ],
+      "messages": [
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488,
+        319488
+      ],
+      "validated": true,
+      "summary": {
+        "median": 469.88052133413464,
+        "q1": 461.30309119591345,
+        "q3": 471.2997483473558
+      },
+      "static_components": {
+        "node_inline_bytes": 8942544,
+        "effects_inline_bytes": 137904,
+        "driver_capacity_bytes": 35943984
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        206.0474395751953,
+        220.26492309570312,
+        205.4986114501953,
+        207.1420440673828,
+        208.44757080078125,
+        206.59738159179688,
+        206.09329223632812,
+        206.69012451171875,
+        212.14476013183594
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 206.69012451171875,
+        "q1": 206.09329223632812,
+        "q3": 208.44757080078125
+      },
+      "static_components": {
+        "node_inline_bytes": 260120,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 2131096
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        163.3717041015625,
+        175.73046875,
+        163.92800903320312,
+        165.65777587890625,
+        166.015869140625,
+        166.9217529296875,
+        167.29266357421875,
+        162.7045135498047,
+        168.3467559814453
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 166.015869140625,
+        "q1": 163.92800903320312,
+        "q3": 167.29266357421875
+      },
+      "static_components": {
+        "node_inline_bytes": 527568,
+        "effects_inline_bytes": 238992,
+        "driver_capacity_bytes": 3794384
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3071.532272338867,
+        3109.8372650146484,
+        3083.114059448242,
+        3079.6235961914062,
+        3058.8538208007812,
+        3187.0484924316406,
+        3077.2640075683594,
+        3064.211456298828,
+        3046.783935546875
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3077.2640075683594,
+        "q1": 3064.211456298828,
+        "q3": 3083.114059448242
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3322.799514770508,
+        3334.119110107422,
+        3335.8819580078125,
+        3309.6148071289062,
+        3321.702865600586,
+        3346.955337524414,
+        3347.0640258789062,
+        3340.4082641601562,
+        3341.3333740234375
+      ],
+      "messages": [
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3335.8819580078125,
+        "q1": 3322.799514770508,
+        "q3": 3341.3333740234375
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        201.92718505859375,
+        203.0078582763672,
+        202.3140411376953,
+        200.64613342285156,
+        203.18057250976562,
+        202.71051025390625,
+        201.55096435546875,
+        203.51947021484375,
+        202.75523376464844
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 202.71051025390625,
+        "q1": 201.92718505859375,
+        "q3": 203.0078582763672
+      },
+      "static_components": {
+        "node_inline_bytes": 358520,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 2623096
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        211.31979370117188,
+        208.89736938476562,
+        212.5988006591797,
+        210.14747619628906,
+        212.21932983398438,
+        206.84893798828125,
+        215.77052307128906,
+        210.91696166992188,
+        216.7947235107422
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 211.31979370117188,
+        "q1": 210.14747619628906,
+        "q3": 212.5988006591797
+      },
+      "static_components": {
+        "node_inline_bytes": 260120,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 2131096
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        172.5586700439453,
+        175.635498046875,
+        172.37640380859375,
+        171.3085174560547,
+        172.16648864746094,
+        175.0536346435547,
+        175.21990966796875,
+        173.75338745117188,
+        175.83590698242188
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 173.75338745117188,
+        "q1": 172.37640380859375,
+        "q3": 175.21990966796875
+      },
+      "static_components": {
+        "node_inline_bytes": 527568,
+        "effects_inline_bytes": 238992,
+        "driver_capacity_bytes": 3794384
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        506.00575256347656,
+        508.6030578613281,
+        526.1382446289062,
+        509.9832000732422,
+        508.1490478515625,
+        511.85260009765625,
+        531.9669647216797,
+        520.7571716308594,
+        524.7666168212891
+      ],
+      "messages": [
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304
+      ],
+      "validated": true,
+      "summary": {
+        "median": 511.85260009765625,
+        "q1": 508.6030578613281,
+        "q3": 524.7666168212891
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3347.4605255126953,
+        3320.0157470703125,
+        3364.561981201172,
+        3381.245620727539,
+        3376.4027099609375,
+        3371.1580505371094,
+        3348.680862426758,
+        3328.8914947509766,
+        3329.534133911133
+      ],
+      "messages": [
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3348.680862426758,
+        "q1": 3329.534133911133,
+        "q3": 3371.1580505371094
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        205.41543579101562,
+        209.23097229003906,
+        208.69808959960938,
+        206.30751037597656,
+        206.48333740234375,
+        207.31578063964844,
+        204.40298461914062,
+        205.16712951660156,
+        206.0069580078125
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 206.30751037597656,
+        "q1": 205.41543579101562,
+        "q3": 207.31578063964844
+      },
+      "static_components": {
+        "node_inline_bytes": 358520,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 2623096
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        212.97605895996094,
+        209.4973907470703,
+        208.5275421142578,
+        208.34417724609375,
+        211.77711486816406,
+        204.92091369628906,
+        210.60154724121094,
+        208.3313751220703,
+        213.32777404785156
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 209.4973907470703,
+        "q1": 208.34417724609375,
+        "q3": 211.77711486816406
+      },
+      "static_components": {
+        "node_inline_bytes": 260120,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 2131096
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        180.0648956298828,
+        180.93141174316406,
+        177.52410888671875,
+        176.36351013183594,
+        178.86700439453125,
+        175.48529052734375,
+        179.71533203125,
+        177.24917602539062,
+        175.5172882080078
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 177.52410888671875,
+        "q1": 176.36351013183594,
+        "q3": 179.71533203125
+      },
+      "static_components": {
+        "node_inline_bytes": 527568,
+        "effects_inline_bytes": 238992,
+        "driver_capacity_bytes": 3794384
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        153.8446807861328,
+        154.66220092773438,
+        152.1171112060547,
+        151.59060668945312,
+        153.1903076171875,
+        154.78042602539062,
+        152.62017822265625,
+        154.95309448242188,
+        152.4591827392578
+      ],
+      "messages": [
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288
+      ],
+      "validated": true,
+      "summary": {
+        "median": 153.1903076171875,
+        "q1": 152.4591827392578,
+        "q3": 154.66220092773438
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3399.295623779297,
+        3444.733917236328,
+        3431.8902130126953,
+        3416.620895385742,
+        3396.925308227539,
+        3410.0513916015625,
+        3440.383346557617,
+        3440.6434173583984,
+        3440.1329498291016
+      ],
+      "messages": [
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3431.8902130126953,
+        "q1": 3410.0513916015625,
+        "q3": 3440.383346557617
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        205.46876525878906,
+        203.80508422851562,
+        204.36997985839844,
+        203.3329315185547,
+        209.19363403320312,
+        205.6072998046875,
+        204.46163940429688,
+        206.53665161132812,
+        203.09844970703125
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 204.46163940429688,
+        "q1": 203.80508422851562,
+        "q3": 205.6072998046875
+      },
+      "static_components": {
+        "node_inline_bytes": 358520,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 2623096
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        224.2082977294922,
+        227.31927490234375,
+        224.29673767089844,
+        220.98643493652344,
+        224.68894958496094,
+        225.49148559570312,
+        222.56808471679688,
+        227.0379180908203,
+        220.80738830566406
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 224.29673767089844,
+        "q1": 222.56808471679688,
+        "q3": 225.49148559570312
+      },
+      "static_components": {
+        "node_inline_bytes": 518280,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 3880648
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        245.6239776611328,
+        243.02880859375,
+        244.2470245361328,
+        254.5605010986328,
+        241.60275268554688,
+        242.17086791992188,
+        245.69004821777344,
+        247.44007873535156,
+        248.7403106689453
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 245.6239776611328,
+        "q1": 243.02880859375,
+        "q3": 247.44007873535156
+      },
+      "static_components": {
+        "node_inline_bytes": 1445128,
+        "effects_inline_bytes": 499272,
+        "driver_capacity_bytes": 8708000
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3239.8939666748047,
+        3323.5530700683594,
+        3259.917755126953,
+        3291.028778076172,
+        3253.5017852783203,
+        3348.995330810547,
+        3254.8638305664062,
+        3269.3392028808594,
+        4462.742538452148
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3269.3392028808594,
+        "q1": 3254.8638305664062,
+        "q3": 3323.5530700683594
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3325.0675201416016,
+        3332.488555908203,
+        3328.731689453125,
+        3324.0284271240234,
+        3336.9380798339844,
+        3308.5501098632812,
+        3317.2010803222656,
+        3324.8533477783203,
+        3351.335723876953
+      ],
+      "messages": [
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3325.0675201416016,
+        "q1": 3324.0284271240234,
+        "q3": 3332.488555908203
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 1,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        228.66107177734375,
+        216.80116271972656,
+        214.61843872070312,
+        227.2350311279297,
+        215.2291259765625,
+        218.88475036621094,
+        228.92218017578125,
+        222.51158142089844,
+        218.90182495117188
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 218.90182495117188,
+        "q1": 216.80116271972656,
+        "q3": 227.2350311279297
+      },
+      "static_components": {
+        "node_inline_bytes": 831720,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 5447848
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        220.0975799560547,
+        224.35855102539062,
+        222.15130615234375,
+        219.64353942871094,
+        228.34349060058594,
+        220.31716918945312,
+        221.3871612548828,
+        222.2078094482422,
+        219.53802490234375
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 221.3871612548828,
+        "q1": 220.0975799560547,
+        "q3": 222.2078094482422
+      },
+      "static_components": {
+        "node_inline_bytes": 518280,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 3880648
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        255.1509552001953,
+        253.92959594726562,
+        252.4716033935547,
+        261.25250244140625,
+        250.7119903564453,
+        250.15460205078125,
+        251.61575317382812,
+        256.6398468017578,
+        250.67999267578125
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 252.4716033935547,
+        "q1": 250.7119903564453,
+        "q3": 255.1509552001953
+      },
+      "static_components": {
+        "node_inline_bytes": 1445128,
+        "effects_inline_bytes": 499272,
+        "driver_capacity_bytes": 8708000
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        678.9982147216797,
+        732.0098571777344,
+        674.2704010009766,
+        666.7513275146484,
+        699.9662322998047,
+        669.7451171875,
+        666.9773101806641,
+        661.4171752929688,
+        672.1303100585938
+      ],
+      "messages": [
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304,
+        98304
+      ],
+      "validated": true,
+      "summary": {
+        "median": 672.1303100585938,
+        "q1": 666.9773101806641,
+        "q3": 678.9982147216797
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3424.982940673828,
+        3404.511505126953,
+        3400.2217864990234,
+        3420.1901245117188,
+        3441.6836700439453,
+        3402.5004119873047,
+        3398.882110595703,
+        3391.5911560058594,
+        3415.517791748047
+      ],
+      "messages": [
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3404.511505126953,
+        "q1": 3400.2217864990234,
+        "q3": 3420.1901245117188
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 8,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        301.02088928222656,
+        225.42758178710938,
+        223.9226531982422,
+        222.6223602294922,
+        220.48658752441406,
+        218.72914123535156,
+        220.36724853515625,
+        219.90997314453125,
+        221.22410583496094
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 221.22410583496094,
+        "q1": 220.36724853515625,
+        "q3": 223.9226531982422
+      },
+      "static_components": {
+        "node_inline_bytes": 831720,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 5447848
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        218.65133666992188,
+        222.5243377685547,
+        220.82656860351562,
+        221.04930114746094,
+        219.3877410888672,
+        226.1554718017578,
+        223.94717407226562,
+        217.41183471679688,
+        215.977294921875
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 220.82656860351562,
+        "q1": 218.65133666992188,
+        "q3": 222.5243377685547
+      },
+      "static_components": {
+        "node_inline_bytes": 518280,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 3880648
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        259.7295227050781,
+        252.03680419921875,
+        254.27914428710938,
+        259.8094177246094,
+        255.44940185546875,
+        269.00071716308594,
+        259.5270080566406,
+        258.5411682128906,
+        260.8550109863281
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 259.5270080566406,
+        "q1": 255.44940185546875,
+        "q3": 259.8094177246094
+      },
+      "static_components": {
+        "node_inline_bytes": 1445128,
+        "effects_inline_bytes": 499272,
+        "driver_capacity_bytes": 8708000
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        247.83970642089844,
+        248.11257934570312,
+        253.11427307128906,
+        252.54725646972656,
+        250.40716552734375,
+        248.2032012939453,
+        252.1305389404297,
+        249.4255828857422,
+        257.7738037109375
+      ],
+      "messages": [
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288,
+        12288
+      ],
+      "validated": true,
+      "summary": {
+        "median": 250.40716552734375,
+        "q1": 248.2032012939453,
+        "q3": 252.54725646972656
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        3535.947235107422,
+        3626.4156036376953,
+        3547.6420135498047,
+        3548.301712036133,
+        3555.9796142578125,
+        3557.643264770508,
+        3587.6575927734375,
+        3559.6277770996094,
+        3572.0557708740234
+      ],
+      "messages": [
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440,
+        2621440
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3557.643264770508,
+        "q1": 3548.301712036133,
+        "q3": 3572.0557708740234
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 64,
+      "epochs": 16,
+      "values": 65536,
+      "samples_ns_per_value": [
+        214.42762756347656,
+        217.65589904785156,
+        217.73370361328125,
+        215.76304626464844,
+        219.55299377441406,
+        218.2218475341797,
+        220.56228637695312,
+        233.32069396972656,
+        233.48800659179688
+      ],
+      "messages": [
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432,
+        786432
+      ],
+      "validated": true,
+      "summary": {
+        "median": 218.2218475341797,
+        "q1": 217.65589904785156,
+        "q3": 220.56228637695312
+      },
+      "static_components": {
+        "node_inline_bytes": 831720,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 5447848
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 7,
+      "values": 28672,
+      "samples_ns_per_value": [
+        728.8273228236607,
+        732.2621372767857,
+        742.67626953125,
+        739.1830008370536,
+        754.1355329241071,
+        729.8797433035714,
+        734.1598074776786,
+        769.2732282366071,
+        750.4400809151786
+      ],
+      "messages": [
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064
+      ],
+      "validated": true,
+      "summary": {
+        "median": 739.1830008370536,
+        "q1": 732.2621372767857,
+        "q3": 750.4400809151786
+      },
+      "static_components": {
+        "node_inline_bytes": 4943880,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 33872968
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 7,
+      "values": 28672,
+      "samples_ns_per_value": [
+        2795.1604352678573,
+        2836.1300920758927,
+        2856.7025320870534,
+        2844.093505859375,
+        2828.9948381696427,
+        2793.05322265625,
+        2834.753662109375,
+        2802.042306082589,
+        2893.0631975446427
+      ],
+      "messages": [
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2834.753662109375,
+        "q1": 2802.042306082589,
+        "q3": 2844.093505859375
+      },
+      "static_components": {
+        "node_inline_bytes": 17174728,
+        "effects_inline_bytes": 6164232,
+        "driver_capacity_bytes": 100885280
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 7,
+      "values": 28672,
+      "samples_ns_per_value": [
+        6547.316685267857,
+        6488.5419921875,
+        6485.813581194197,
+        6489.555280412947,
+        6513.689383370535,
+        6517.721086774553,
+        6618.975864955357,
+        6828.559709821428,
+        6726.169782366072
+      ],
+      "messages": [
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064
+      ],
+      "validated": true,
+      "summary": {
+        "median": 6517.721086774553,
+        "q1": 6489.555280412947,
+        "q3": 6618.975864955357
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 7,
+      "values": 28672,
+      "samples_ns_per_value": [
+        5211.594098772322,
+        5289.77702985491,
+        5205.87908063616,
+        5203.11669921875,
+        5251.547956194197,
+        5226.851178850447,
+        5209.304268973215,
+        5244.290910993303,
+        5235.772042410715
+      ],
+      "messages": [
+        1146880,
+        1146880,
+        1146880,
+        1146880,
+        1146880,
+        1146880,
+        1146880,
+        1146880,
+        1146880
+      ],
+      "validated": true,
+      "summary": {
+        "median": 5226.851178850447,
+        "q1": 5209.304268973215,
+        "q3": 5244.290910993303
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "epochs": 7,
+      "values": 28672,
+      "samples_ns_per_value": [
+        773.3414132254464,
+        781.4729701450893,
+        772.8761160714286,
+        765.5875069754464,
+        786.9102260044643,
+        773.9334193638393,
+        776.6373814174107,
+        762.958984375,
+        767.2586146763393
+      ],
+      "messages": [
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064,
+        344064
+      ],
+      "validated": true,
+      "summary": {
+        "median": 773.3414132254464,
+        "q1": 767.2586146763393,
+        "q3": 776.6373814174107
+      },
+      "static_components": {
+        "node_inline_bytes": 8943720,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 53872168
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        792.1327718098959,
+        793.8067626953125,
+        773.5143636067709,
+        892.8699137369791,
+        777.365478515625,
+        783.1944986979166,
+        800.2525634765625,
+        797.7117919921875,
+        788.796142578125
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 792.1327718098959,
+        "q1": 783.1944986979166,
+        "q3": 797.7117919921875
+      },
+      "static_components": {
+        "node_inline_bytes": 4943880,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 33872968
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        2834.684611002604,
+        2816.8734537760415,
+        2908.8314208984375,
+        2826.812052408854,
+        2851.9303385416665,
+        2881.234903971354,
+        2880.879679361979,
+        2791.8348388671875,
+        2801.409708658854
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 2834.684611002604,
+        "q1": 2816.8734537760415,
+        "q3": 2880.879679361979
+      },
+      "static_components": {
+        "node_inline_bytes": 17174728,
+        "effects_inline_bytes": 6164232,
+        "driver_capacity_bytes": 100885280
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        3887.4890950520835,
+        3848.1321614583335,
+        3911.8399658203125,
+        3904.80859375,
+        3872.3153076171875,
+        3865.551228841146,
+        3884.01904296875,
+        3893.264200846354,
+        3893.1988932291665
+      ],
+      "messages": [
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864,
+        36864
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3887.4890950520835,
+        "q1": 3872.3153076171875,
+        "q3": 3893.264200846354
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        5322.5887451171875,
+        5317.2399495442705,
+        5338.8481852213545,
+        5363.619710286458,
+        5439.761555989583,
+        5273.381184895833,
+        5359.5781656901045,
+        5376.693196614583,
+        5341.6164143880205
+      ],
+      "messages": [
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040
+      ],
+      "validated": true,
+      "summary": {
+        "median": 5341.6164143880205,
+        "q1": 5322.5887451171875,
+        "q3": 5363.619710286458
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        858.1227620442709,
+        805.7661946614584,
+        851.1000569661459,
+        808.8640543619791,
+        853.4560953776041,
+        814.337890625,
+        826.1324462890625,
+        851.1881103515625,
+        848.294921875
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 848.294921875,
+        "q1": 814.337890625,
+        "q3": 851.1881103515625
+      },
+      "static_components": {
+        "node_inline_bytes": 8943720,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 53872168
+      }
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        900.1767578125,
+        935.1910807291666,
+        970.4867757161459,
+        930.2743326822916,
+        959.6698811848959,
+        917.064453125,
+        931.7493489583334,
+        1039.6314697265625,
+        965.2318929036459
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 935.1910807291666,
+        "q1": 930.2743326822916,
+        "q3": 965.2318929036459
+      },
+      "static_components": {
+        "node_inline_bytes": 4943880,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 33872968
+      }
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        3028.434122721354,
+        2998.441853841146,
+        3371.025675455729,
+        3361.13525390625,
+        3510.275634765625,
+        3043.784220377604,
+        3350.4235026041665,
+        2951.900187174479,
+        3481.368937174479
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3350.4235026041665,
+        "q1": 3028.434122721354,
+        "q3": 3371.025675455729
+      },
+      "static_components": {
+        "node_inline_bytes": 17174728,
+        "effects_inline_bytes": 6164232,
+        "driver_capacity_bytes": 100885280
+      }
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        3162.579833984375,
+        3164.108846028646,
+        3178.1998291015625,
+        3215.04443359375,
+        3170.247762044271,
+        3174.155558268229,
+        3189.4828287760415,
+        3168.997314453125,
+        3165.4759521484375
+      ],
+      "messages": [
+        4608,
+        4608,
+        4608,
+        4608,
+        4608,
+        4608,
+        4608,
+        4608,
+        4608
+      ],
+      "validated": true,
+      "summary": {
+        "median": 3170.247762044271,
+        "q1": 3165.4759521484375,
+        "q3": 3178.1998291015625
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        5943.546549479167,
+        5910.1807047526045,
+        5970.031819661458,
+        5981.161376953125,
+        5893.927001953125,
+        5923.37646484375,
+        5984.239339192708,
+        5890.2436930338545,
+        5905.78125
+      ],
+      "messages": [
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040,
+        983040
+      ],
+      "validated": true,
+      "summary": {
+        "median": 5923.37646484375,
+        "q1": 5905.78125,
+        "q3": 5970.031819661458
+      },
+      "static_components": {}
+    },
+    {
+      "impl": "odin-baseline",
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "epochs": 6,
+      "values": 24576,
+      "samples_ns_per_value": [
+        886.1739501953125,
+        893.8304443359375,
+        914.5207112630209,
+        888.7318929036459,
+        1033.8933512369792,
+        1004.483642578125,
+        879.8560384114584,
+        895.7915445963541,
+        886.4268798828125
+      ],
+      "messages": [
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912,
+        294912
+      ],
+      "validated": true,
+      "summary": {
+        "median": 893.8304443359375,
+        "q1": 886.4268798828125,
+        "q3": 914.5207112630209
+      },
+      "static_components": {
+        "node_inline_bytes": 8943720,
+        "effects_inline_bytes": 175120,
+        "driver_capacity_bytes": 53872168
+      }
+    }
+  ],
+  "odin_changes": [
+    {
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "ratio": {
+        "median": 1.0081313355280273,
+        "ci95": [
+          0.9998704956777933,
+          1.0336478005789245
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 8,
+      "ratio": {
+        "median": 0.9898010457428571,
+        "ci95": [
+          0.98202234307094,
+          1.029884712503826
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 64,
+      "ratio": {
+        "median": 1.0234593489517179,
+        "ci95": [
+          1.0152754916786146,
+          1.0402065481132903
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 1,
+      "ratio": {
+        "median": 0.9991545519559673,
+        "ci95": [
+          0.9708259274590837,
+          1.005154474422129
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 8,
+      "ratio": {
+        "median": 1.000917407105967,
+        "ci95": [
+          0.9941858859204225,
+          1.2319069745356614
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 64,
+      "depth": 64,
+      "ratio": {
+        "median": 1.0149453539440378,
+        "ci95": [
+          1.0067507568630367,
+          1.028131167464658
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "ratio": {
+        "median": 0.8415452417052629,
+        "ci95": [
+          0.7982143698562589,
+          0.8848382087956385
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "ratio": {
+        "median": 0.7900091235616246,
+        "ci95": [
+          0.7779357763640167,
+          0.8061984006713289
+        ]
+      }
+    },
+    {
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "ratio": {
+        "median": 0.7373609140660503,
+        "ci95": [
+          0.7299084158681233,
+          0.7694120876328381
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "ratio": {
+        "median": 1.0225368699940736,
+        "ci95": [
+          1.0157407281006887,
+          1.046309662112528
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 8,
+      "ratio": {
+        "median": 1.027779444597332,
+        "ci95": [
+          0.9984055758971908,
+          1.0523660249500921
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 64,
+      "ratio": {
+        "median": 1.0246455194941295,
+        "ci95": [
+          1.0086896126994427,
+          1.0365373962885132
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 1,
+      "ratio": {
+        "median": 1.0203420273273773,
+        "ci95": [
+          0.9725016157922922,
+          1.0439523394683514
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 8,
+      "ratio": {
+        "median": 0.9952577641420635,
+        "ci95": [
+          0.9866193997866589,
+          1.0072602486579183
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 64,
+      "depth": 64,
+      "ratio": {
+        "median": 1.0153466295209124,
+        "ci95": [
+          0.9318154811634759,
+          1.0245002792384037
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 1,
+      "ratio": {
+        "median": 0.9583501497410059,
+        "ci95": [
+          0.9424392776068635,
+          0.9780797068427111
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 8,
+      "ratio": {
+        "median": 0.9371745003142867,
+        "ci95": [
+          0.9108441344855431,
+          0.9851576896060146
+        ]
+      }
+    },
+    {
+      "nodes": 5,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "ratio": {
+        "median": 1.04674350061065,
+        "ci95": [
+          0.928209742365322,
+          1.0889018765216727
+        ]
+      }
+    }
+  ],
+  "regression_gate": {
+    "threshold": 1.05,
+    "regressions": [],
+    "status": "pass"
+  }
+}

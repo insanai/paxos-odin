@@ -1,0 +1,452 @@
+{
+  "meta": {
+    "date": "2026-09-17T13:28:26Z",
+    "host": "agy01",
+    "cpu_model": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "os": "Linux 7.0.0-28-generic",
+    "python": "3.13.5",
+    "odin": "odin version dev-2026-09-nightly:a2fb372",
+    "git": "919ced8",
+    "git_dirty": true,
+    "source_sha256": "95a5f9fff0edc60bbaf8d9c499eadfb3c00f9b136ec8b1a7e2eb2baca534f960",
+    "iterations": 10000,
+    "samples": 9,
+    "odin_build": "-o:speed -no-bounds-check -microarch:x86-64-v2",
+    "workload": "single member, one value per transition, full batch lifecycle",
+    "note": "Transition-only paths (native, abi, node) perform no storage and no network. session_memory adds owned Python objects, framing and an in-memory journal; session_durable adds fsync per batch. The paths are therefore not interchangeable and only same-path comparisons are valid.",
+    "commands": [
+      "odin build tools/paxodin_native_bench.odin -file -collection:paxos=. -o:speed -no-bounds-check -microarch:x86-64-v2",
+      "uv run python tools/paxodin_paths.py <path> <iterations> <payload>"
+    ]
+  },
+  "runs": [
+    {
+      "path": "native",
+      "payload_bytes": 8,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        835.138,
+        840.53,
+        827.448,
+        847.78,
+        870.054,
+        844.484,
+        908.827,
+        858.355,
+        829.348
+      ],
+      "ns_per_value_median": 844.484,
+      "ffi_calls_per_value": null,
+      "bytes_copied_per_value": null,
+      "syncs_per_value": null,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "abi",
+      "payload_bytes": 8,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        6982.7165,
+        7038.9852,
+        6942.5058,
+        6850.5383,
+        6784.4003,
+        7283.5469,
+        7022.4943,
+        6974.5793,
+        6929.3466
+      ],
+      "ns_per_value_median": 6974.5793,
+      "ffi_calls_per_value": 7.0,
+      "bytes_copied_per_value": 4056.0,
+      "syncs_per_value": 0.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "node",
+      "payload_bytes": 8,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        24433.2427,
+        23690.3235,
+        24275.0954,
+        24684.859,
+        23771.4227,
+        24087.5007,
+        23787.0265,
+        24361.908,
+        23824.7088
+      ],
+      "ns_per_value_median": 24087.5007,
+      "ffi_calls_per_value": 7.0,
+      "bytes_copied_per_value": 4056.0,
+      "syncs_per_value": 0.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "session_memory",
+      "payload_bytes": 8,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        28341.8521,
+        30115.8645,
+        28659.4666,
+        30473.1382,
+        30342.8529,
+        28009.6184,
+        30032.8026,
+        29218.3044,
+        28677.99
+      ],
+      "ns_per_value_median": 29218.3044,
+      "ffi_calls_per_value": 8.0,
+      "bytes_copied_per_value": 4120.0,
+      "syncs_per_value": 1.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "session_durable",
+      "payload_bytes": 8,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        44922.142,
+        48143.2209,
+        48378.6327,
+        48287.6991,
+        48788.487,
+        48147.3627,
+        48938.2038,
+        48145.0926,
+        47827.8621
+      ],
+      "ns_per_value_median": 48147.3627,
+      "ffi_calls_per_value": 8.0,
+      "bytes_copied_per_value": 4120.0,
+      "syncs_per_value": 1.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "native",
+      "payload_bytes": 64,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        842.926,
+        846.027,
+        822.035,
+        826.407,
+        807.402,
+        828.565,
+        820.987,
+        826.463,
+        821.092
+      ],
+      "ns_per_value_median": 826.407,
+      "ffi_calls_per_value": null,
+      "bytes_copied_per_value": null,
+      "syncs_per_value": null,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "abi",
+      "payload_bytes": 64,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        7037.9863,
+        7048.3725,
+        6949.6091,
+        7067.818,
+        7008.476,
+        6941.8631,
+        7099.7519,
+        6887.4733,
+        7000.6671
+      ],
+      "ns_per_value_median": 7008.476,
+      "ffi_calls_per_value": 7.0,
+      "bytes_copied_per_value": 4056.0,
+      "syncs_per_value": 0.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "node",
+      "payload_bytes": 64,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        23295.7234,
+        23787.3126,
+        23865.6459,
+        24301.2808,
+        23571.1576,
+        23116.7339,
+        24446.5762,
+        23404.2725,
+        24199.4021
+      ],
+      "ns_per_value_median": 23787.3126,
+      "ffi_calls_per_value": 7.0,
+      "bytes_copied_per_value": 4056.0,
+      "syncs_per_value": 0.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "session_memory",
+      "payload_bytes": 64,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        29738.852,
+        29944.8723,
+        28936.9122,
+        29759.7012,
+        28900.1587,
+        28347.9494,
+        30876.2033,
+        29409.4681,
+        29985.2855
+      ],
+      "ns_per_value_median": 29738.852,
+      "ffi_calls_per_value": 8.0,
+      "bytes_copied_per_value": 4120.0,
+      "syncs_per_value": 1.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "session_durable",
+      "payload_bytes": 64,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        46994.1767,
+        44852.9094,
+        48173.8902,
+        48259.8158,
+        47901.1242,
+        52661.6837,
+        48091.4289,
+        47444.9194,
+        48716.9564
+      ],
+      "ns_per_value_median": 48091.4289,
+      "ffi_calls_per_value": 8.0,
+      "bytes_copied_per_value": 4120.0,
+      "syncs_per_value": 1.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "native",
+      "payload_bytes": 1024,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        829.334,
+        811.432,
+        810.678,
+        810.657,
+        809.804,
+        827.902,
+        842.626,
+        810.699,
+        834.698
+      ],
+      "ns_per_value_median": 811.432,
+      "ffi_calls_per_value": null,
+      "bytes_copied_per_value": null,
+      "syncs_per_value": null,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "abi",
+      "payload_bytes": 1024,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        7050.0279,
+        7150.9706,
+        7077.792,
+        7091.3982,
+        7072.2043,
+        7034.9479,
+        7060.0718,
+        7052.6611,
+        7197.7331
+      ],
+      "ns_per_value_median": 7072.2043,
+      "ffi_calls_per_value": 7.0,
+      "bytes_copied_per_value": 4056.0,
+      "syncs_per_value": 0.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "node",
+      "payload_bytes": 1024,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        25210.1139,
+        26121.5805,
+        25500.4674,
+        25241.1958,
+        24502.7539,
+        25108.0886,
+        25809.7842,
+        25071.0977,
+        24800.5739
+      ],
+      "ns_per_value_median": 25210.1139,
+      "ffi_calls_per_value": 7.0,
+      "bytes_copied_per_value": 4056.0,
+      "syncs_per_value": 0.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "session_memory",
+      "payload_bytes": 1024,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        32556.9351,
+        33478.4457,
+        31205.0351,
+        34009.9383,
+        33471.2374,
+        33372.0269,
+        33093.2751,
+        33059.8463,
+        33639.8268
+      ],
+      "ns_per_value_median": 33372.0269,
+      "ffi_calls_per_value": 8.0,
+      "bytes_copied_per_value": 4120.0,
+      "syncs_per_value": 1.0,
+      "released": 10000,
+      "validated": true
+    },
+    {
+      "path": "session_durable",
+      "payload_bytes": 1024,
+      "iterations": 10000,
+      "samples_ns_per_value": [
+        55472.4397,
+        56235.2303,
+        58506.6013,
+        52633.1718,
+        57963.9749,
+        52503.529,
+        52217.499,
+        53204.3863,
+        53995.402
+      ],
+      "ns_per_value_median": 53995.402,
+      "ffi_calls_per_value": 8.0,
+      "bytes_copied_per_value": 4120.0,
+      "syncs_per_value": 1.0,
+      "released": 10000,
+      "validated": true
+    }
+  ],
+  "ratios": [
+    {
+      "payload_bytes": 8,
+      "path": "abi",
+      "versus": "native",
+      "median_ratio": 8.259676394655752,
+      "ci95_low": 8.025612778057456,
+      "ci95_high": 8.371040624683486
+    },
+    {
+      "payload_bytes": 8,
+      "path": "node",
+      "versus": "native",
+      "median_ratio": 28.523335788481486,
+      "ci95_low": 27.339712822422516,
+      "ci95_high": 29.171116629826447
+    },
+    {
+      "payload_bytes": 8,
+      "path": "session_memory",
+      "versus": "native",
+      "median_ratio": 34.537471879248116,
+      "ci95_low": 33.936729139375764,
+      "ci95_high": 35.829612863312434
+    },
+    {
+      "payload_bytes": 8,
+      "path": "session_durable",
+      "versus": "native",
+      "median_ratio": 57.013943070561425,
+      "ci95_low": 56.075240157507466,
+      "ci95_high": 57.92890839597767
+    },
+    {
+      "payload_bytes": 64,
+      "path": "abi",
+      "versus": "native",
+      "median_ratio": 8.515791148545064,
+      "ci95_low": 8.349471127951919,
+      "ci95_high": 8.57429732310668
+    },
+    {
+      "payload_bytes": 64,
+      "path": "node",
+      "versus": "native",
+      "median_ratio": 28.78206598480513,
+      "ci95_low": 28.11574638079088,
+      "ci95_high": 29.472217607771114
+    },
+    {
+      "payload_bytes": 64,
+      "path": "session_memory",
+      "versus": "native",
+      "median_ratio": 35.98328297818535,
+      "ci95_low": 34.97085419169973,
+      "ci95_high": 36.51878900293755
+    },
+    {
+      "payload_bytes": 64,
+      "path": "session_durable",
+      "versus": "native",
+      "median_ratio": 58.28922795091856,
+      "ci95_low": 55.75124827090397,
+      "ci95_high": 58.946324759850114
+    },
+    {
+      "payload_bytes": 1024,
+      "path": "abi",
+      "versus": "native",
+      "median_ratio": 8.70862280575158,
+      "ci95_low": 8.495765174949502,
+      "ci95_high": 8.747490618963386
+    },
+    {
+      "payload_bytes": 1024,
+      "path": "node",
+      "versus": "native",
+      "median_ratio": 30.942936191818905,
+      "ci95_low": 30.20267677651079,
+      "ci95_high": 31.455728908395198
+    },
+    {
+      "payload_bytes": 1024,
+      "path": "session_memory",
+      "versus": "native",
+      "median_ratio": 40.78379346636563,
+      "ci95_low": 39.64700418594509,
+      "ci95_high": 41.2968474536129
+    },
+    {
+      "payload_bytes": 1024,
+      "path": "session_durable",
+      "versus": "native",
+      "median_ratio": 65.62949321432184,
+      "ci95_low": 63.41756512244203,
+      "ci95_high": 71.5006141772689
+    }
+  ]
+}

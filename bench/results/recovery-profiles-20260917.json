@@ -1,0 +1,555 @@
+{
+  "meta": {
+    "date": "20260917T074159Z",
+    "host": "agy01",
+    "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.41",
+    "source_sha256": "2af5e5fb7f23100a2de1f901423556d796aea3fb750a102bbb41960e03669a4c",
+    "binary_sha256": {
+      "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-8": "334679d708fd7f0158dfe312b68bb1e36ef082de136ac5a207a122b0e8b32b90",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-8": "6f7aa288a4c7a0780085d243751036e307c282d8b0bf9eef64b56bd4c22baa3a",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-8": "eb69056fdc4022df3e38073fb3a4a0daf81c5e0ee00a80a62741b0da0b5afd90",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-8": "175bfbf29fcef984d9cf92fb48af1e10428ecb173bb495d22d22a29235f54b21",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-64": "ac69a62f468ee5b53b661f65e179c6e8e52dd6eab3237f8663c78193df42a0eb",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-64": "5bd057d59a6593d62a295cd4759242119c52a25196e8c1cfd6e5d7b733808d7a",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-64": "1f4039b9addefe524aff66297fd264e1b33a2d09cd8a5c51b7db9a97ae602012",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-64": "a39a3edde27ce58b9592f5a1de04592c665a42fcd387f46daa3510cc4a0de95c",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-1024": "e4a0694ab29ee93d13997e213beb65fe66f46f737fd565c76d04933144883ceb",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-1024": "86aaabf6aaf7a75b37b1500d4131feba67c63314b943097bb03572c4e31dd093",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-1024": "317daeeeb4fab9cdacab05dcfc74397fda3ad6ac39d875f34dd52d75ffad9fab",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-1024": "05dd75c8aa72f885f1a40112a647849ac22b64962a35d01e889e9e829a3379ca",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-8": "41b025827f3718f6e013ab737c145596746fc63b8cdf030d9f4b14949043e6da",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-8": "d0d3028ea7ba4cf84393ed8e6dd7c0fea967cd09f76d4082330e411c881a1d24",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-8": "eb69056fdc4022df3e38073fb3a4a0daf81c5e0ee00a80a62741b0da0b5afd90",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-8": "175bfbf29fcef984d9cf92fb48af1e10428ecb173bb495d22d22a29235f54b21",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-64": "4f828ff7769ef9d28590d6be8d16d74467190dc3ce54fa5483e3f7e688f9f3bf",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-64": "ab5e7c1010b28a9a7716230db057fbd08cae0641785abbc4aaecee99d5cee3d2",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-64": "1f4039b9addefe524aff66297fd264e1b33a2d09cd8a5c51b7db9a97ae602012",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-64": "a39a3edde27ce58b9592f5a1de04592c665a42fcd387f46daa3510cc4a0de95c",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-1024": "34c8740898a87ff2e1a0b9ad226cbd363795e7ba72a5446adc5a9561db0b7aa3",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-1024": "d8dbe858cebb21c74e9f50c1fc22a4f96e1bb76b882c1c0042d8ba7126f60a16",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-1024": "317daeeeb4fab9cdacab05dcfc74397fda3ad6ac39d875f34dd52d75ffad9fab",
+      "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-1024": "05dd75c8aa72f885f1a40112a647849ac22b64962a35d01e889e9e829a3379ca"
+    },
+    "drivers_sha256": "a9a370606be18fa161a3386f60c89f873fbf1cda783dd3e388277f9cb9a316ad",
+    "profile_build": true,
+    "epoch_values": 4096,
+    "window": 4096,
+    "chunk": 256,
+    "build_policy": {
+      "odin": "speed, no-bounds-check, native (portable symbols for profiles)",
+      "zig": "ReleaseFast, native (baseline for profiles)",
+      "rust": "release LTO, native (x86-64 for profiles)",
+      "c": "O3, native (x86-64 for profiles)"
+    },
+    "commands": {
+      "odin/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-8"
+      ],
+      "zig/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-8"
+      ],
+      "omnipaxos/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-8",
+        "3"
+      ],
+      "libpaxos/3/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-8",
+        "3"
+      ],
+      "odin/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-64"
+      ],
+      "zig/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-64"
+      ],
+      "omnipaxos/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-64",
+        "3"
+      ],
+      "libpaxos/3/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-64",
+        "3"
+      ],
+      "odin/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-1024"
+      ],
+      "zig/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-1024"
+      ],
+      "omnipaxos/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-1024",
+        "3"
+      ],
+      "libpaxos/3/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-1024",
+        "3"
+      ],
+      "odin/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-8"
+      ],
+      "zig/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-8"
+      ],
+      "omnipaxos/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-8",
+        "5"
+      ],
+      "libpaxos/5/8": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-8",
+        "5"
+      ],
+      "odin/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-64"
+      ],
+      "zig/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-64"
+      ],
+      "omnipaxos/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-64",
+        "5"
+      ],
+      "libpaxos/5/64": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-64",
+        "5"
+      ],
+      "odin/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-1024"
+      ],
+      "zig/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-1024"
+      ],
+      "omnipaxos/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-1024",
+        "5"
+      ],
+      "libpaxos/5/1024": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-1024",
+        "5"
+      ]
+    },
+    "quorum": "majority",
+    "timing": "in-process finite epoch through decision; no I/O",
+    "unsupported_common_modes": [
+      "rotating ownership",
+      "API batching",
+      "durability"
+    ],
+    "libpaxos_revision": "d255f8b67a32d5e0ef43ac1a393b72cee23d8e0e",
+    "cpu_model": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "odin": "odin version dev-2026-09-nightly:a2fb372",
+    "zig": "0.16.0",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "zig_revision": "71863b787f7b6a4f4bfc9f5aa3a62cb4d7e1d0ac",
+    "zig_source_sha256": "2869293ec5fa075ac6b499f365bc8b969def3a985148d7add7c4444802e5c5d8",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "/sys/fs/cgroup/cpu.max": "max 100000",
+    "/sys/fs/cgroup/memory.max": "max",
+    "pinned_cpu": 0
+  },
+  "runs": [
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 7348248,
+        "Dr": 1880071,
+        "Dw": 1638407,
+        "I1mr": 1,
+        "D1mr": 1542,
+        "D1mw": 6656,
+        "ILmr": 1,
+        "DLmr": 0,
+        "DLmw": 1,
+        "Bc": 995328,
+        "Bcm": 49160,
+        "Bi": 49152,
+        "Bim": 20481
+      },
+      "peak_massif_bytes": 1577712,
+      "peak_rss_bytes": 3067904,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-8",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 5828642,
+        "Dr": 1622024,
+        "Dw": 1388552,
+        "I1mr": 0,
+        "D1mr": 1550,
+        "D1mw": 11278,
+        "ILmr": 0,
+        "DLmr": 0,
+        "DLmw": 0,
+        "Bc": 749569,
+        "Bcm": 36865,
+        "Bi": 49152,
+        "Bim": 20481
+      },
+      "peak_massif_bytes": 2336,
+      "peak_rss_bytes": 2400256,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-8",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 87430081,
+        "Dr": 21359072,
+        "Dw": 14107905,
+        "I1mr": 73,
+        "D1mr": 6482,
+        "D1mw": 3862,
+        "ILmr": 0,
+        "DLmr": 0,
+        "DLmw": 506,
+        "Bc": 14883544,
+        "Bcm": 736774,
+        "Bi": 602171,
+        "Bim": 12289
+      },
+      "peak_massif_bytes": 76920880,
+      "peak_rss_bytes": 2109440,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-8",
+        "3",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 66976388,
+        "Dr": 16557815,
+        "Dw": 8711669,
+        "I1mr": 22,
+        "D1mr": 98173,
+        "D1mw": 36994,
+        "ILmr": 0,
+        "DLmr": 0,
+        "DLmw": 1720,
+        "Bc": 10114436,
+        "Bcm": 241002,
+        "Bi": 504103
+      },
+      "peak_massif_bytes": 1193824,
+      "peak_rss_bytes": 2584576,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-8",
+        "3",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "odin",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 13180952,
+        "Dr": 3448839,
+        "Dw": 2908167,
+        "I1mr": 1,
+        "D1mr": 8359,
+        "D1mw": 23088,
+        "ILmr": 1,
+        "DLmr": 1,
+        "DLmw": 5,
+        "Bc": 1822720,
+        "Bcm": 118793,
+        "Bi": 98304,
+        "Bim": 20481
+      },
+      "peak_massif_bytes": 2135856,
+      "peak_rss_bytes": 3657728,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-5-8",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "zig",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 10543138,
+        "Dr": 2990088,
+        "Dw": 2502664,
+        "I1mr": 0,
+        "D1mr": 4633,
+        "D1mw": 15385,
+        "ILmr": 0,
+        "DLmr": 0,
+        "DLmw": 0,
+        "Bc": 1400833,
+        "Bcm": 49154,
+        "Bi": 98304,
+        "Bim": 20481
+      },
+      "peak_massif_bytes": 2336,
+      "peak_rss_bytes": 3592192,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-5-8",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 251589521,
+        "Dr": 59697729,
+        "Dw": 39922172,
+        "I1mr": 75,
+        "D1mr": 563361,
+        "D1mw": 100652,
+        "ILmr": 3,
+        "DLmr": 0,
+        "DLmw": 2137,
+        "Bc": 44012919,
+        "Bcm": 2037871,
+        "Bi": 1527909,
+        "Bim": 12289
+      },
+      "peak_massif_bytes": 115406816,
+      "peak_rss_bytes": 2162688,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-5-8",
+        "5",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 5,
+      "payload_bytes": 8,
+      "depth": 1,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 114510892,
+        "Dr": 29630768,
+        "Dw": 16290968,
+        "I1mr": 27,
+        "D1mr": 176605,
+        "D1mw": 82673,
+        "ILmr": 0,
+        "DLmr": 256,
+        "DLmw": 2533,
+        "Bc": 17492068,
+        "Bcm": 432793,
+        "Bi": 909685
+      },
+      "peak_massif_bytes": 1949936,
+      "peak_rss_bytes": 3555328,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-5-8",
+        "5",
+        "1",
+        "1"
+      ]
+    },
+    {
+      "impl": "odin",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 13693145,
+        "Dr": 3682823,
+        "Dw": 3331399,
+        "I1mr": 1,
+        "D1mr": 361428,
+        "D1mw": 615006,
+        "ILmr": 1,
+        "DLmr": 10,
+        "DLmw": 119,
+        "Bc": 1703936,
+        "Bcm": 21383,
+        "Bi": 102400,
+        "Bim": 321
+      },
+      "peak_massif_bytes": 23957784,
+      "peak_rss_bytes": 25354240,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/odin-3-1024",
+        "64",
+        "1"
+      ]
+    },
+    {
+      "impl": "zig",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 107239591,
+        "Dr": 16629896,
+        "Dw": 50073737,
+        "I1mr": 0,
+        "D1mr": 694278,
+        "D1mw": 898558,
+        "ILmr": 0,
+        "DLmr": 17645,
+        "DLmw": 329007,
+        "Bc": 9793665,
+        "Bcm": 308353,
+        "Bi": 49152,
+        "Bim": 321
+      },
+      "peak_massif_bytes": 17616,
+      "peak_rss_bytes": 52789248,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/zig-3-1024",
+        "64",
+        "1"
+      ]
+    },
+    {
+      "impl": "omnipaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 36064214,
+        "Dr": 27554640,
+        "Dw": 26816994,
+        "I1mr": 78,
+        "D1mr": 510441,
+        "D1mw": 701506,
+        "ILmr": 77,
+        "DLmr": 9996,
+        "DLmw": 150875,
+        "Bc": 26163230,
+        "Bcm": 46029,
+        "Bi": 79467,
+        "Bim": 196
+      },
+      "peak_massif_bytes": 89419104,
+      "peak_rss_bytes": 32935936,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/omnipaxos-3-1024",
+        "3",
+        "64",
+        "1"
+      ]
+    },
+    {
+      "impl": "libpaxos",
+      "nodes": 3,
+      "payload_bytes": 1024,
+      "depth": 64,
+      "values": 4096,
+      "callgrind": {
+        "Ir": 98826379,
+        "Dr": 22869396,
+        "Dw": 13619359,
+        "I1mr": 30,
+        "D1mr": 909720,
+        "D1mw": 1157183,
+        "ILmr": 10,
+        "DLmr": 3639,
+        "DLmw": 234714,
+        "Bc": 16159370,
+        "Bcm": 413934,
+        "Bi": 504923
+      },
+      "peak_massif_bytes": 13964616,
+      "peak_rss_bytes": 27901952,
+      "rss_epochs": 8,
+      "rss_method": "sampled post-exec /proc VmHWM; null if process finished before observation",
+      "static_storage_note": "Static/BSS may be absent from Massif; RSS includes it.",
+      "command": [
+        "/home/insan/projects/paxos-odin/bin/matched/profile/libpaxos-3-1024",
+        "3",
+        "64",
+        "1"
+      ]
+    }
+  ]
+}

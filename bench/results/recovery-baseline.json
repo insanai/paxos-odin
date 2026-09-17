@@ -1,0 +1,5 @@
+{
+  "base_commit": "919ced8d114d91c8c5f78fad61f5122c11a38c87",
+  "patch": "recovery-baseline.patch",
+  "source_sha256": "be7d4f02574ab79c68b821af5a81c3b83757fcac47c4abf207c9e93ffdd6388c"
+}

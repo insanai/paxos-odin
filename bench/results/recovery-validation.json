@@ -1,0 +1,41 @@
+{
+  "source_sha256": "2af5e5fb7f23100a2de1f901423556d796aea3fb750a102bbb41960e03669a4c",
+  "git_at_verification": "919ced8d114d91c8c5f78fad61f5122c11a38c87",
+  "checks": {
+    "unit_tests": 79,
+    "profiles": [
+      "debug",
+      "speed"
+    ],
+    "default_simulations": 600,
+    "focused_simulations": 120,
+    "fault_steps": 7200000,
+    "default_simulation_crashes": 50861,
+    "compiler_and_durability_contracts": "passed",
+    "style_and_vet": "passed",
+    "benchmark_tool_tests": 5,
+    "matched_rows": 90,
+    "samples_per_row": 9,
+    "regression_gate": "passed",
+    "callgrind_and_massif_rows": 12,
+    "warmup_exclusion_checked": [
+      "odin",
+      "zig",
+      "omnipaxos",
+      "libpaxos"
+    ],
+    "baseline_patch_reconstruction": "passed",
+    "equal_chunk_window_size": "unchanged",
+    "document_compilation": [
+      "book",
+      "ledger POD",
+      "release notes"
+    ]
+  },
+  "commands": [
+    "python3 tools/check.py --seeds=100",
+    "python3 tools/test_matched_tools.py",
+    "python3 tools/matched_compare.py --baseline-root=/tmp/paxos-recovery-baseline --output=bench/results/recovery-matched-20260917.json",
+    "python3 tools/matched_profile.py bin/final-profile-build.json --output=bin/final-profiles"
+  ]
+}
