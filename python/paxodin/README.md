@@ -4,9 +4,9 @@ A typed Python interface to the [Paxos-Odin](https://github.com/insanai/paxos-od
 consensus engine. Synchronous sessions, asyncio, explicit durability, and errors
 that explain how to recover. Python 3.12+; no runtime Python dependencies.
 
-[Website](https://insanai.github.io/paxos-odin/) ·
-[Book](https://insanai.github.io/paxos-odin/book/) ·
-[API reference](https://insanai.github.io/paxos-odin/api/) ·
+[Website](https://insanai.github.io/paxos-odin/) |
+[Book](https://insanai.github.io/paxos-odin/book/) |
+[API reference](https://insanai.github.io/paxos-odin/api/) |
 [Design records](https://insanai.github.io/paxos-odin/pods/)
 
 ## Install
@@ -69,5 +69,5 @@ installing the Python package does not install that executable.
 ## Authors and license
 
 Authored by **Vikrant Rathore**, with assistance from **Ronak Rathore**.
-Copyright © 2026 Vikrant Rathore and Ronak Rathore. Released under the
+Copyright (c) 2026 Vikrant Rathore and Ronak Rathore. Released under the
 [MIT License](https://github.com/insanai/paxos-odin/blob/main/LICENSE).

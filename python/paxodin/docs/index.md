@@ -5,7 +5,7 @@ consensus core.
 
 The Odin core performs no I/O and owns no threads or clocks: it consumes messages and
 fills a caller-owned batch of effects. This package keeps that split. It owns the
-*order* of the durability contract — persist, confirm, send, release — and the lifetime
+*order* of the durability contract - persist, confirm, send, release - and the lifetime
 of the bytes it returns. Every actual byte moves through an adapter you supply, so there
 is no socket, no TLS policy and no retry loop here.
 
@@ -40,7 +40,7 @@ async with AsyncCluster(3) as cluster:
     receipt = await cluster.append(b"set counter 41")
 ```
 
-`Cluster` is memory-backed and not durable — it is for examples and tests. For anything
+`Cluster` is memory-backed and not durable - it is for examples and tests. For anything
 real, supply a [`FileJournal`][paxodin.storage.FileJournal] and your own transport:
 
 ```python
@@ -60,14 +60,14 @@ with Session(
 
 ## What this package does not do
 
-* **No transport.** You supply one, and it owns authentication — a sender id inside a
+* **No transport.** You supply one, and it owns authentication - a sender id inside a
   frame is a claim, not proof.
 * **No leases, no linearizable reads.** The core has neither, so neither does this.
   A local read is *this participant's released prefix* and nothing more.
 * **No automatic retry.** A `CommitTimeout` does not cancel anything. Retry only behind
   an application command id and a deduplication policy.
 * **No background thread in `Session`.** Call [`poll`][paxodin.session.Session.poll]
-  between appends -- or use `AsyncSession`, which drives itself.
+  between appends - or use `AsyncSession`, which drives itself.
 
 ## Design records
 

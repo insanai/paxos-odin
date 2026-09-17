@@ -15,19 +15,19 @@ BASE = '/paxos-odin/'
 
 
 def shell(title, body, pdf=None):
-    download = f'<a href="{BASE}downloads/{escape(pdf)}" download>Download PDF ↓</a>' if pdf else ''
+    download = f'<a href="{BASE}downloads/{escape(pdf)}" download>Download PDF</a>' if pdf else ''
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(title)} · Paxos-Odin</title><link rel="stylesheet" href="{BASE}assets/site.css"></head>
+<title>{escape(title)} - Paxos-Odin</title><link rel="stylesheet" href="{BASE}assets/site.css"></head>
 <body><a class="skip" href="#main">Skip to content</a><header class="nav">
 <a class="brand" href="{BASE}"><span class="mark">p.</span> paxos-odin</a><nav aria-label="Main">
 <a href="{BASE}book/">Book</a><a href="{BASE}pods/">PODs</a><a href="{BASE}api/">Python API</a>
-<a href="https://github.com/insanai/paxos-odin">GitHub ↗</a></nav></header>
-<main id="main" class="reading"><div class="reader-tools"><a href="{BASE}">← Home</a>
+<a href="https://github.com/insanai/paxos-odin">GitHub</a></nav></header>
+<main id="main" class="reading"><div class="reader-tools"><a href="{BASE}">Home</a>
 <span>{escape(title)}</span>{download}</div><article>{body}</article></main>
 <footer><p>Authored by Vikrant Rathore, with assistance from Ronak Rathore.<br>
-© 2026 Vikrant Rathore and Ronak Rathore · MIT License</p>
-<a href="https://github.com/insanai/paxos-odin/blob/main/LICENSE">License ↗</a></footer></body></html>'''
+(c) 2026 Vikrant Rathore and Ronak Rathore - MIT License</p>
+<a href="https://github.com/insanai/paxos-odin/blob/main/LICENSE">License</a></footer></body></html>'''
 
 
 def document(source, destination, title, pdf):
@@ -97,9 +97,9 @@ def main():
         stem = f"pod-{fields['number']}-{fields['slug']}"
         document(BUILD / f'html/{stem}.html', SITE / f'pods/{stem}.html',
                  f"POD {fields['number']}: {fields['title']}", fields['pdf'])
-        rows.append(f'''<section class="pod-row"><span class="meta">POD {fields['number']} · {fields['status']}</span>
-<h2><a href="{stem}.html">{escape(fields['title'])} ↗</a></h2><p>{escape(fields['summary'])}</p>
-<a href="{BASE}downloads/{fields['pdf']}" download>Download PDF ↓</a></section>''')
+        rows.append(f'''<section class="pod-row"><span class="meta">POD {fields['number']} - {fields['status']}</span>
+<h2><a href="{stem}.html">{escape(fields['title'])}</a></h2><p>{escape(fields['summary'])}</p>
+<a href="{BASE}downloads/{fields['pdf']}" download>Download PDF</a></section>''')
     (SITE / 'pods/index.html').write_text(shell('Paxos Odin Discussions',
         '<p class="eyebrow">DECISIONS, EXPLAINED</p><h1>Paxos Odin Discussions</h1>'
         '<p>Design records, protocol contracts and dated verification evidence. '

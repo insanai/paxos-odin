@@ -1,15 +1,15 @@
 # paxos-odin
 
-[Website](https://insanai.github.io/paxos-odin/) · [Book](https://insanai.github.io/paxos-odin/book/) · [PODs](https://insanai.github.io/paxos-odin/pods/) · [Releases](https://github.com/insanai/paxos-odin/releases) · [Python package](https://pypi.org/project/paxodin/)
+[Website](https://insanai.github.io/paxos-odin/) | [Book](https://insanai.github.io/paxos-odin/book/) | [PODs](https://insanai.github.io/paxos-odin/pods/) | [Releases](https://github.com/insanai/paxos-odin/releases) | [Python package](https://pypi.org/project/paxodin/)
 
 The toolchain CLI is **paxodin**; the Odin package remains **paxos**.
 CLI releases cover Linux x86-64, Windows x86-64 and macOS Apple Silicon.
 Authored by **Vikrant Rathore**, with assistance from **Ronak Rathore**.
-Copyright © 2026 Vikrant Rathore and Ronak Rathore, under the MIT License.
+Copyright (c) 2026 Vikrant Rathore and Ronak Rathore, under the MIT License.
 
 A Paxos library that does no I/O, written in Odin.
 
-English · [한국어](README.ko.md)
+English | [한국어](README.ko.md)
 
 ## The problem, and the trick
 
@@ -293,7 +293,7 @@ The current matched run is recorded in
 Each implementation processes 4,096 values per epoch with matching voter counts,
 payloads, and outstanding-work limits. Every learner's ordered payloads are checked.
 The selected rows below report median **nanoseconds per completed value** over nine
-samples; lower is better. “Before” is the preserved Odin baseline.
+samples; lower is better. "Before" is the preserved Odin baseline.
 
 | Voters | Bytes | Depth | Odin before | Odin now | Zig | OmniPaxos | LibPaxos3 |
 |---:|---:|---:|---:|---:|---:|---:|---:|
@@ -305,9 +305,9 @@ samples; lower is better. “Before” is the preserved Odin baseline.
 | 3 | 1024 | 64 | 469.9 | 349.3 | 1,938.0 | 2,450.5 | 3,815.1 |
 | 5 | 1024 | 64 | 893.8 | 935.2 | 3,350.4 | 3,170.2 | 5,923.4 |
 
-Three-node 1 KiB workloads improved by about 16–26% in paired comparisons against
-the Odin baseline. Some small-value rows were 1–3% slower. The five-node 1 KiB,
-depth-64 result is inconclusive: paired ratio 1.047, 95% interval 0.928–1.089.
+Three-node 1 KiB workloads improved by about 16-26% in paired comparisons against
+the Odin baseline. Some small-value rows were 1-3% slower. The five-node 1 KiB,
+depth-64 result is inconclusive: paired ratio 1.047, 95% interval 0.928-1.089.
 The defined 5% regression gate passed, which does not prove every slowdown is below
 5%. Zig and OmniPaxos still lead some categories.
 
@@ -339,14 +339,14 @@ median of repeated samples (lower is better):
 | workload | paxos-odin | paxos-zig | OmniPaxos | LibPaxos3 |
 |---|---:|---:|---:|---:|
 | 3 voters, 8 B, one at a time | 148 | 113 | 1,010 | 2,280 |
-| 3 voters, 8 B, 8 in flight | 144 | 115 | 198 | – |
-| 3 voters, 8 B, 64 in flight | 141 | 113 | 83 | – |
-| 5 voters, 8 B, one at a time | 191 | 219 | 2,721 | – |
-| 5 voters, 8 B, 8 in flight | 182 | 210 | 446 | – |
-| 3 voters, 1 KiB, one at a time | 505 | 2,719 | 1,244 | – |
-| 3 voters, 1 KiB, 8 in flight | 552 | 2,707 | 423 | – |
-| 3 owners, 8 B, one at a time, rotating ownership | 161 | – | – | – |
-| 3 owners, 8 B, 8 in flight, rotating ownership | 154 | – | – | – |
+| 3 voters, 8 B, 8 in flight | 144 | 115 | 198 | - |
+| 3 voters, 8 B, 64 in flight | 141 | 113 | 83 | - |
+| 5 voters, 8 B, one at a time | 191 | 219 | 2,721 | - |
+| 5 voters, 8 B, 8 in flight | 182 | 210 | 446 | - |
+| 3 voters, 1 KiB, one at a time | 505 | 2,719 | 1,244 | - |
+| 3 voters, 1 KiB, 8 in flight | 552 | 2,707 | 423 | - |
+| 3 owners, 8 B, one at a time, rotating ownership | 161 | - | - | - |
+| 3 owners, 8 B, 8 in flight, rotating ownership | 154 | - | - | - |
 
 With a journal file per node and a storage barrier (`fsync`) per host commit
 round, on the same ZFS volume:
@@ -355,8 +355,8 @@ round, on the same ZFS volume:
 |---|---|---:|---:|
 | paxos-odin | fsync per commit round, one value | 27.49 ms | 6.00 |
 | paxos-odin | fsync per commit round, 8 values | 3.71 ms | 0.75 |
-| paxos-zig | fsync-each | 27.54 ms | – |
-| paxos-zig | group8 | 3.53 ms | – |
+| paxos-zig | fsync-each | 27.54 ms | - |
+| paxos-zig | group8 | 3.53 ms | - |
 
 In this historical run, Zig led the three-voter small-value rows, while Odin led
 the five-voter and one-at-a-time 1 KiB rows. OmniPaxos led two pipelined rows.
@@ -498,7 +498,7 @@ that instantiate it. Documentation other than the two READMEs and
 `python/paxodin/` is a Python package over the same core. The Odin library keeps
 owning the disk, the network and the clock; the package owns the *order* of the
 durability contract and the lifetime of the bytes it returns. It ships no socket,
-no TLS policy and no retry loop — you supply a journal and a transport.
+no TLS policy and no retry loop - you supply a journal and a transport.
 
 ```python
 from paxodin.testing import Cluster
@@ -535,7 +535,7 @@ knows it, in order, durably) and **application** (your code acted on it). An
 
 Not provided, deliberately: leases or linearizable local reads (the core has
 neither), automatic retry after a timeout, reconfiguration, rotating ownership and
-learners — the last three are refused by capability bit rather than half-supported.
+learners - the last three are refused by capability bit rather than half-supported.
 Design record: [POD 0011](docs/pod/records/0011-paxodin-python-sdk.typ) and Part IX
 of the book.
 

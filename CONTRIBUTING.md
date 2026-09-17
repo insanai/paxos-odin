@@ -86,7 +86,7 @@ that ruff cannot express, sharing the Odin constants:
   `Raises:`, saying what the rule protects rather than restating the signature.
   `make python-docs` renders them; docstring examples run under pytest.
 - `mypy --strict` must pass, and `py.typed` ships.
-- Exception names mirror the core's error values one for one (`.Not_Leader` →
+- Exception names mirror the core's error values one for one (`.Not_Leader` ->
   `NotLeader`), which is why `N818` is disabled for `errors.py`.
 - The test suite runs twice: against the shipped `.Host_Managed` library and
   against the `.Enforced` twin, which compiles the core's own durability gate in.
@@ -96,7 +96,7 @@ that ruff cannot express, sharing the Odin constants:
 
 Documentation is written in Typst. The Markdown files in the repository are
 `README.md`, `README.ko.md`, this file, and `python/paxodin/README.md` with
-`python/paxodin/docs/` — the last two exist because PyPI needs a
+`python/paxodin/docs/` - the last two exist because PyPI needs a
 `long_description` and because the Python API reference is *generated* from
 docstrings by mkdocstrings, so it cannot drift from the code. Prose about the
 SDK still belongs in POD 0011 and Part IX of the book.
@@ -148,7 +148,7 @@ release notes, then run `python3 tools/release.py version`. Push a `vX.Y.Z` tag
 only on the revision intended for publication. The release workflow runs the full
 verification gate and builds the CLI and standalone Python wheel on Linux x86-64,
 Windows x86-64 and macOS Apple Silicon. Every wheel is installed and exercised on
-Python 3.12–3.14 before the publication job uses `PYPI_API_KEY`.
+Python 3.12-3.14 before the publication job uses `PYPI_API_KEY`.
 
 Routine CI uses a short fault matrix; tags, weekly runs and manual dispatch run
 the full matrix. Tests run in parallel with artifact builds on tags, but publishing

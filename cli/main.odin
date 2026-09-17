@@ -34,7 +34,7 @@ run_system_cmd :: proc(cmd: string) -> int {
 }
 
 print_usage :: proc() {
-	fmt.println("paxodin — Paxos-Odin Toolchain CLI")
+	fmt.println("paxodin - Paxos-Odin Toolchain CLI")
 	fmt.println("Usage: paxodin <command> [arguments]")
 	fmt.println("")
 	fmt.println("Commands:")
